@@ -19,7 +19,7 @@ class RoleMiddleware
     public function handle(Request $request, Closure $next, $role): Response
     {
         $user = Auth::user();
-        if ($user && $user->role === $role) {
+        if ($user && ($user->role === $role || $user->hasRole($role))) {
             return $next($request);
         }
         return redirect('/login');

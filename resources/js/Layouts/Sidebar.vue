@@ -1,12 +1,11 @@
 <script setup>
 import { ref, onMounted } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, usePage } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
 
-
-
 const activeItem = ref(route().current());
+const page = usePage();
 
 // Props
 defineProps({
@@ -16,6 +15,13 @@ defineProps({
   },
 });
 
+const hasPermission = (permission) => {
+  return page.props.auth.user?.permissions?.includes(permission);
+};
+
+onMounted(() => {
+  console.log("Sidebar Auth User Permissions:", page.props.auth.user?.permissions);
+});
 </script>
 
 <template>
@@ -59,7 +65,25 @@ defineProps({
           </a>
         </li>
 
-        <li v-if="role === 'store'" :class="{ 'active': route().current('customer*') }">
+        <li v-if="role === 'admin'" :class="{ 'active': route().current('role*') }">
+          <a
+            :href="route('role')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">🛡️</span> <span>Roles</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'admin'" :class="{ 'active': route().current('permission*') }">
+          <a
+            :href="route('permission')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">🔑</span> <span>Permissions</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store' && hasPermission('customer manage')" :class="{ 'active': route().current('customer*') }">
           <a
             :href="route('customer')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -69,7 +93,7 @@ defineProps({
         </li>
         
 
-        <li v-if="role === 'store'" :class="{ 'active': route().current('supplier*') }">
+        <li v-if="role === 'store' && hasPermission('supplier manage')" :class="{ 'active': route().current('supplier*') }">
           <a
             :href="route('supplier')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -78,7 +102,7 @@ defineProps({
           </a>
         </li>
 
-       <li v-if="role === 'store'" :class="{ 'active': route().current('category*') }">
+       <li v-if="role === 'store' && hasPermission('category manage')" :class="{ 'active': route().current('category*') }">
           <a
             :href="route('category')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -87,7 +111,7 @@ defineProps({
           </a>
         </li>
 
-        <li v-if="role === 'store'" :class="{ 'active': route().current('product*') }">
+        <li v-if="role === 'store' && hasPermission('product manage')" :class="{ 'active': route().current('product*') }">
           <a
             :href="route('product')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -96,7 +120,7 @@ defineProps({
           </a>
         </li>
 
-        <li v-if="role === 'store'" :class="{ 'active': route().current('purchase*') }">
+        <li v-if="role === 'store' && hasPermission('purchase manage')" :class="{ 'active': route().current('purchase*') }">
           <a
             :href="route('purchase')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -105,7 +129,7 @@ defineProps({
           </a>
         </li> 
 
-        <li v-if="role === 'store'" :class="{ 'active': route().current('sale*') }">
+        <li v-if="role === 'store' && hasPermission('sale manage')" :class="{ 'active': route().current('sale*') }">
           <a
             :href="route('sale')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -114,7 +138,7 @@ defineProps({
           </a>
         </li> 
 
-        <li v-if="role === 'store'" :class="{ 'active': route().current('paymentsCustomer*') }">
+        <li v-if="role === 'store' && hasPermission('payments customer manage')" :class="{ 'active': route().current('paymentsCustomer*') }">
           <a
             :href="route('paymentsCustomer')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -123,7 +147,7 @@ defineProps({
           </a>
         </li> 
 
-        <li v-if="role === 'store'" :class="{ 'active': route().current('paymentSupplier*') }">
+        <li v-if="role === 'store' && hasPermission('payment supplier manage')" :class="{ 'active': route().current('paymentSupplier*') }">
           <a
             :href="route('paymentSupplier')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"

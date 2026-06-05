@@ -17,6 +17,7 @@ use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\CustomerPaymentsController;
 
 use App\Http\Controllers\Admin\StoresController;
+use App\Http\Controllers\Admin\RolesController;
 
 
 
@@ -53,9 +54,19 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::post('/store/update/{id}', [StoresController::class, 'update'])->name('store.update');
     Route::delete('/store/destroy/{id}', [StoresController::class, 'destroy'])->name('store.destroy');
 
-    // Route::get('/add/user', [StoresController::class, 'userCreate'])->name('add.user');
+    // Roles CRUD
+    Route::get('/role', [RolesController::class, 'index'])->name('role');
+    Route::get('/role/create', [RolesController::class, 'create'])->name('role.create');
+    Route::post('/role/store', [RolesController::class, 'store'])->name('role.store');
+    Route::get('/role/edit/{id}', [RolesController::class, 'edit'])->name('role.edit');
+    Route::post('/role/update/{id}', [RolesController::class, 'update'])->name('role.update');
+    Route::delete('/role/destroy/{id}', [RolesController::class, 'destroy'])->name('role.destroy');
 
-    // Route::get('/admin/list', [StoresController::class, 'getAdmin'])->name('admin.list');
+    // Permissions CRUD
+    Route::get('/permission', [RolesController::class, 'permissionIndex'])->name('permission');
+    Route::post('/permission/store', [RolesController::class, 'permissionStore'])->name('permission.store');
+    Route::post('/permission/update/{id}', [RolesController::class, 'permissionUpdate'])->name('permission.update');
+    Route::delete('/permission/destroy/{id}', [RolesController::class, 'permissionDestroy'])->name('permission.destroy');
 
     //user switch start
     Route::post('/store/switch/start/{id}', [StoresController::class, 'switch_start'])->name('store.switch.start');
@@ -65,71 +76,87 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
 Route::middleware(['auth', 'role:store'])->group(function () {
 
     // Customers
-    Route::get('/customer', [CustomersController::class, 'index'])->name('customer');
-    Route::get('/customer/create', [CustomersController::class, 'create'])->name('customer.Create');
-    Route::post('/customer/store', [CustomersController::class, 'store'])->name('customer.store');
-    Route::get('/customer/{id}/edit', [CustomersController::class, 'edit'])->name('customer.edit');
-    Route::post('/customer/update/{id}', [CustomersController::class, 'update'])->name('customer.update');
-    Route::delete('/customer/destroy/{id}', [CustomersController::class, 'destroy'])->name('customer.destroy');
+    Route::middleware('permission:customer manage')->group(function () {
+        Route::get('/customer', [CustomersController::class, 'index'])->name('customer');
+        Route::get('/customer/create', [CustomersController::class, 'create'])->name('customer.Create');
+        Route::post('/customer/store', [CustomersController::class, 'store'])->name('customer.store');
+        Route::get('/customer/{id}/edit', [CustomersController::class, 'edit'])->name('customer.edit');
+        Route::post('/customer/update/{id}', [CustomersController::class, 'update'])->name('customer.update');
+        Route::delete('/customer/destroy/{id}', [CustomersController::class, 'destroy'])->name('customer.destroy');
+    });
 
     Route::get('/customer/{id}/download-pdf', [CustomersController::class, 'downloadInvoice'])->name('customer.invoice.download');
 
     // Suppliers
-    Route::get('/supplier', [SuppliersController::class, 'index'])->name('supplier');
-    Route::get('/supplier/create', [SuppliersController::class, 'create'])->name('supplier.Create');
-    Route::post('/supplier/store', [SuppliersController::class, 'store'])->name('supplier.store');
-    Route::get('/supplier/{id}/edit', [SuppliersController::class, 'edit'])->name('supplier.edit');
-    Route::post('/supplier/update/{id}', [SuppliersController::class, 'update'])->name('supplier.update');
-    Route::delete('/supplier/destroy/{id}', [SuppliersController::class, 'destroy'])->name('supplier.destroy');
+    Route::middleware('permission:supplier manage')->group(function () {
+        Route::get('/supplier', [SuppliersController::class, 'index'])->name('supplier');
+        Route::get('/supplier/create', [SuppliersController::class, 'create'])->name('supplier.Create');
+        Route::post('/supplier/store', [SuppliersController::class, 'store'])->name('supplier.store');
+        Route::get('/supplier/{id}/edit', [SuppliersController::class, 'edit'])->name('supplier.edit');
+        Route::post('/supplier/update/{id}', [SuppliersController::class, 'update'])->name('supplier.update');
+        Route::delete('/supplier/destroy/{id}', [SuppliersController::class, 'destroy'])->name('supplier.destroy');
+    });
 
     // Categories
-    Route::get('/category', [CategoryController::class, 'index'])->name('category');
-    Route::get('/category/create', [CategoryController::class, 'create'])->name('category.Create');
-    Route::post('/category/store', [CategoryController::class, 'store'])->name('category.store');
-    Route::get('/category/{id}/edit', [CategoryController::class, 'edit'])->name('category.edit');
-    Route::post('/category/update/{id}', [CategoryController::class, 'update'])->name('category.update');
-    Route::delete('/category/destroy/{id}', [CategoryController::class, 'destroy'])->name('category.destroy');
+    Route::middleware('permission:category manage')->group(function () {
+        Route::get('/category', [CategoryController::class, 'index'])->name('category');
+        Route::get('/category/create', [CategoryController::class, 'create'])->name('category.Create');
+        Route::post('/category/store', [CategoryController::class, 'store'])->name('category.store');
+        Route::get('/category/{id}/edit', [CategoryController::class, 'edit'])->name('category.edit');
+        Route::post('/category/update/{id}', [CategoryController::class, 'update'])->name('category.update');
+        Route::delete('/category/destroy/{id}', [CategoryController::class, 'destroy'])->name('category.destroy');
+    });
 
     // Products
-    Route::get('/product', [ProductController::class, 'index'])->name('product');
-    Route::get('/product/create', [ProductController::class, 'create'])->name('product.Create');
-    Route::post('/product/store', [ProductController::class, 'store'])->name('product.store');
-    Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
-    Route::post('/product/update/{id}', [ProductController::class, 'update'])->name('product.update');
-    Route::delete('/product/destroy/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+    Route::middleware('permission:product manage')->group(function () {
+        Route::get('/product', [ProductController::class, 'index'])->name('product');
+        Route::get('/product/create', [ProductController::class, 'create'])->name('product.Create');
+        Route::post('/product/store', [ProductController::class, 'store'])->name('product.store');
+        Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
+        Route::post('/product/update/{id}', [ProductController::class, 'update'])->name('product.update');
+        Route::delete('/product/destroy/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+    });
 
     // Sales
-    Route::get('/sale', [SaleController::class, 'index'])->name('sale');
-    Route::get('/sale/create', [SaleController::class, 'create'])->name('sale.create');
-    Route::post('/sale/store', [SaleController::class, 'store'])->name('sale.store');
-    Route::get('/sale/{id}/edit', [SaleController::class, 'edit'])->name('sale.edit');
-    Route::post('/sale/update/{id}', [SaleController::class, 'update'])->name('sale.update');
-    Route::delete('/sale/destroy/{id}', [SaleController::class, 'destroy'])->name('sale.destroy');
+    Route::middleware('permission:sale manage')->group(function () {
+        Route::get('/sale', [SaleController::class, 'index'])->name('sale');
+        Route::get('/sale/create', [SaleController::class, 'create'])->name('sale.create');
+        Route::post('/sale/store', [SaleController::class, 'store'])->name('sale.store');
+        Route::get('/sale/{id}/edit', [SaleController::class, 'edit'])->name('sale.edit');
+        Route::post('/sale/update/{id}', [SaleController::class, 'update'])->name('sale.update');
+        Route::delete('/sale/destroy/{id}', [SaleController::class, 'destroy'])->name('sale.destroy');
 
-    //downloadInvoice
-    Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
+        //downloadInvoice
+        Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
+    });
 
 
-    Route::get('/purchase', [PurchasesController::class, 'index'])->name('purchase');
-    Route::get('/purchase/create', [PurchasesController::class, 'create'])->name('purchase.create');
-    Route::post('/purchase/store', [PurchasesController::class, 'store'])->name('purchase.store');
-    Route::get('/purchase/{id}/edit', [PurchasesController::class, 'edit'])->name('purchase.edit');
-    Route::post('/purchase/update/{id}', [PurchasesController::class, 'update'])->name('purchase.update');
-    Route::delete('/purchase/destroy/{id}', [PurchasesController::class, 'destroy'])->name('purchase.destroy');
+    Route::middleware('permission:purchase manage')->group(function () {
+        Route::get('/purchase', [PurchasesController::class, 'index'])->name('purchase');
+        Route::get('/purchase/create', [PurchasesController::class, 'create'])->name('purchase.create');
+        Route::post('/purchase/store', [PurchasesController::class, 'store'])->name('purchase.store');
+        Route::get('/purchase/{id}/edit', [PurchasesController::class, 'edit'])->name('purchase.edit');
+        Route::post('/purchase/update/{id}', [PurchasesController::class, 'update'])->name('purchase.update');
+        Route::delete('/purchase/destroy/{id}', [PurchasesController::class, 'destroy'])->name('purchase.destroy');
+    });
 
     //payment Information
     Route::get('/purchase/payment/{id}', [PurchasesController::class, 'payment'])->name('suppliers.payment');
     Route::get('/sale/payment/{id}', [SaleController::class, 'payment'])->name('sale.payment');
 
     //supplier_payment
-    Route::get('/paymentSupplier', [SupplierPaymentController::class, 'index'])->name('paymentSupplier');
-    Route::get('/paymentSupplier/create', [SupplierPaymentController::class, 'create'])->name('paymentSupplier.create');
-    Route::post('/paymentSupplier/store', [SupplierPaymentController::class, 'store'])->name('paymentSupplier.store');
+    Route::middleware('permission:payment supplier manage')->group(function () {
+        Route::get('/paymentSupplier', [SupplierPaymentController::class, 'index'])->name('paymentSupplier');
+        Route::get('/paymentSupplier/create', [SupplierPaymentController::class, 'create'])->name('paymentSupplier.create');
+        Route::post('/paymentSupplier/store', [SupplierPaymentController::class, 'store'])->name('paymentSupplier.store');
+    });
 
     //customer_payment 
-    Route::get('/paymentsCustomer', [CustomerPaymentsController::class, 'index'])->name('paymentsCustomer');
-    Route::get('/paymentsCustomer/create', [CustomerPaymentsController::class, 'create'])->name('paymentsCustomer.create');
-    Route::post('/paymentsCustomer/store', [CustomerPaymentsController::class, 'store'])->name('paymentsCustomer.store');
+    Route::middleware('permission:payments customer manage')->group(function () {
+        Route::get('/paymentsCustomer', [CustomerPaymentsController::class, 'index'])->name('paymentsCustomer');
+        Route::get('/paymentsCustomer/create', [CustomerPaymentsController::class, 'create'])->name('paymentsCustomer.create');
+        Route::post('/paymentsCustomer/store', [CustomerPaymentsController::class, 'store'])->name('paymentsCustomer.store');
+    });
 
 
 });
