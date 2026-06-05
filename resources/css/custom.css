@@ -1,0 +1,123 @@
+
+body {
+  font-family: 'Poppins', sans-serif;
+  background-color: #f4f7fc;
+}
+
+.main-side-header {
+  background-color: #2E2C92;
+  min-height: 100vh;
+  overflow: hidden;
+  position: relative;
+  bottom: 65px;
+}
+
+nav ul li {
+  position: relative;
+}
+
+nav ul li a {
+  position: relative;
+  z-index: 10;
+}
+
+nav ul li::after,
+nav ul li::before {
+  content: "";
+  position: absolute;
+  right: 0;
+  width: 40px;
+  height: 40px;
+  background: transparent;
+  border-radius: 50%;
+  pointer-events: none;
+  z-index: 5;
+  transition: all 0.1s ease;
+  display: none;
+}
+
+nav ul li::before {
+  top: -40px;
+  box-shadow: 30px 30px 0 10px white;
+}
+
+nav ul li::after {
+  bottom: -40px;
+  box-shadow: 30px -30px 0 10px white;
+}
+
+nav ul li:hover::before,
+nav ul li:hover::after,
+nav ul li.active::before,
+nav ul li.active::after {
+  display: block !important;
+}
+
+nav ul li:hover a {
+  background-color: white;
+  color: #2E2C92;
+}
+
+nav ul li.active a {
+  background-color: #fff;
+  color: #000;
+}
+
+.profile-name-add {
+  position: absolute;
+  top: 2.5rem;
+  right: -15px;
+  background-color: white;
+  border-radius: 0.25rem;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  font-size: 0.875rem;
+  width: 160px;
+  padding: 10px 15px;
+  display: none;
+}
+
+.main-hover-svg:hover svg{
+  color: #fff;
+}
+.main-back-class a:hover {
+  color: #2e2c92;
+}
+
+.main-hover-svg:hover svg{
+  color: #fff;
+}
+table.dataTable th.dt-type-numeric, table.dataTable th.dt-type-date, table.dataTable td.dt-type-numeric, table.dataTable td.dt-type-date {
+  text-align: start;
+}
+div.dt-container select.dt-input {
+  padding: 0 20px 0px 5px;
+}
+#customer tbody tr, #supplier tbody tr, #category tbody tr, #product tbody tr, #purchase tbody tr, #sale tbody tr {
+    border-bottom: 1px solid #d0d0d0;
+}
+#customer tbody tr:hover, #supplier tbody tr:hover, #category tbody tr:hover, #product tbody tr:hover, #purchase tbody tr:hover, #sale tbody tr:hover {
+    background: #dbdbdb38;
+}
+table.dataTable > tbody > tr > th, table.dataTable > tbody > tr > td {
+    padding: 10px 10px;
+}
+@media (max-width: 768px) {
+  .main-side-header {
+    width: 250px;
+    position: fixed;
+    left: -250px;
+    top: 0;
+    height: 100%;
+    z-index: 50;
+    transition: left 0.3s ease;
+  }
+
+  .main-side-header.open {
+    left: 0;
+  }
+
+  .main-content {
+    margin-left: 0;
+    width: 100%;
+  }
+}

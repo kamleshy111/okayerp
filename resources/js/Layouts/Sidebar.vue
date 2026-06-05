@@ -1,0 +1,156 @@
+<script setup>
+import { ref, onMounted } from 'vue';
+import { router } from '@inertiajs/vue3';
+import { Link } from '@inertiajs/vue3';
+import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
+
+
+
+const activeItem = ref(route().current());
+
+// Props
+defineProps({
+  role: {
+    type: String,
+    required: true,
+  },
+});
+
+</script>
+
+<template>
+  <!-- Sidebar -->
+  <div>
+    <nav class="flex-1">
+      <ul class="space-y-2 pl-3 mt-8">
+        <li :class="{ 'active': route().current('dashboard') }">
+          <a
+            :href="route('dashboard')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">🏠</span> <span>Dashboard</span>
+          </a>
+        </li>
+
+        <!-- <li v-if="role === 'admin'" :class="{ 'active': route().current('admin.list') }">
+          <a
+            :href="route('admin.list')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">👥</span> <span>Admin</span>
+          </a>
+        </li> -->
+
+        <li v-if="role === 'admin'" :class="{ 'active': route().current('store*') }">
+          <a
+            :href="route('store')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">👥</span> <span>Stores</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'admin'" :class="{ 'active': route().current('add.store') }">
+          <a
+            :href="route('add.store')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">👥</span> <span>Add Store</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('customer*') }">
+          <a
+            :href="route('customer')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">👥</span> <span>Customers</span>
+          </a>
+        </li>
+        
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('supplier*') }">
+          <a
+            :href="route('supplier')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">👥</span> <span>Suppliers</span>
+          </a>
+        </li>
+
+       <li v-if="role === 'store'" :class="{ 'active': route().current('category*') }">
+          <a
+            :href="route('category')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">📦</span> <span>Categories</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('product*') }">
+          <a
+            :href="route('product')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">📦</span> <span>Products</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('purchase*') }">
+          <a
+            :href="route('purchase')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">📦</span> <span>Purchase</span>
+          </a>
+        </li> 
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('sale*') }">
+          <a
+            :href="route('sale')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">📦</span> <span>Sales</span>
+          </a>
+        </li> 
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('paymentsCustomer*') }">
+          <a
+            :href="route('paymentsCustomer')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">💰</span> <span>Customers Paymets</span>
+          </a>
+        </li> 
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('paymentSupplier*') }">
+          <a
+            :href="route('paymentSupplier')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">💰</span> <span>Suppliers Paymets</span>
+          </a>
+        </li> 
+
+        <li :class="{ 'active': route().current('profile.edit') }">
+          <a
+            :href="route('profile.edit')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">👥</span> <span>Profile</span>
+          </a>
+        </li>
+        <li class="nav-item">
+              <ResponsiveNavLink
+                :href="route('logout')"
+                method="post"
+                as="button"
+                 class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+              >
+                <span class="text-xl">↩️</span>Log Out
+              </ResponsiveNavLink>
+        </li>
+      </ul>
+    </nav>
+  </div>
+</template>

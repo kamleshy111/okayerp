@@ -1,0 +1,218 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Inertia\Inertia;
+use App\Models\User;
+use App\Models\Customer;
+use App\Models\Product;
+use App\Models\Category;
+use App\Models\Supplier;
+use App\Models\SaleItem;
+use App\Models\PurchaseItem;
+use DB;
+use Carbon\Carbon;
+
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        $user = Auth::user();
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
+        $role = $user->role;
+
+        if($role === 'admin'){
+
+            $previousMonth = Carbon::now()->subMonth();
+            $now = Carbon::now();
+
+            $totalStores = User::where('role', 'store')->count();
+            $totalCustomers = Customer::count();
+            $totalSuppliers = Supplier::count();
+            $totalCategories = Category::count();
+            $totalProducts = Product::count();
+            $totalStockProducts = Product::sum('stock_quantity');
+            $totalSaleProducts = SaleItem::sum('quantity');
+
+            //stores in percentage Change
+            $lastMonthStore = User::where('role', 'store')->whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->count();
+            $thisMonthStore = User::where('role', 'store')->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
+
+            $percentageChangeStore = 0;
+            if ($lastMonthStore > 0) {
+                $percentageChangeStore = (($thisMonthStore - $lastMonthStore) / $lastMonthStore) * 100;
+            }
+            $percentageChangeStore = round($percentageChangeStore, 2);  
+
+            //product percentage Change
+            $lastMonthProduct = Product::whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->count();
+            $thisMonthProduct = Product::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
+
+            $percentageChangeProduct = 0;
+            if ($lastMonthProduct > 0) {
+                $percentageChangeProduct = (($thisMonthProduct - $lastMonthProduct) / $lastMonthProduct) * 100;
+            }
+            $percentageChangeProduct = round($percentageChangeProduct, 2);  
+
+            //customer percentage Change
+            $lastMonthCustomer = Customer::whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->count();
+            $thisMonthCustomer = Customer::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
+
+            $percentageChangeCustomer = 0;
+            if ($lastMonthCustomer > 0) {
+                $percentageChangeCustomer = (($thisMonthCustomer - $lastMonthCustomer) / $lastMonthCustomer) * 100;
+            }
+            $percentageChangeCustomer = round($percentageChangeCustomer, 2); 
+
+            //Supplier percentage Change
+            $lastMonthSupplier = Supplier::whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->count();
+            $thisMonthSupplier = Supplier::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
+
+            $percentageChangeSupplier = 0;
+            if ($lastMonthSupplier > 0) {
+                $percentageChangeSupplier = (($thisMonthSupplier - $lastMonthSupplier) / $lastMonthSupplier) * 100;
+            }
+            $percentageChangeSupplier = round($percentageChangeSupplier, 2); 
+
+            // sale product  percentage Change
+            $lastMonthSales = SaleItem::whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->sum('quantity');
+
+            $thisMonthSales = SaleItem::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->sum('quantity');
+
+            $percentageChangeSale = 0;
+            if ($lastMonthSales > 0) {
+                $percentageChangeSale = (($thisMonthSales - $lastMonthSales) / $lastMonthSales) * 100;
+            }
+            $percentageChangeSale = round($percentageChangeSale, 2);
+
+        //purchases product  percentage Change
+        $lastMonthPurchases = PurchaseItem::whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->sum('quantity');
+
+        $thisMonthPurchases = PurchaseItem::whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->sum('quantity');
+
+        $percentageChangePurchases = 0;
+        if ($lastMonthPurchases > 0) {
+            $percentageChangePurchases = (($thisMonthPurchases - $lastMonthPurchases) / $lastMonthPurchases) * 100;
+        }
+        $percentageChangePurchases = round($percentageChangePurchases, 2);
+
+            return Inertia::render('Admin/Dashboard', [
+                'role'   => $role,
+                'totalStores' => $totalStores,
+                'totalCustomers' => $totalCustomers,
+                'totalSuppliers' => $totalSuppliers,
+                'totalCategories' => $totalCategories,
+                'totalProducts' => $totalProducts,
+                'totalStockProducts' => $totalStockProducts,
+                'totalSaleProducts' => $totalSaleProducts,
+                'percentageChangeStore' => $percentageChangeStore,
+                'percentageChangeProduct' => $percentageChangeProduct,
+                'percentageChangeCustomer' => $percentageChangeCustomer,
+                'percentageChangeSupplier' => $percentageChangeSupplier,
+                'percentageChangeSale' => $percentageChangeSale,
+                'percentageChangePurchases' => $percentageChangePurchases,
+            ]);
+        }
+
+        $userId = Auth::user()->id;
+        $previousMonth = Carbon::now()->subMonth();
+        $now = Carbon::now();
+
+        $totalProducts = Product::where('user_id', $userId)->count();
+        $totalCustomers = Customer::where('user_id', $userId)->count();
+        $totalSuppliers = Supplier::where('user_id', $userId)->count();
+        $totalCategories = Category::where('user_id', $userId)->count();
+        $totalStockProducts = Product::where('user_id', $userId)->sum('stock_quantity');
+
+        $totalSaleProducts = \DB::table('users')
+                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
+                            ->leftJoin('sale_items', 'sale_items.product_id', '=', 'products.id')
+                            ->where('users.id', $userId)
+                            ->sum('sale_items.quantity');
+
+        //purchases product  percentage Change
+        $lastMonthPurchases = \DB::table('users')
+                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
+                            ->leftJoin('purchase_items', 'purchase_items.product_id', '=', 'products.id')
+                            ->where('users.id', $userId)->whereMonth('purchase_items.created_at', $previousMonth->month)->whereYear('purchase_items.created_at', $previousMonth->year)->sum('purchase_items.quantity');
+
+        $thisMonthPurchases = \DB::table('users')
+                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
+                            ->leftJoin('purchase_items', 'purchase_items.product_id', '=', 'products.id')
+                            ->where('users.id', $userId)->whereMonth('purchase_items.created_at', $now->month)->whereYear('purchase_items.created_at', $now->year)->sum('purchase_items.quantity');
+
+        $percentageChangePurchases = 0;
+        if ($lastMonthPurchases > 0) {
+            $percentageChangePurchases = (($thisMonthPurchases - $lastMonthPurchases) / $lastMonthPurchases) * 100;
+        }
+        $percentageChangePurchases = round($percentageChangePurchases, 2);
+
+
+        // sale product  percentage Change
+        $lastMonthSales = \DB::table('users')
+                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
+                            ->leftJoin('sale_items', 'sale_items.product_id', '=', 'products.id')
+                            ->where('users.id', $userId)->whereMonth('sale_items.created_at', $previousMonth->month)->whereYear('sale_items.created_at', $previousMonth->year)->sum('sale_items.quantity');
+
+        $thisMonthSales = \DB::table('users')
+                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
+                            ->leftJoin('sale_items', 'sale_items.product_id', '=', 'products.id')
+                            ->where('users.id', $userId)->whereMonth('sale_items.created_at', $now->month)->whereYear('sale_items.created_at', $now->year)->sum('sale_items.quantity');
+
+        $percentageChangeSale = 0;
+        if ($lastMonthSales > 0) {
+            $percentageChangeSale = (($thisMonthSales - $lastMonthSales) / $lastMonthSales) * 100;
+        }
+        $percentageChangeSale = round($percentageChangeSale, 2);
+
+        //product percentage Change
+        $lastMonthProduct = Product::where('user_id', $userId)->whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->count();
+        $thisMonthProduct = Product::where('user_id', $userId)->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
+
+        $percentageChangeProduct = 0;
+        if ($lastMonthProduct > 0) {
+            $percentageChangeProduct = (($thisMonthProduct - $lastMonthProduct) / $lastMonthProduct) * 100;
+        }
+        $percentageChangeProduct = round($percentageChangeProduct, 2);  
+        
+        //Customers percentage Change
+        $lastMonthCustomer = Customer::where('user_id', $userId)->whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->count();
+        $thisMonthCustomer = Customer::where('user_id', $userId)->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
+
+        $percentageChangeCustomer = 0;
+        if ($lastMonthCustomer > 0) {
+            $percentageChangeCustomer = (($thisMonthCustomer - $lastMonthCustomer) / $lastMonthCustomer) * 100;
+        }
+        $percentageChangeCustomer = round($percentageChangeCustomer, 2);
+
+        //Suppliers percentage Change
+        $lastMonthSupplier = Supplier::where('user_id', $userId)->whereMonth('created_at', $previousMonth->month)->whereYear('created_at', $previousMonth->year)->count();
+        $thisMonthSupplier = Supplier::where('user_id', $userId)->whereMonth('created_at', $now->month)->whereYear('created_at', $now->year)->count();
+
+        $percentageChangeSupplier = 0;
+        if ($lastMonthSupplier > 0) {
+            $percentageChangeSupplier = (($thisMonthSupplier - $lastMonthSupplier) / $lastMonthSupplier) * 100;
+        }
+        $percentageChangeSupplier = round($percentageChangeSupplier, 2);
+
+        return Inertia::render('Dashboard', [
+            'role' => $role,
+            'totalProducts' => $totalProducts,
+            'totalCustomers' => $totalCustomers,
+            'totalSuppliers' => $totalSuppliers,
+            'totalCategories' => $totalCategories,
+            'totalStockProducts' => $totalStockProducts,
+            'totalSaleProducts' => $totalSaleProducts,
+            'percentageChangeSale' => $percentageChangeSale,
+            'percentageChangeProduct' => $percentageChangeProduct,
+            'percentageChangeCustomer' => $percentageChangeCustomer,
+            'percentageChangeSupplier' => $percentageChangeSupplier,
+            'percentageChangePurchases' => $percentageChangePurchases,
+        ]);
+    }
+}
