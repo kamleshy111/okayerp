@@ -76,6 +76,7 @@ class SuppliersController extends Controller
             'address' => $request->input('address'),
         ]);
 
+        $supplier->message = 'Supplier added successfully!';
         return response()->json($supplier);
 
 

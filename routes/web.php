@@ -19,6 +19,9 @@ use App\Http\Controllers\CustomerPaymentsController;
 use App\Http\Controllers\Admin\StoresController;
 use App\Http\Controllers\Admin\RolesController;
 
+use App\Http\Controllers\ExpenseCategoryController;
+use App\Http\Controllers\ExpenseController;
+
 
 
 Route::get('/', function () {
@@ -105,6 +108,22 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/category/{id}/edit', [CategoryController::class, 'edit'])->name('category.edit');
         Route::post('/category/update/{id}', [CategoryController::class, 'update'])->name('category.update');
         Route::delete('/category/destroy/{id}', [CategoryController::class, 'destroy'])->name('category.destroy');
+    });
+
+    // Expense Categories
+    Route::middleware('permission:expense category manage')->group(function () {
+        Route::get('/expense-category', [ExpenseCategoryController::class, 'index'])->name('expense-category');
+        Route::post('/expense-category/store', [ExpenseCategoryController::class, 'store'])->name('expense-category.store');
+        Route::post('/expense-category/update/{id}', [ExpenseCategoryController::class, 'update'])->name('expense-category.update');
+        Route::delete('/expense-category/destroy/{id}', [ExpenseCategoryController::class, 'destroy'])->name('expense-category.destroy');
+    });
+
+    // Expenses
+    Route::middleware('permission:expense manage')->group(function () {
+        Route::get('/expense', [ExpenseController::class, 'index'])->name('expense');
+        Route::post('/expense/store', [ExpenseController::class, 'store'])->name('expense.store');
+        Route::post('/expense/update/{id}', [ExpenseController::class, 'update'])->name('expense.update');
+        Route::delete('/expense/destroy/{id}', [ExpenseController::class, 'destroy'])->name('expense.destroy');
     });
 
     // Products

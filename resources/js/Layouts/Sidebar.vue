@@ -93,6 +93,24 @@ onMounted(() => {
           </a>
         </li>
 
+        <li v-if="role === 'store' && hasPermission('expense category manage')" :class="{ 'active': route().current('expense-category*') }">
+          <a
+            :href="route('expense-category')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">📦</span> <span>Expense Categories</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store' && hasPermission('expense manage')" :class="{ 'active': route().current('expense*') && !route().current('expense-category*') }">
+          <a
+            :href="route('expense')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">💰</span> <span>Expenses</span>
+          </a>
+        </li>
+
         <li v-if="role === 'store' && hasPermission('product manage')" :class="{ 'active': route().current('product*') }">
           <a
             :href="route('product')"

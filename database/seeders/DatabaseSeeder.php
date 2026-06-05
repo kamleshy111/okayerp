@@ -27,7 +27,9 @@ class DatabaseSeeder extends Seeder
             'purchase manage',
             'customer manage',
             'payment supplier manage',
-            'payments customer manage'
+            'payments customer manage',
+            'expense category manage',
+            'expense manage'
         ];
 
         foreach ($permissions as $permissionName) {
@@ -40,7 +42,7 @@ class DatabaseSeeder extends Seeder
 
         // Assign Permissions to Roles
         $adminRole->syncPermissions([]);
-        $storeRole->syncPermissions(['supplier manage', 'category manage', 'product manage', 'sale manage', 'purchase manage', 'customer manage', 'payment supplier manage', 'payments customer manage']);
+       // $storeRole->syncPermissions(['supplier manage', 'category manage', 'product manage', 'sale manage', 'purchase manage', 'customer manage', 'payment supplier manage', 'payments customer manage', 'expense category manage', 'expense manage']);
 
         // Seed Admin User
         $adminUser = User::updateOrCreate(
@@ -54,16 +56,7 @@ class DatabaseSeeder extends Seeder
         );
         $adminUser->assignRole($adminRole);
 
-        // Seed Store User
-        $storeUser = User::updateOrCreate(
-            ['email' => 'mukesh@gmail.com'],
-            [
-                'name' => 'Mukesh Store',
-                'password' => Hash::make('password'),
-                'role' => 'store',
-                'phone' => '9876543210',
-            ]
-        );
-        $storeUser->assignRole($storeRole);
+       
+       
     }
 }
