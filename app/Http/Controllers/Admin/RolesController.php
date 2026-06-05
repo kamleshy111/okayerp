@@ -15,7 +15,7 @@ class RolesController extends Controller
      */
     public function index()
     {
-        $roles = Role::with('permissions')->get()->map(function($role) {
+        $roles = Role::with('permissions')->where('name', '!=', 'admin')->get()->map(function($role) {
             return [
                 'id' => $role->id,
                 'name' => $role->name,
