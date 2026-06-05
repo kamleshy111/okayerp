@@ -48,7 +48,7 @@ Route::middleware(['auth'])->group(function () {
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/store', [StoresController::class, 'index'])->name('store');
-    Route::get('/add/store', [StoresController::class, 'create'])->name('add.store');
+    Route::get('/store/add', [StoresController::class, 'create'])->name('store.add');
     Route::post('/store/create', [StoresController::class, 'store'])->name('store.create');
     Route::get('/store/edit/{storeId}', [StoresController::class, 'edit'])->name('store.edit');
     Route::post('/store/update/{id}', [StoresController::class, 'update'])->name('store.update');

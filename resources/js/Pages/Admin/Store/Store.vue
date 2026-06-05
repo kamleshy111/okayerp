@@ -113,7 +113,7 @@ function deleteStore(storeId) {
       <div class="flex items-center justify-between mb-6">
         <h1 class="text-3xl font-bold">Stores</h1>
         <div class="flex items-center gap-4">
-          <a :href="route('add.store')"
+          <a :href="route('store.add')"
               class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
               <span>+ Add Store</span>
           </a>

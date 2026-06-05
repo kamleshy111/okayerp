@@ -38,30 +38,12 @@ onMounted(() => {
           </a>
         </li>
 
-        <!-- <li v-if="role === 'admin'" :class="{ 'active': route().current('admin.list') }">
-          <a
-            :href="route('admin.list')"
-            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
-          >
-            <span class="text-xl">👥</span> <span>Admin</span>
-          </a>
-        </li> -->
-
         <li v-if="role === 'admin'" :class="{ 'active': route().current('store*') }">
           <a
             :href="route('store')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
           >
             <span class="text-xl">👥</span> <span>Stores</span>
-          </a>
-        </li>
-
-        <li v-if="role === 'admin'" :class="{ 'active': route().current('add.store') }">
-          <a
-            :href="route('add.store')"
-            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
-          >
-            <span class="text-xl">👥</span> <span>Add Store</span>
           </a>
         </li>
 
