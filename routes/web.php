@@ -88,9 +88,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/customer/{id}/edit', [CustomersController::class, 'edit'])->name('customer.edit');
         Route::post('/customer/update/{id}', [CustomersController::class, 'update'])->name('customer.update');
         Route::delete('/customer/destroy/{id}', [CustomersController::class, 'destroy'])->name('customer.destroy');
+        Route::get('/customer/{id}/download-pdf', [CustomersController::class, 'downloadInvoice'])->name('customer.invoice.download');
     });
-
-    Route::get('/customer/{id}/download-pdf', [CustomersController::class, 'downloadInvoice'])->name('customer.invoice.download');
 
     // Suppliers
     Route::middleware('permission:supplier manage')->group(function () {
