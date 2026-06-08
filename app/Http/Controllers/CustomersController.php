@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Customer;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Validation\Rule;
 
 class CustomersController extends Controller
 {
@@ -53,7 +54,12 @@ class CustomersController extends Controller
 
         $validated = $request->validate([
             'name' => 'required',
-            'email' => 'required|email|max:255|unique:customers,email',
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('customers', 'email')->where(fn ($q) => $q->where('user_id', Auth::id()))
+            ],
             'phone' => 'required',
         ], [
          
@@ -82,42 +88,41 @@ class CustomersController extends Controller
     
     public function downloadInvoice($id){
 
-        $customer = Customer::with('sales.saleItems.product')->find($id);
+        $customer = Customer::where('user_id', Auth::id())->with('sales.saleItems.product')->find($id);
 
-        $data = $customer->sales->map(function ($sale) {
-                    return [
-                        'sale_id' => $sale->id,
-                        'discount' => $sale->discount ?? 0.00,
-                        'gstAmount' => $sale->gst_amount ?? 0.00,
-                        'grand_total' => $sale->grand_total ?? 0.00,
-                        'sale_date' => $sale->created_at->format('Y-m-d'),
-                        'items' => $sale->saleItems->map(function ($item) {
-                            return [
-                                'product_name' => $item->product->name ?? 'N/A',
-                                'cgst' => $item->product->cgst ?? '0.00%',
-                                'sgst' => $item->product->sgst ?? '0.00%',
-                                'quantity' => $item->quantity,
-                                'price' => $item->price,
-                                'total' => $item->quantity * $item->price,
-                            ];
-                        }),
-                    ];
-                });
- 
         if (!$customer) {
-            abort(404, 'Customer not found.');
+            abort(403, 'Customer not found or unauthorized access');
         }
 
+        $data = $customer->sales->map(function ($sale) {
+            return [
+                'sale_id' => $sale->id,
+                'discount' => $sale->discount ?? 0.00,
+                'gstAmount' => $sale->gst_amount ?? 0.00,
+                'grand_total' => $sale->grand_total ?? 0.00,
+                'sale_date' => $sale->created_at->format('Y-m-d'),
+                'items' => $sale->saleItems->map(function ($item) {
+                    return [
+                        'product_name' => $item->product->name ?? 'N/A',
+                        'cgst' => $item->product->cgst ?? '0.00%',
+                        'sgst' => $item->product->sgst ?? '0.00%',
+                        'quantity' => $item->quantity,
+                        'price' => $item->price,
+                        'total' => $item->quantity * $item->price,
+                    ];
+                }),
+            ];
+        });
+
         $pdf = Pdf::loadView('customerInvoice', compact('data','customer'))->setPaper('a4');
-            return $pdf->download("invoice_customer_{$customer->id}.pdf");       
-       
+        return $pdf->download("invoice_customer_{$customer->id}.pdf");       
     }
 
     public function edit($id){
 
-        $data = Customer::find($id);
+        $data = Customer::where('user_id', Auth::id())->find($id);
         if (!$data) {
-            return response()->json(["message" => 'Customer not found.']);
+            abort(403, 'Customer not found or unauthorized access');
         }
 
         $customerDetail = [
@@ -138,7 +143,13 @@ class CustomersController extends Controller
 
         $validated = $request->validate([
             'name' => 'required',
-            'email' => 'required|email|unique:customers,email,' . $id,
+            'email' => [
+                'required',
+                'email',
+                Rule::unique('customers', 'email')
+                    ->ignore($id)
+                    ->where(fn ($q) => $q->where('user_id', Auth::id()))
+            ],
             'phone' => 'required',
         ], [
          
@@ -152,7 +163,7 @@ class CustomersController extends Controller
             return response()->json(["message" => $validated]);
         }
 
-        $customer = Customer::where('id',$id)->first();
+        $customer = Customer::where('id',$id)->where('user_id', Auth::id())->first();
         if($customer){
             $customer->name = $request->input("name");
             $customer->email = $request->input("email");
@@ -169,7 +180,7 @@ class CustomersController extends Controller
 
     public function destroy($id)
     {
-        $customer = Customer::find($id);
+        $customer = Customer::where('user_id', Auth::id())->find($id);
         if($customer) {
             $customer->delete();
             return response()->json(['message' => 'Customer deleted successfully.'], 200); 
