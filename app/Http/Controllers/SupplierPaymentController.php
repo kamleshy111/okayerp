@@ -59,6 +59,12 @@ class SupplierPaymentController extends Controller
             return response()->json(["message" => $validated]);
         }
 
+        $userId = Auth::id();
+        $supplierExists = Supplier::where('user_id', $userId)->where('id', $request->input('supplier_id'))->exists();
+        if (!$supplierExists) {
+            return response()->json(['message' => 'Selected supplier is invalid or unauthorized.'], 403);
+        }
+
         // Create a new Purchase Payment
         PurchasePayment::create([
             'supplier_id' => $request->input('supplier_id'),
