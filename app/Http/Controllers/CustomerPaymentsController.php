@@ -58,6 +58,12 @@ class CustomerPaymentsController extends Controller
             return response()->json(["message" => $validated]);
         }
 
+        $userId = Auth::id();
+        $customerExists = Customer::where('user_id', $userId)->where('id', $request->input('customer_id'))->exists();
+        if (!$customerExists) {
+            return response()->json(['message' => 'Selected customer is invalid or unauthorized.'], 403);
+        }
+
         // Create a new Sale Payment
         SalePayment::create([
             'customer_id' => $request->input('customer_id'),
