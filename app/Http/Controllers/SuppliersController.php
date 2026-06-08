@@ -85,7 +85,7 @@ class SuppliersController extends Controller
 
     public function edit($id){
 
-        $data = Supplier::find($id);
+        $data = Supplier::where('user_id', Auth::id())->find($id);
         if (!$data) {
             return response()->json(["message" => 'Supplier not found.']);
         }
@@ -102,7 +102,7 @@ class SuppliersController extends Controller
             'supplierDetail' => $supplierDetail,
         ]);
 
-    }
+     }
 
     public function update(Request $request, $id){
 
@@ -122,7 +122,7 @@ class SuppliersController extends Controller
             return response()->json(["message" => $validated]);
         }
 
-        $supplier = Supplier::where('id',$id)->first();
+        $supplier = Supplier::where('id',$id)->where('user_id', Auth::id())->first();
         if($supplier){
             $supplier->name = $request->input("name");
             $supplier->email = $request->input("email");
@@ -138,7 +138,7 @@ class SuppliersController extends Controller
 
     public function destroy($id)
     {
-        $supplier = Supplier::find($id);
+        $supplier = Supplier::where('user_id', Auth::id())->find($id);
         if($supplier) {
             $supplier->delete();
             return response()->json(['message' => 'Supplier deleted successfully.'], 200); 

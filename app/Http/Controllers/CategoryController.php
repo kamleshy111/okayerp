@@ -54,7 +54,7 @@ class CategoryController extends Controller
 
     public function edit($id){
 
-        $data = Category::find($id);
+        $data = Category::where('user_id', Auth::id())->find($id);
 
         if (!$data) {
             return response()->json(["message" => 'Category not found.']);
@@ -74,7 +74,7 @@ class CategoryController extends Controller
 
     public function update(Request $request, $id){
 
-        $category = Category::where('id',$id)->first();
+        $category = Category::where('id',$id)->where('user_id', Auth::id())->first();
         if($category){
             
             $category->name = $request->input("name");
@@ -89,7 +89,7 @@ class CategoryController extends Controller
 
     public function destroy($id)
     {
-        $category = Category::find($id);
+        $category = Category::where('user_id', Auth::id())->find($id);
     
         if($category) {
             $category->delete();
