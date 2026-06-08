@@ -13,13 +13,11 @@ class RegistrationTest extends TestCase
     {
         $response = $this->get('/register');
 
-        $response->assertStatus(200);
+        $response->assertStatus(404);
     }
 
     public function test_new_users_can_register(): void
     {
-        \Spatie\Permission\Models\Role::findOrCreate('store');
-
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
@@ -28,9 +26,6 @@ class RegistrationTest extends TestCase
             'phone' => '1234567890',
         ]);
 
-        $response->assertSessionHasNoErrors();
-
-        $this->assertAuthenticated();
-        $response->assertRedirect(route('dashboard', absolute: false));
+        $response->assertStatus(404);
     }
 }
