@@ -12,6 +12,9 @@ use App\Models\Category;
 use App\Models\Supplier;
 use App\Models\SaleItem;
 use App\Models\PurchaseItem;
+use App\Models\Sale;
+use App\Models\Purchase;
+use App\Models\Expense;
 use DB;
 use Carbon\Carbon;
 
@@ -200,6 +203,40 @@ class DashboardController extends Controller
         }
         $percentageChangeSupplier = round($percentageChangeSupplier, 2);
 
+        // Get profit and loss data for the last 6 months
+        $profitLossData = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $date = Carbon::now()->subMonths($i);
+            $month = $date->month;
+            $year = $date->year;
+            $monthName = $date->format('M Y');
+
+            $salesSum = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                ->whereMonth('created_at', $month)
+                ->whereYear('created_at', $year)
+                ->sum('grand_total');
+
+            $purchasesSum = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+                ->whereMonth('created_at', $month)
+                ->whereYear('created_at', $year)
+                ->sum('grand_total');
+
+            $expensesSum = Expense::where('user_id', $userId)
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->sum('amount');
+
+            $profit = $salesSum - $purchasesSum - $expensesSum;
+
+            $profitLossData[] = [
+                'month' => $monthName,
+                'sales' => round($salesSum, 2),
+                'purchases' => round($purchasesSum, 2),
+                'expenses' => round($expensesSum, 2),
+                'profit' => round($profit, 2),
+            ];
+        }
+
         return Inertia::render('Dashboard', [
             'role' => $role,
             'totalProducts' => $totalProducts,
@@ -213,6 +250,7 @@ class DashboardController extends Controller
             'percentageChangeCustomer' => $percentageChangeCustomer,
             'percentageChangeSupplier' => $percentageChangeSupplier,
             'percentageChangePurchases' => $percentageChangePurchases,
+            'profitLossData' => $profitLossData,
         ]);
     }
 }

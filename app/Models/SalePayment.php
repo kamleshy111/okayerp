@@ -9,4 +9,9 @@ class SalePayment extends Model
     protected $fillable = [
         'customer_id', 'amount', 'payment_date', 'payment_method', 'note'
     ];
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
+    }
 }

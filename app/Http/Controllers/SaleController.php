@@ -76,6 +76,23 @@ class SaleController extends Controller
             return response()->json(["message" => $validated]);
         }
 
+        $userId = Auth::id();
+
+        // Validate customer belongs to logged-in user
+        $customerExists = Customer::where('user_id', $userId)->where('id', $request->input('customer_id'))->exists();
+        if (!$customerExists) {
+            return response()->json(['message' => 'Selected customer is invalid or unauthorized.'], 403);
+        }
+
+        // Validate products belong to logged-in user
+        $productIds = collect($request->input('sale_items', []))->pluck('product_id')->unique();
+        if ($productIds->isNotEmpty()) {
+            $validProductsCount = Product::where('user_id', $userId)->whereIn('id', $productIds)->count();
+            if ($validProductsCount !== $productIds->count()) {
+                return response()->json(['message' => 'One or more selected products are invalid or unauthorized.'], 403);
+            }
+        }
+
         // Begin a database transaction
         DB::beginTransaction();
 
@@ -108,28 +125,18 @@ class SaleController extends Controller
                 ]);
 
                 // Update Stock Quantity of product
-                $product = Product::find($item['product_id']);
+                $product = Product::where('user_id', $userId)->find($item['product_id']);
                 if ($product) {
                     $product->stock_quantity -= $item['quantity'];
                     $product->save();
                 }
             }
 
-            $data = Sale::with(['saleItems.product', 'customer'])->find($sale->id);
-            $pdf = Pdf::loadView('invoice', ['sale' => $data]);
-            // $fileName = 'invoice_' . $sale->id . '.pdf';
-            $fileName = 'invoice_' . $sale->id . '_' . date('Ymd_His') . '.pdf';
-
-            $path = 'invoices/' . $fileName;
-
-            Storage::disk('public')->put($path, $pdf->output());
-            
-
             DB::commit();
 
             return response()->json([
                 'message' => 'sale added successfully.',
-                'invoice_url' => Storage::url($path),
+                'invoice_url' => route('sale.invoice.download', ['id' => $sale->id]),
             ]);
 
         } catch (\Exception $e) {
@@ -141,12 +148,22 @@ class SaleController extends Controller
 
     public function payment($id)
     {
-        $sale = sale::where('customer_id', $id)->get();
+        $userId = Auth::id();
+        $customer = Customer::where('user_id', $userId)->find($id);
+        if (!$customer) {
+            return response()->json(['message' => 'Customer not found or unauthorized access.'], 403);
+        }
+
+        $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                    ->where('customer_id', $id)
+                    ->get();
 
         $totalPurchaseAmount = $sale->sum('grand_total');
         $totalPurchasePaid = $sale->sum('paid');
 
-        $totalDirectPaid = SalePayment::where('customer_id', $id)->sum('amount');
+        $totalDirectPaid = SalePayment::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                                      ->where('customer_id', $id)
+                                      ->sum('amount');
 
         $totalReceived = $totalPurchasePaid + $totalDirectPaid;
 
@@ -162,7 +179,9 @@ class SaleController extends Controller
 
     public function edit($id){
 
-        $sales = Sale::with(['saleItems.product', 'customer'])->find($id);
+        $sales = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
+                    ->with(['saleItems.product', 'customer'])
+                    ->find($id);
 
         if (!$sales) {
             abort(403, 'Sale not found or unauthorized access');
@@ -206,12 +225,40 @@ class SaleController extends Controller
         if (!$validated) {
             return response()->json(["message" => $validated]);
         }
+
+        $userId = Auth::id();
+
+        // Validate sale exists and belongs to the user
+        $saleExists = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                          ->where('id', $id)
+                          ->exists();
+
+        if (!$saleExists) {
+            return response()->json(['message' => 'Sale not found or unauthorized access.'], 403);
+        }
+
+        // Validate customer belongs to logged-in user
+        $customerExists = Customer::where('user_id', $userId)->where('id', $request->input('customer_id'))->exists();
+        if (!$customerExists) {
+            return response()->json(['message' => 'Selected customer is invalid or unauthorized.'], 403);
+        }
+
+        // Validate products belong to logged-in user
+        $productIds = collect($request->input('sale_items', []))->pluck('product_id')->unique();
+        if ($productIds->isNotEmpty()) {
+            $validProductsCount = Product::where('user_id', $userId)->whereIn('id', $productIds)->count();
+            if ($validProductsCount !== $productIds->count()) {
+                return response()->json(['message' => 'One or more selected products are invalid or unauthorized.'], 403);
+            }
+        }
         
         try {
 
-            DB::transaction(function () use ($request, $id) {
+            DB::transaction(function () use ($request, $id, $userId) {
 
-                $sale = Sale::where('id', $id)->first();
+                $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                            ->where('id', $id)
+                            ->first();
 
                 // Update purchase data
                 $sale->update([
@@ -229,7 +276,7 @@ class SaleController extends Controller
                 $oldItems = SaleItem::where('sale_id', $id)->get();
 
                 foreach ($oldItems as $oldItem) {
-                    $product = Product::find($oldItem->product_id);
+                    $product = Product::where('user_id', $userId)->find($oldItem->product_id);
                     if ($product) {
                         $product->stock_quantity += $oldItem->quantity;
                         $product->save();
@@ -251,7 +298,7 @@ class SaleController extends Controller
                     ];
 
                     // Update Stock Quantity of product
-                    $product = Product::find($item['product_id']);
+                    $product = Product::where('user_id', $userId)->find($item['product_id']);
                     if ($product) {
                         $product->stock_quantity -= $item['quantity'];
                         $product->save();
@@ -274,14 +321,22 @@ class SaleController extends Controller
 
     public function downloadInvoice(Request $request,$id){
 
-        $sale = Sale::with(['saleItems.product', 'customer'])->find($id);
+        $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
+                    ->with(['saleItems.product', 'customer'])
+                    ->find($id);
+
+        if (!$sale) {
+            abort(403, 'Sale not found or unauthorized access');
+        }
+
         $pdf = Pdf::loadView('invoice', compact('sale'))->setPaper('a4');
-        return $pdf->download("invoice_{$sale->id}.pdf");
+        return $pdf->stream("invoice_{$sale->id}.pdf");
     }
 
     public function destroy($id){
 
-        $sale = Sale::find($id);
+        $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
+                    ->find($id);
 
         if (!$sale) {
             return response()->json(['message' => 'Sale not found.'], 404);

@@ -241,7 +241,7 @@ const openPaymentModal = () => {
     const { supplier_id, purchase_items } = form.value;
 
     if (!supplier_id) {
-        toast.error("Please select a customer.");
+        toast.error("Please select a supplier.");
         return;
     }
 
