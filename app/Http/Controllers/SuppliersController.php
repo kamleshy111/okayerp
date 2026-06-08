@@ -58,7 +58,7 @@ class SuppliersController extends Controller
         ], [
          
             'name.required' => 'Name is required.',
-            'email.unique' => 'The customer email ID must be unique. Please choose a different email ID.',
+            'email.unique' => 'The supplier email ID must be unique. Please choose a different email ID.',
             'phone.required' => 'Phone Number is required.',
         ]);
 
