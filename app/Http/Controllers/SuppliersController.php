@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Supplier;
+use Illuminate\Validation\Rule;
 
 class SuppliersController extends Controller
 {
@@ -53,7 +54,12 @@ class SuppliersController extends Controller
 
         $validated = $request->validate([
             'name' => 'required',
-            'email' => 'required|email|max:255|unique:suppliers,email',
+            'email' => [
+                'required',
+                'email',
+                'max:255',
+                Rule::unique('suppliers', 'email')->where(fn ($q) => $q->where('user_id', Auth::id()))
+            ],
             'phone' => 'required',
         ], [
          
@@ -108,7 +114,13 @@ class SuppliersController extends Controller
 
         $validated = $request->validate([
             'name' => 'required',
-            'email' => 'required|email|unique:suppliers,email,' . $id,
+            'email' => [
+                'required',
+                'email',
+                Rule::unique('suppliers', 'email')
+                    ->ignore($id)
+                    ->where(fn ($q) => $q->where('user_id', Auth::id()))
+            ],
             'phone' => 'required',
         ], [
          
