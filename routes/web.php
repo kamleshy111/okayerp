@@ -56,6 +56,8 @@ Route::middleware(['auth', 'role:admin'])->group(function () {
     Route::get('/store/edit/{storeId}', [StoresController::class, 'edit'])->name('store.edit');
     Route::post('/store/update/{id}', [StoresController::class, 'update'])->name('store.update');
     Route::delete('/store/destroy/{id}', [StoresController::class, 'destroy'])->name('store.destroy');
+    Route::get('/store/permissions/{id}', [StoresController::class, 'editPermissions'])->name('store.permissions.edit');
+    Route::post('/store/permissions/{id}', [StoresController::class, 'updatePermissions'])->name('store.permissions.update');
 
     // Roles CRUD
     Route::get('/role', [RolesController::class, 'index'])->name('role');

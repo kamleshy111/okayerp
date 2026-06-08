@@ -59,12 +59,22 @@ class User extends Authenticatable
         static::created(function ($user) {
             if ($user->role) {
                 $user->assignRole($user->role);
+                
+                if ($user->role === 'store') {
+                    $permissions = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
+                    $user->givePermissionTo($permissions);
+                }
             }
         });
 
         static::updated(function ($user) {
             if ($user->isDirty('role') && $user->role) {
                 $user->syncRoles([$user->role]);
+                
+                if ($user->role === 'store') {
+                    $permissions = \Spatie\Permission\Models\Permission::pluck('name')->toArray();
+                    $user->givePermissionTo($permissions);
+                }
             }
         });
     }

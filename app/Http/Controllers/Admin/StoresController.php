@@ -172,4 +172,40 @@ class StoresController extends Controller
     
         return response()->json(['message' => 'Store not found.'], 404);
     }
+
+    public function editPermissions($id)
+    {
+        $user = User::findOrFail($id);
+        
+        // Fetch all permissions in the system
+        $permissions = \Spatie\Permission\Models\Permission::all(['id', 'name']);
+        
+        // Fetch direct permissions assigned to this user
+        $userPermissions = $user->getDirectPermissions()->pluck('name');
+        
+        return response()->json([
+            'userName' => $user->name,
+            'permissions' => $permissions,
+            'userPermissions' => $userPermissions,
+        ]);
+    }
+
+    public function updatePermissions(Request $request, $id)
+    {
+        $user = User::findOrFail($id);
+        
+        $request->validate([
+            'permissions' => 'nullable|array',
+        ]);
+        
+        // Sync direct permissions to this user (updates model_has_permissions)
+        $user->syncPermissions($request->permissions ?? []);
+        
+        // Clear cached permissions
+        app()[\Spatie\Permission\PermissionRegistrar::class]->forgetCachedPermissions();
+        
+        return response()->json([
+            'message' => 'Store permissions updated successfully!',
+        ]);
+    }
 }
