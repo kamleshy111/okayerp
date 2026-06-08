@@ -18,12 +18,17 @@ class RegistrationTest extends TestCase
 
     public function test_new_users_can_register(): void
     {
+        \Spatie\Permission\Models\Role::findOrCreate('store');
+
         $response = $this->post('/register', [
             'name' => 'Test User',
             'email' => 'test@example.com',
             'password' => 'password',
             'password_confirmation' => 'password',
+            'phone' => '1234567890',
         ]);
+
+        $response->assertSessionHasNoErrors();
 
         $this->assertAuthenticated();
         $response->assertRedirect(route('dashboard', absolute: false));

@@ -104,8 +104,8 @@ class CustomersController extends Controller
                 'items' => $sale->saleItems->map(function ($item) {
                     return [
                         'product_name' => $item->product->name ?? 'N/A',
-                        'cgst' => $item->product->cgst ?? '0.00%',
-                        'sgst' => $item->product->sgst ?? '0.00%',
+                        'cgst' => number_format($item->cgst, 2),
+                        'sgst' => number_format($item->sgst, 2),
                         'quantity' => $item->quantity,
                         'price' => $item->price,
                         'total' => $item->quantity * $item->price,
