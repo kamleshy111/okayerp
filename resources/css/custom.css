@@ -8,8 +8,6 @@ body {
   background-color: #2E2C92;
   min-height: 100vh;
   overflow: hidden;
-  position: relative;
-  bottom: 65px;
 }
 
 nav ul li {
