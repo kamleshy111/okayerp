@@ -18,24 +18,25 @@ defineProps({
 const user = usePage().props.auth.user;
 
 const form = useForm({
+    _method: 'patch',
     name: user.name,
     phone: user.phone,
     address: user.address,
     email: user.email,
-    //profile_photo: null,
+    profile_photo: null,
 });
 
 // preview image
-// const preview = ref(user.profile_photo ? `/storage/${user.profile_photo}` : null);
+const preview = ref(user.profile_photo ? `/storage/${user.profile_photo}` : null);
 
-// const handleFileUpload = (event) => {
-//     const file = event.target.files[0];
-//     form.profile_photo = file;
+const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    form.profile_photo = file;
 
-//     if (file) {
-//         preview.value = URL.createObjectURL(file);
-//     }
-// };
+    if (file) {
+        preview.value = URL.createObjectURL(file);
+    }
+};
 
 </script>
 
@@ -52,7 +53,7 @@ const form = useForm({
         </header>
 
         <form
-            @submit.prevent="form.patch(route('profile.update'))"
+            @submit.prevent="form.post(route('profile.update'))"
             class="mt-6 space-y-6"
         >
 
@@ -117,8 +118,8 @@ const form = useForm({
             </div>
 
             <!-- Profile Photo -->
-            <!-- <div>
-                <InputLabel for="profile_photo" value="Profile Photo" />
+            <div>
+                <InputLabel for="profile_photo" value="Profile Photo / Store Logo" />
                 <input type="file" id="profile_photo" accept="image/*"
                     @change="handleFileUpload"
                     class="mt-1 block w-full border rounded-md px-3 py-2"/>
@@ -126,9 +127,9 @@ const form = useForm({
 
                 
                 <div v-if="preview" class="mt-3">
-                    <img :src="preview" alt="Profile Preview" class="w-20 h-20 rounded-full object-cover" />
+                    <img :src="preview" alt="Profile Preview" class="w-20 h-20 rounded-full object-cover" style="max-height: 80px;" />
                 </div>
-            </div> -->
+            </div>
 
             <div v-if="mustVerifyEmail && user.email_verified_at === null">
                 <p class="mt-2 text-sm text-gray-800">

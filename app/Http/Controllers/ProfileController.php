@@ -32,30 +32,28 @@ class ProfileController extends Controller
      */
     public function update(ProfileUpdateRequest $request): RedirectResponse
     {
-        $request->user()->fill($request->validated());
-        //$user = $request->user()->fill($request->validated());
+        $user = $request->user();
+        $user->fill($request->validated());
 
-        if ($request->user()->isDirty('email')) {
-            $request->user()->email_verified_at = null;
+        if ($user->isDirty('email')) {
+            $user->email_verified_at = null;
         }
 
         // Handle profile photo
-        // if ($request->hasFile('profile_photo')) {
-            
-        //     if ($user->profile_photo && Storage::disk('public')->exists($user->profile_photo)) {
-        //         Storage::disk('public')->delete($user->profile_photo);
-        //     }
+        if ($request->hasFile('profile_photo')) {
+            if ($user->profile_photo && Storage::disk('public')->exists($user->profile_photo)) {
+                Storage::disk('public')->delete($user->profile_photo);
+            }
 
-        //     // Naya photo save
-        //     $file = $request->file('profile_photo');
-        //     $filename = time() . '.' . $file->getClientOriginalExtension();
+            // Save new photo
+            $file = $request->file('profile_photo');
+            $filename = time() . '.' . $file->getClientOriginalExtension();
 
-        //     $path = $file->storeAs('uploads/image', $filename, 'public');
-        //     $user->profile_photo = $path;
-        // }
+            $path = $file->storeAs('uploads/image', $filename, 'public');
+            $user->profile_photo = $path;
+        }
 
-        // $user->save();
-         $request->user()->save();
+        $user->save();
 
         return Redirect::route('profile.edit');
     }

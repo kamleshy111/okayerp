@@ -104,7 +104,15 @@
     <table width="100%" style="border-bottom: 2px solid #0369a1; padding-bottom: 10px; margin-bottom: 20px;">
         <tr>
         <td style="width: 50%;">
-            <img src="{{ public_path('images/logo.png') }}" class="logo" alt="Logo" style="height: 50px;">
+            @if($sale->customer && $sale->customer->user && $sale->customer->user->profile_photo && file_exists(storage_path('app/public/' . $sale->customer->user->profile_photo)))
+                <img src="{{ storage_path('app/public/' . $sale->customer->user->profile_photo) }}" style="max-height: 60px; max-width: 180px;">
+            @elseif(file_exists(public_path('images/logo.png')))
+                <img src="{{ public_path('images/logo.png') }}" style="max-height: 60px; max-width: 180px;">
+            @else
+                <span style="font-size: 20px; font-weight: bold; color: #0369a1; text-transform: uppercase; letter-spacing: 1px;">
+                    {{ $sale->customer && $sale->customer->user ? $sale->customer->user->name : 'OkayERP' }}
+                </span>
+            @endif
         </td>
         <td style="width: 50%; text-align: right;">
             <h1 style="margin: 0; font-size: 24px; color: #0369a1;">Invoice</h1>
