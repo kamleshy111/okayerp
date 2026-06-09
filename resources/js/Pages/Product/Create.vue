@@ -15,6 +15,8 @@ const form = ref({
     unit_type: "",
     sgst: "",
     cgst: "",
+    hsn_code: "",
+    price: "",
     description: "",
 });
 
@@ -33,6 +35,8 @@ const submitForm = async () => {
       unit_type: "",
       sgst: "",
       cgst: "",
+      hsn_code: "",
+      price: "",
       description: "",
  
     };
@@ -86,6 +90,21 @@ const submitForm = async () => {
                     <input type="number" name="cgst" v-model="form.cgst"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="CGST (%)" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">HSN/SAC Code</label>
+                    <input type="text" name="hsn_code" v-model="form.hsn_code"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter HSN/SAC code" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Default Selling Price (₹)</label>
+                    <input type="number" step="0.01" name="price" v-model="form.price"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="0.00" />
                 </div>
             </div>
 

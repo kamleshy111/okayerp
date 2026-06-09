@@ -34,6 +34,8 @@ const purchases = props.purchases;
 const form = ref({
     id: purchases.id,
     supplier_id: purchases.supplier_id,
+    invoice_no: purchases.invoice_no || '',
+    purchase_date: purchases.purchase_date || '',
     transport: purchases.transport_amount,
     grand_total: "",
     GstAmount: "",
@@ -213,7 +215,7 @@ const submitForm = async () => {
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Update Purchase</h2>
         <div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Supplier</label>
                     <select   name="supplier_id" v-model="form.supplier_id"
@@ -222,6 +224,19 @@ const submitForm = async () => {
                         <option v-for="supplier in suppliers" :key="supplier.id"
                                 :value="supplier.id"> {{ supplier.name }}</option>
                     </select>
+                </div>
+
+                <div>
+                    <label class="block text-black font-medium mb-2">Invoice / Bill Number</label>
+                    <input type="text" name="invoice_no" v-model="form.invoice_no"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter invoice/bill number" />
+                </div>
+
+                <div>
+                    <label class="block text-black font-medium mb-2">Purchase Date</label>
+                    <input type="date" name="purchase_date" v-model="form.purchase_date"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
             </div>
 

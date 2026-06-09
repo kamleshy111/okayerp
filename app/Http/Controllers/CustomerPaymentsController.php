@@ -17,11 +17,25 @@ class CustomerPaymentsController extends Controller
         // ->get();
         $userId = Auth::id();
 
-        $customers = Customer::select('customers.id','customers.user_id','customers.name','customers.email','customers.phone','sale_payments.amount','sale_payments.payment_date','sale_payments.payment_method')
-            ->rightjoin('users', 'customers.user_id', '=', 'users.id')
-            ->rightjoin('sale_payments', 'sale_payments.customer_id', '=','customers.id')
-            ->where('customers.user_id', $userId)
-            ->get();
+        $customers = SalePayment::whereHas('customer', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
+        ->where('accepted', 1)
+        ->with('customer')
+        ->orderBy('payment_date', 'desc')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'id' => $item->customer->id ?? '',
+                'user_id' => $item->customer->user_id ?? '',
+                'name' => $item->customer->name ?? '',
+                'email' => $item->customer->email ?? '',
+                'phone' => $item->customer->phone ?? '',
+                'amount' => $item->amount,
+                'payment_date' => $item->payment_date,
+                'payment_method' => $item->payment_method,
+            ];
+        });
 
         return Inertia::render('CustomerPayment/Index',[
             'customers' => $customers,

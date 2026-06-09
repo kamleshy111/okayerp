@@ -23,24 +23,22 @@ class SaleController extends Controller
         //             ->get();
 
         $userId = Auth::id();
-        $data = Sale::select('sales.*','customers.name as customerName','customers.email','customers.phone')
-                    ->leftJoin('customers', 'sales.customer_id', '=', 'customers.id')
-                    ->leftJoin('users', 'customers.user_id', '=', 'users.id')
-                    ->where('customers.user_id', $userId)
-                    ->get();
-
-        $sales = $data->map(function($item) {
-
+        $sales = Sale::whereHas('customer', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
+        ->where('accepted', 1)
+        ->with('customer')
+        ->get()
+        ->map(function ($item) {
             return [
                 'id' => $item->id,
-                'customerName' => $item->customerName,
-                'email' => $item->email ?? '',
-                'phone' => $item->phone ?? '', 
+                'customerName' => $item->customer->name ?? '',
+                'email' => $item->customer->email ?? '',
+                'phone' => $item->customer->phone ?? '',
                 'grand_total' => $item->grand_total,
                 'sale_date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->payment_status,
             ];
-
         });
 
         return Inertia::render('Sale/Index',[
@@ -155,6 +153,7 @@ class SaleController extends Controller
         }
 
         $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                    ->where('accepted', 1)
                     ->where('customer_id', $id)
                     ->get();
 
@@ -162,6 +161,7 @@ class SaleController extends Controller
         $totalPurchasePaid = $sale->sum('paid');
 
         $totalDirectPaid = SalePayment::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                                      ->where('accepted', 1)
                                       ->where('customer_id', $id)
                                       ->sum('amount');
 
@@ -179,9 +179,12 @@ class SaleController extends Controller
 
     public function edit($id){
 
-        $sales = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
-                    ->with(['saleItems.product', 'customer'])
-                    ->find($id);
+        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
+                    ->with(['saleItems.product', 'customer']);
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $sales = $query->find($id);
 
         if (!$sales) {
             abort(403, 'Sale not found or unauthorized access');
@@ -229,9 +232,11 @@ class SaleController extends Controller
         $userId = Auth::id();
 
         // Validate sale exists and belongs to the user
-        $saleExists = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-                          ->where('id', $id)
-                          ->exists();
+        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId));
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $saleExists = $query->where('id', $id)->exists();
 
         if (!$saleExists) {
             return response()->json(['message' => 'Sale not found or unauthorized access.'], 403);
@@ -256,9 +261,11 @@ class SaleController extends Controller
 
             DB::transaction(function () use ($request, $id, $userId) {
 
-                $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-                            ->where('id', $id)
-                            ->first();
+                $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId));
+                if (session('private_ledger_unlocked') !== true) {
+                    $query->where('accepted', 1);
+                }
+                $sale = $query->where('id', $id)->first();
 
                 // Update purchase data
                 $sale->update([
@@ -321,9 +328,12 @@ class SaleController extends Controller
 
     public function downloadInvoice(Request $request,$id){
 
-        $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
-                    ->with(['saleItems.product', 'customer.user'])
-                    ->find($id);
+        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
+                    ->with(['saleItems.product', 'customer.user']);
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $sale = $query->find($id);
 
         if (!$sale) {
             abort(403, 'Sale not found or unauthorized access');
@@ -335,8 +345,11 @@ class SaleController extends Controller
 
     public function destroy($id){
 
-        $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
-                    ->find($id);
+        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $sale = $query->find($id);
 
         if (!$sale) {
             return response()->json(['message' => 'Sale not found.'], 404);

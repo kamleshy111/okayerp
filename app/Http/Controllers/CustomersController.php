@@ -15,7 +15,12 @@ class CustomersController extends Controller
 
         $userId = Auth::id();
 
-        $customers = Customer::where('user_id', $userId)->with('sales', 'payments')->get();
+        $customers = Customer::where('user_id', $userId)
+            ->with([
+                'sales' => fn($q) => $q->where('accepted', 1),
+                'payments' => fn($q) => $q->where('accepted', 1)
+            ])
+            ->get();
 
         $customers = $customers->map(function ($customer) {
             $totalSaleAmount = $customer->sales->sum('grand_total');
@@ -79,6 +84,7 @@ class CustomersController extends Controller
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'phone' => $request->input('phone'),
+            'gst_number' => $request->input('gst_number'),
             'address' => $request->input('address'),
             'status' => $request->input('status') ?? 'inactive',
         ]);
@@ -88,7 +94,9 @@ class CustomersController extends Controller
     
     public function downloadInvoice($id){
 
-        $customer = Customer::where('user_id', Auth::id())->with('sales.saleItems.product')->find($id);
+        $customer = Customer::where('user_id', Auth::id())
+            ->with(['sales' => fn($q) => $q->where('accepted', 1)->with('saleItems.product')])
+            ->find($id);
 
         if (!$customer) {
             abort(403, 'Customer not found or unauthorized access');
@@ -130,6 +138,7 @@ class CustomersController extends Controller
             'name' => $data->name ?? '',
             'email' => $data->email ?? '',
             'phone' => $data->phone ?? '',
+            'gst_number' => $data->gst_number ?? '',
             'address' => $data->address ?? '',
         ];
 
@@ -168,6 +177,7 @@ class CustomersController extends Controller
             $customer->name = $request->input("name");
             $customer->email = $request->input("email");
             $customer->phone = $request->input("phone");
+            $customer->gst_number = $request->input("gst_number");
             $customer->address = $request->input("address");
             $customer->status = $request->input("status") ?? 'inactive';
             $customer->save();

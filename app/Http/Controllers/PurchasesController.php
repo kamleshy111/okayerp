@@ -22,18 +22,18 @@ class PurchasesController extends Controller
         //             ->get();
 
         $userId = Auth::id();
-        $data = Purchase::select('purchases.*','suppliers.name as supplierName', 'suppliers.phone as supplierPhone', 'suppliers.email as supplierEmail')
-                    ->leftJoin('suppliers','purchases.supplier_id', '=', 'suppliers.id')
-                    ->leftJoin('users', 'suppliers.user_id', '=', 'users.id')
-                    ->where('suppliers.user_id', $userId)
-                    ->get();
-
-        $purchases = $data->map(function ($item) {
+        $purchases = Purchase::whereHas('supplier', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
+        ->where('accepted', 1)
+        ->with('supplier')
+        ->get()
+        ->map(function ($item) {
             return [
                 'id' => $item->id,
-                'supplier_name' => $item->supplierName ?? '--',
-                'supplier_phone' => $item->supplierPhone ?? '--',
-                'supplier_email' => $item->supplierEmail ?? '--',
+                'supplier_name' => $item->supplier->name ?? '--',
+                'supplier_phone' => $item->supplier->phone ?? '--',
+                'supplier_email' => $item->supplier->email ?? '--',
                 'grand_total' => $item->grand_total ?? '--',
                 'purchase_Date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->payment_status,
@@ -82,6 +82,8 @@ class PurchasesController extends Controller
             // 1. Insert into `purchases` table
             $purchase = Purchase::create([
                 'supplier_id' => $request->input('supplier_id'),
+                'invoice_no' => $request->input('invoice_no'),
+                'purchase_date' => $request->input('purchase_date'),
                 'transport_amount' => $request->input('transport') ?? 0,
                 'grand_total' => $request->input('grand_total') ?? 0.00,
                 'total_amount' => $request->input('total_amount') ?? 0.00,
@@ -147,8 +149,13 @@ class PurchasesController extends Controller
 
 
     public function edit($id){
-
-        $purchases  = Purchase::with(['items.product', 'supplier'])->findOrFail($id);
+        $userId = Auth::id();
+        $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+                        ->with(['items.product', 'supplier']);
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $purchases = $query->find($id);
 
         if (!$purchases) {
             abort(403, 'Purchase not found or unauthorized access');
@@ -193,16 +200,33 @@ class PurchasesController extends Controller
         if (!$validated) {
             return response()->json(["message" => $validated]);
         }
+
+        $userId = Auth::id();
+        $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId));
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $purchaseExists = $query->where('id', $id)->exists();
+
+        if (!$purchaseExists) {
+            return response()->json(['message' => 'Purchase not found or unauthorized access.'], 403);
+        }
         
         try {
 
-            DB::transaction(function () use ($request, $id) {
+            DB::transaction(function () use ($request, $id, $userId) {
 
-                $purchases = Purchase::where('id', $id)->first();
+                $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId));
+                if (session('private_ledger_unlocked') !== true) {
+                    $query->where('accepted', 1);
+                }
+                $purchases = $query->where('id', $id)->first();
 
                 // Update purchase data
                 $purchases->update([
                     'supplier_id' => $request->input('supplier_id'),
+                    'invoice_no' => $request->input('invoice_no'),
+                    'purchase_date' => $request->input('purchase_date'),
                     'transport_amount' => $request->input('transport'),
                     'gst_amount' => $request->input('GstAmount'),
                     'accepted' => $request->input('accepted') ?? 0,
@@ -264,10 +288,14 @@ class PurchasesController extends Controller
 
     public function destroy($id){
 
-        $purchase = Purchase::find($id);
+        $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', Auth::id()));
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $purchase = $query->find($id);
 
         if (!$purchase) {
-            return response()->json(['message' => 'Purchase not found.'], 404);
+            return response()->json(['message' => 'Purchase not found or unauthorized access.'], 404);
         }
     
         DB::beginTransaction();

@@ -132,22 +132,31 @@ class DashboardController extends Controller
         $totalCategories = Category::where('user_id', $userId)->count();
         $totalStockProducts = Product::where('user_id', $userId)->sum('stock_quantity');
 
-        $totalSaleProducts = \DB::table('users')
-                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
-                            ->leftJoin('sale_items', 'sale_items.product_id', '=', 'products.id')
-                            ->where('users.id', $userId)
+        $totalSaleProducts = \DB::table('sales')
+                            ->join('customers', 'sales.customer_id', '=', 'customers.id')
+                            ->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
+                            ->where('customers.user_id', $userId)
+                            ->where('sales.accepted', 1)
                             ->sum('sale_items.quantity');
 
         //purchases product  percentage Change
-        $lastMonthPurchases = \DB::table('users')
-                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
-                            ->leftJoin('purchase_items', 'purchase_items.product_id', '=', 'products.id')
-                            ->where('users.id', $userId)->whereMonth('purchase_items.created_at', $previousMonth->month)->whereYear('purchase_items.created_at', $previousMonth->year)->sum('purchase_items.quantity');
+        $lastMonthPurchases = \DB::table('purchase_items')
+                            ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+                            ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
+                            ->where('suppliers.user_id', $userId)
+                            ->where('purchases.accepted', 1)
+                            ->whereMonth('purchase_items.created_at', $previousMonth->month)
+                            ->whereYear('purchase_items.created_at', $previousMonth->year)
+                            ->sum('purchase_items.quantity');
 
-        $thisMonthPurchases = \DB::table('users')
-                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
-                            ->leftJoin('purchase_items', 'purchase_items.product_id', '=', 'products.id')
-                            ->where('users.id', $userId)->whereMonth('purchase_items.created_at', $now->month)->whereYear('purchase_items.created_at', $now->year)->sum('purchase_items.quantity');
+        $thisMonthPurchases = \DB::table('purchase_items')
+                            ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
+                            ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
+                            ->where('suppliers.user_id', $userId)
+                            ->where('purchases.accepted', 1)
+                            ->whereMonth('purchase_items.created_at', $now->month)
+                            ->whereYear('purchase_items.created_at', $now->year)
+                            ->sum('purchase_items.quantity');
 
         $percentageChangePurchases = 0;
         if ($lastMonthPurchases > 0) {
@@ -157,15 +166,23 @@ class DashboardController extends Controller
 
 
         // sale product  percentage Change
-        $lastMonthSales = \DB::table('users')
-                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
-                            ->leftJoin('sale_items', 'sale_items.product_id', '=', 'products.id')
-                            ->where('users.id', $userId)->whereMonth('sale_items.created_at', $previousMonth->month)->whereYear('sale_items.created_at', $previousMonth->year)->sum('sale_items.quantity');
+        $lastMonthSales = \DB::table('sales')
+                            ->join('customers', 'sales.customer_id', '=', 'customers.id')
+                            ->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
+                            ->where('customers.user_id', $userId)
+                            ->where('sales.accepted', 1)
+                            ->whereMonth('sales.created_at', $previousMonth->month)
+                            ->whereYear('sales.created_at', $previousMonth->year)
+                            ->sum('sale_items.quantity');
 
-        $thisMonthSales = \DB::table('users')
-                            ->leftJoin('products', 'products.user_id', '=', 'users.id')
-                            ->leftJoin('sale_items', 'sale_items.product_id', '=', 'products.id')
-                            ->where('users.id', $userId)->whereMonth('sale_items.created_at', $now->month)->whereYear('sale_items.created_at', $now->year)->sum('sale_items.quantity');
+        $thisMonthSales = \DB::table('sales')
+                            ->join('customers', 'sales.customer_id', '=', 'customers.id')
+                            ->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
+                            ->where('customers.user_id', $userId)
+                            ->where('sales.accepted', 1)
+                            ->whereMonth('sales.created_at', $now->month)
+                            ->whereYear('sales.created_at', $now->year)
+                            ->sum('sale_items.quantity');
 
         $percentageChangeSale = 0;
         if ($lastMonthSales > 0) {
@@ -212,11 +229,13 @@ class DashboardController extends Controller
             $monthName = $date->format('M Y');
 
             $salesSum = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                ->where('accepted', 1)
                 ->whereMonth('created_at', $month)
                 ->whereYear('created_at', $year)
                 ->sum('grand_total');
 
             $purchasesSum = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+                ->where('accepted', 1)
                 ->whereMonth('created_at', $month)
                 ->whereYear('created_at', $year)
                 ->sum('grand_total');

@@ -78,6 +78,8 @@ class ProductController extends Controller
             'unit_type' => $request->input('unit_type') ?? '',
             'sgst' => $request->input('sgst') ?? 0,
             'cgst' => $request->input('cgst') ?? 0,
+            'hsn_code' => $request->input('hsn_code'),
+            'price' => $request->input('price') ?? 0.00,
             'sku' => $incrementedNumber,
             'description' => $request->input('description'),
   
@@ -105,6 +107,8 @@ class ProductController extends Controller
             'unit_type' => $data->unit_type ?? '',
             'cgst' => $data->cgst ?? 0,
             'sgst' => $data->sgst ?? 0,
+            'hsn_code' => $data->hsn_code ?? '',
+            'price' => $data->price ?? 0.00,
             'category_id' => $data->category_id ?? '',
             'description' => $data->description ?? '',
         ];
@@ -135,6 +139,8 @@ class ProductController extends Controller
             $product->unit_type = $request->input("unit_type");
             $product->sgst = $request->input("sgst");
             $product->cgst = $request->input("cgst");
+            $product->hsn_code = $request->input("hsn_code");
+            $product->price = $request->input("price") ?? 0.00;
             $product->category_id = $request->input("category_id");
             $product->description = $request->input("description");
             $product->save();

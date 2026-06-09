@@ -156,6 +156,15 @@ onMounted(() => {
           </a>
         </li> 
 
+        <li v-if="role === 'store'" :class="{ 'active': route().current('private*') }">
+          <a
+            :href="route('private.index')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full hover:bg-red-800/20"
+          >
+            <span class="text-xl">🔒</span> <span class="text-red-400 font-semibold">Private Ledger</span>
+          </a>
+        </li>
+
         <li :class="{ 'active': route().current('profile.edit') }">
           <a
             :href="route('profile.edit')"

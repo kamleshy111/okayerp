@@ -18,11 +18,24 @@ class SupplierPaymentController extends Controller
         // ->get();
         $userId = Auth::id();
 
-        $suppliers = Supplier::select('suppliers.id','suppliers.user_id','suppliers.name','suppliers.email','suppliers.phone','purchase_payments.amount','purchase_payments.payment_date','purchase_payments.payment_method')
-            ->rightJoin('users', 'suppliers.user_id', '=', 'users.id')
-            ->rightJoin('purchase_payments', 'suppliers.id', '=','purchase_payments.supplier_id')
-            ->where('suppliers.user_id', $userId)
-            ->get();
+        $suppliers = PurchasePayment::whereHas('supplier', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
+        ->with('supplier')
+        ->orderBy('payment_date', 'desc')
+        ->get()
+        ->map(function ($item) {
+            return [
+                'id' => $item->supplier->id ?? '',
+                'user_id' => $item->supplier->user_id ?? '',
+                'name' => $item->supplier->name ?? '',
+                'email' => $item->supplier->email ?? '',
+                'phone' => $item->supplier->phone ?? '',
+                'amount' => $item->amount,
+                'payment_date' => $item->payment_date,
+                'payment_method' => $item->payment_method,
+            ];
+        });
 
         return Inertia::render('SupplierPayment/Index',[
             'suppliers' => $suppliers,

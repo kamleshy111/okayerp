@@ -11,6 +11,7 @@ const form = ref({
     email: "",
     phone: "",
     address: "",
+    gst_number: "",
 });
 
 // Submit the form data
@@ -25,6 +26,7 @@ const submitForm = async () => {
       email: "",
       phone: "",
       address: "",
+      gst_number: "",
  
     };
   } catch (error) {
@@ -69,6 +71,15 @@ const submitForm = async () => {
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter phone number" />
                 </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">GST Number</label>
+                    <input type="text" name="gst_number" v-model="form.gst_number"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter GSTIN (optional)" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">Address</label>
                     <input type="text" name="address" v-model="form.address"

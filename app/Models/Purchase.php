@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class Purchase extends Model
 {
-    protected $fillable = ['supplier_id', 'transport_amount', 'gst_amount', 'accepted', 'total_amount', 'grand_total',
+    protected $fillable = ['supplier_id', 'invoice_no', 'purchase_date', 'transport_amount', 'gst_amount', 'accepted', 'total_amount', 'grand_total',
                             'paid', 'payment_method', 'payment_status'];
 
 

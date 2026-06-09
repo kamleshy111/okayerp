@@ -15,6 +15,7 @@ use App\Http\Controllers\SuppliersController;
 use App\Http\Controllers\PurchasesController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\CustomerPaymentsController;
+use App\Http\Controllers\PrivateSaleController;
 
 use App\Http\Controllers\Admin\StoresController;
 use App\Http\Controllers\Admin\RolesController;
@@ -178,6 +179,11 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/paymentsCustomer/store', [CustomerPaymentsController::class, 'store'])->name('paymentsCustomer.store');
     });
 
+    // Private Ledger
+    Route::get('/private-ledger', [PrivateSaleController::class, 'index'])->name('private.index');
+    Route::post('/private-ledger/unlock', [PrivateSaleController::class, 'unlock'])->name('private.unlock');
+    Route::post('/private-ledger/lock', [PrivateSaleController::class, 'lock'])->name('private.lock');
+    Route::post('/private-ledger/payment', [PrivateSaleController::class, 'storePayment'])->name('private.payment.store');
 
 });
    

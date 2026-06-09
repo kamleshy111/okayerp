@@ -26,10 +26,12 @@ const products = props.products;
 
 const form = ref({
     supplier_id: "",
+    invoice_no: "",
+    purchase_date: new Date().toISOString().substring(0, 10),
     transport: 0,
     grand_total: "",
     GstAmount: "",
-    accepted: false,
+    accepted: true,
     paid: 0,
     payment_method: '',
     purchase_items: [{
@@ -317,10 +319,12 @@ const submitForm = async () => {
     // Reset form
     form.value = {
       supplier_id: "",
+      invoice_no: "",
+      purchase_date: new Date().toISOString().substring(0, 10),
       transport: 0,
       grand_total: "",
       GstAmount: "",
-      accepted: false,
+      accepted: true,
       total_amount: "",
       paid: 0,
       payment_method: '',
@@ -355,7 +359,7 @@ const submitForm = async () => {
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Add Purchase</h2>
         <div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Supplier</label>
                         <vSelect
@@ -396,6 +400,19 @@ const submitForm = async () => {
                                 </template> -->
                         </vSelect>
 
+                </div>
+
+                <div>
+                    <label class="block text-black font-medium mb-2">Invoice / Bill Number</label>
+                    <input type="text" name="invoice_no" v-model="form.invoice_no"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter invoice/bill number" />
+                </div>
+
+                <div>
+                    <label class="block text-black font-medium mb-2">Purchase Date</label>
+                    <input type="date" name="purchase_date" v-model="form.purchase_date"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
             </div>
 
