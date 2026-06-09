@@ -40,14 +40,14 @@ const columns = [
 
 <template>
 
-    <Head title="Customer Payment">
+    <Head title="Supplier Payment">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     </Head>
 
     <AuthenticatedLayout>
         <div class="p-6">
     <div class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-bold">Customer Payment</h1>
+      <h1 class="text-3xl font-bold">Supplier Payment</h1>
       <div class="flex items-center gap-4">
         <a :href="route('paymentSupplier.create')"
             class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
