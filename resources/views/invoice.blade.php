@@ -169,7 +169,9 @@
           <th class="text-right">Price</th>
           <th class="text-right">Base Amount</th>
           <th class="text-right">Total</th>
+          @if($sale->accepted)
           <th class="text-right">GST %</th>
+          @endif
         </tr>
       </thead>
       <tbody>
@@ -181,7 +183,9 @@
           <td class="text-right">{{ number_format($item->price, 2) }}</td>
           <td class="text-right">{{ number_format($item->base_price, 2) }}</td>
           <td class="text-right">{{ number_format($item->price * $item->quantity, 2) }}</td>
+          @if($sale->accepted)
           <td class="text-right">{{ number_format($item->sgst + $item->cgst, 2) }}%</td>
+          @endif
         </tr>
         @endforeach
       </tbody>
