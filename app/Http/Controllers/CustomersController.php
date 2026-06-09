@@ -79,7 +79,7 @@ class CustomersController extends Controller
         }
 
         // Create a new Customer
-        Customer::create([
+        $customer = Customer::create([
             'user_id' => Auth::id(),
             'name' => $request->input('name'),
             'email' => $request->input('email'),
@@ -89,7 +89,8 @@ class CustomersController extends Controller
             'status' => $request->input('status') ?? 'inactive',
         ]);
 
-        return response()->json(['message' => 'Customer added successfully!']);
+        $customer->message = 'Customer added successfully!';
+        return response()->json($customer);
     }
     
     public function downloadInvoice($id){

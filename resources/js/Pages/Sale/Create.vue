@@ -5,6 +5,8 @@ import { Head } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 import axios from 'axios';
+import vSelect from "vue3-select";
+import "vue3-select/dist/vue3-select.css";
 
 const props = defineProps({
   customers: {
@@ -44,6 +46,70 @@ const form = ref({
 const selectedCustomer = ref(null);
 const showPaymentModal = ref(false);
 const customerData = ref(null);
+
+const showCustomerModal = ref(false);
+const newCustomer = ref({
+  name: '',
+  phone: '',
+  email: '',
+  gst_number: '',
+  address: ''
+});
+
+const onEnterKey = (event) => {
+  if (!form.value.customer_id && selectedCustomer.value === null) {
+    openCustomerModalWithName(event.target.value);
+  }
+};
+
+const openCustomerModalWithName = (name) => {
+  newCustomer.value = {
+    name: name || '',
+    phone: '',
+    email: '',
+    gst_number: '',
+    address: ''
+  };
+  showCustomerModal.value = true;
+};
+
+const submitCustomer = async () => {
+  try {
+    if (!newCustomer.value.name) {
+      toast.error("Customer name is required!");
+      return;
+    }
+    if (!newCustomer.value.phone) {
+      toast.error("Customer phone is required!");
+      return;
+    }
+    if (!newCustomer.value.email) {
+      toast.error("Customer email is required!");
+      return;
+    }
+
+    const response = await axios.post('/customer/store', newCustomer.value);
+    const createdCustomer = response.data;
+    customers.push(createdCustomer);
+
+    form.value.customer_id = createdCustomer.id;
+    selectedCustomer.value = createdCustomer;
+    showCustomerModal.value = false;
+
+    newCustomer.value = {
+      name: '',
+      phone: '',
+      email: '',
+      gst_number: '',
+      address: ''
+    };
+
+    toast.success("Customer added successfully!");
+  } catch (error) {
+    const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
+    toast.error(errorMessage);
+  }
+};
 
 // Watch Customer
 watch(() => form.value.customer_id, (newVal) => {
@@ -298,12 +364,30 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Customer</label>
-                    <select   name="customer_id" v-model="form.customer_id"
-                    class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
-                    <option value="" disabled>Select Customer</option>
-                        <option v-for="customer in customers" :key="customer.id"
-                                :value="customer.id"> {{ customer.name }}</option>
-                    </select>
+                    <div class="flex gap-2">
+                        <vSelect
+                            v-model="form.customer_id"
+                            :options="customers"
+                            label="name"
+                            :reduce="customer => customer.id"
+                            placeholder="Search or select customer"
+                            class="w-full text-black bg-white"
+                            @keydown.enter="onEnterKey"
+                        >
+                            <!-- Shown when there are no options at all -->
+                            <template #no-options>
+                                <div class="px-3 py-2 text-gray-500">
+                                    No customers found.
+                                    <button
+                                        @click.stop="showCustomerModal = true"
+                                        class="mt-2 text-blue-600 hover:underline text-sm"
+                                    >
+                                        ➕ Add New Customer
+                                    </button>
+                                </div>
+                            </template>
+                        </vSelect>
+                    </div>
                 </div>
             </div>
 
@@ -475,6 +559,55 @@ const submitForm = async () => {
                     <button @click="submitForm" class="bg-green-600 text-white px-4 py-2 rounded">Final Submit</button>
                     <button @click="showPaymentModal = false" class="bg-gray-300 text-black px-4 py-2 rounded">Cancel</button>
                 </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Customer Modal -->
+    <div v-if="showCustomerModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50" style="z-index: 99999;">
+        <div class="bg-white p-6 rounded-xl w-full max-w-md shadow-lg">
+            <h2 class="text-xl font-bold mb-4 text-[#2E2C92]">Add New Customer</h2>
+
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
+                    <input type="text" v-model="newCustomer.name" required class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone <span class="text-red-500">*</span></label>
+                    <input type="text" v-model="newCustomer.phone" required class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
+                    <input type="email" v-model="newCustomer.email" required class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
+                    <input type="text" v-model="newCustomer.gst_number" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" placeholder="e.g. 22AAAAA1111A1Z1" />
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
+                    <textarea v-model="newCustomer.address" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" rows="2"></textarea>
+                </div>
+            </div>
+
+            <div class="mt-6 flex justify-between">
+                <button
+                    @click="submitCustomer"
+                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors"
+                >
+                    Save Customer
+                </button>
+                <button
+                    @click="showCustomerModal = false"
+                    class="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded font-medium transition-colors"
+                >
+                    Cancel
+                </button>
             </div>
         </div>
     </div>
