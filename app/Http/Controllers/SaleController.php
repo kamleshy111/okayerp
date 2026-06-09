@@ -322,7 +322,7 @@ class SaleController extends Controller
     public function downloadInvoice(Request $request,$id){
 
         $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
-                    ->with(['saleItems.product', 'customer'])
+                    ->with(['saleItems.product', 'customer.user'])
                     ->find($id);
 
         if (!$sale) {

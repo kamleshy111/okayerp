@@ -108,7 +108,7 @@
         </td>
         <td style="width: 50%; text-align: right;">
             <h1 style="margin: 0; font-size: 24px; color: #0369a1;">Invoice</h1>
-            <div style="font-size: 12px; color: #6b7280;">Your Company Name</div>
+            <div style="font-size: 12px; color: #6b7280;">{{ $sale->customer && $sale->customer->user ? $sale->customer->user->name : 'Your Company Name' }}</div>
         </td>
         </tr>
     </table>
@@ -118,11 +118,24 @@
     <div class="info-section">
       <div class="info-left">
         <p><strong>From:</strong><br>
-          Your Company<br>
-          123 Business Street<br>
-          City, State ZIP<br>
-          Phone: (555) 555-5555<br>
-          Email: email@company.com
+          @if($sale->customer && $sale->customer->user)
+            {{ $sale->customer->user->name }}<br>
+            @if($sale->customer->user->address)
+              {!! nl2br(e($sale->customer->user->address)) !!}<br>
+            @endif
+            @if($sale->customer->user->phone)
+              Phone: {{ $sale->customer->user->phone }}<br>
+            @endif
+            @if($sale->customer->user->email)
+              Email: {{ $sale->customer->user->email }}
+            @endif
+          @else
+            Your Company<br>
+            123 Business Street<br>
+            City, State ZIP<br>
+            Phone: (555) 555-5555<br>
+            Email: email@company.com
+          @endif
         </p>
       </div>
       <div class="info-right text-right">
