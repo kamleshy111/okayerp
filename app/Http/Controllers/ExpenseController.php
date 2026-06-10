@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use App\Models\Expense;
 use App\Models\ExpenseCategory;
+use App\Services\AccountingService;
 use Inertia\Inertia;
 
 class ExpenseController extends Controller
@@ -52,7 +53,7 @@ class ExpenseController extends Controller
         // Security check: Make sure category belongs to this user
         ExpenseCategory::where('user_id', Auth::id())->findOrFail($request->expense_category_id);
 
-        Expense::create([
+        $expense = Expense::create([
             'user_id' => Auth::id(),
             'expense_category_id' => $request->expense_category_id,
             'amount' => $request->amount,
@@ -60,6 +61,9 @@ class ExpenseController extends Controller
             'description' => $request->description,
             'reference_no' => $request->reference_no
         ]);
+
+        $accountingService = new AccountingService(Auth::id());
+        $accountingService->postExpense($expense);
 
         return response()->json(['message' => 'Expense added successfully!']);
     }
@@ -88,6 +92,9 @@ class ExpenseController extends Controller
             'reference_no' => $request->reference_no
         ]);
 
+        $accountingService = new AccountingService(Auth::id());
+        $accountingService->postExpense($expense);
+
         return response()->json(['message' => 'Expense updated successfully.']);
     }
 
@@ -95,6 +102,9 @@ class ExpenseController extends Controller
     {
         $expense = Expense::where('user_id', Auth::id())->findOrFail($id);
         $expense->delete();
+
+        $accountingService = new AccountingService(Auth::id());
+        $accountingService->clearEntries('Expense', $id);
 
         return response()->json(['message' => 'Expense deleted successfully.'], 200);
     }

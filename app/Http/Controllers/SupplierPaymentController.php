@@ -83,7 +83,7 @@ class SupplierPaymentController extends Controller
         }
 
         // Create a new Purchase Payment
-        PurchasePayment::create([
+        $purchasePayment = PurchasePayment::create([
             'supplier_id' => $request->input('supplier_id'),
             'amount' => $request->input('amount') ?? '',
             'payment_date' => $request->input('payment_date') ?? 0,
@@ -91,6 +91,9 @@ class SupplierPaymentController extends Controller
             'note' => $request->input('note'),
             'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
         ]);
+
+        $accountingService = new \App\Services\AccountingService($userId);
+        $accountingService->postSupplierPayment($purchasePayment);
 
         return response()->json(['message' => 'Supplier Payments added successfully!']);
     }

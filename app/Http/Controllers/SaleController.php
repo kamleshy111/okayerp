@@ -13,6 +13,7 @@ use App\Models\SaleItem;
 use App\Models\SalePayment;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
+use App\Services\AccountingService;
 
 class SaleController extends Controller
 {
@@ -151,6 +152,9 @@ class SaleController extends Controller
                 }
             }
 
+            $accountingService = new AccountingService($userId);
+            $accountingService->postSale($sale);
+
             DB::commit();
 
             return response()->json([
@@ -160,7 +164,9 @@ class SaleController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
-    
+            if (app()->environment('testing')) {
+                throw $e;
+            }
             return response()->json(['message' => 'An error occurred while saving the sale. Please try again.'], 500);
         }
     }
@@ -392,6 +398,9 @@ class SaleController extends Controller
                     SaleItem::create($saleItem);
                 }
 
+                $accountingService = new AccountingService($userId);
+                $accountingService->postSale($sale);
+
             });
 
             return response()->json(['message' => 'Sale updated successfully.']);
@@ -441,6 +450,9 @@ class SaleController extends Controller
 
             $sale->delete();
     
+            $accountingService = new AccountingService(Auth::id());
+            $accountingService->clearEntries('Sale', $id);
+
             DB::commit();
     
             return response()->json(['message' => 'Sale deleted successfully.'], 200);

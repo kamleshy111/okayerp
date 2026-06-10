@@ -12,6 +12,7 @@ use App\Models\Product;
 use App\Models\PurchaseItem;
 use App\Models\Payment;
 use App\Models\PurchasePayment;
+use App\Services\AccountingService;
 
 class PurchasesController extends Controller
 {
@@ -126,12 +127,17 @@ class PurchasesController extends Controller
                 }
             }
 
+            $accountingService = new AccountingService(Auth::id());
+            $accountingService->postPurchase($purchase);
+
             DB::commit();
             return response()->json(['message' => 'purchase added successfully.']);
 
         } catch (\Exception $e) {
             DB::rollBack();
-    
+            if (app()->environment('testing')) {
+                throw $e;
+            }
             return response()->json(['message' => 'An error occurred while saving the purchase. Please try again.'], 500);
         }
     }
@@ -353,6 +359,9 @@ class PurchasesController extends Controller
                     PurchaseItem::create($purchaseItem);
                 }
 
+                $accountingService = new AccountingService($userId);
+                $accountingService->postPurchase($purchases);
+
             });
 
             return response()->json(['message' => 'Purchase updated successfully.']);
@@ -385,6 +394,9 @@ class PurchasesController extends Controller
 
             $purchase->delete();
     
+            $accountingService = new AccountingService(Auth::id());
+            $accountingService->clearEntries('Purchase', $id);
+
             DB::commit();
     
             return response()->json(['message' => 'Purchase deleted successfully.'], 200);

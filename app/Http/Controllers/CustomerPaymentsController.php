@@ -82,7 +82,7 @@ class CustomerPaymentsController extends Controller
         }
 
         // Create a new Sale Payment
-        SalePayment::create([
+        $salePayment = SalePayment::create([
             'customer_id' => $request->input('customer_id'),
             'amount' => $request->input('amount') ?? '',
             'payment_date' => $request->input('payment_date') ?? 0,
@@ -90,6 +90,9 @@ class CustomerPaymentsController extends Controller
             'note' => $request->input('note'),
             'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
         ]);
+
+        $accountingService = new \App\Services\AccountingService($userId);
+        $accountingService->postCustomerPayment($salePayment);
 
         return response()->json(['message' => 'Customer Payments added successfully!']);
     }
