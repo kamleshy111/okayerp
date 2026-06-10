@@ -120,6 +120,15 @@ onMounted(() => {
           </a>
         </li>
 
+        <li v-if="role === 'store' && hasPermission('product manage')" :class="{ 'active': route().current('stock-adjustment*') }">
+          <a
+            :href="route('stock-adjustment.index')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">📊</span> <span>Stock Adjustments</span>
+          </a>
+        </li>
+
         <li v-if="role === 'store' && hasPermission('purchase manage')" :class="{ 'active': route().current('purchase*') }">
           <a
             :href="route('purchase')"

@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\RolesController;
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\EstimateController;
+use App\Http\Controllers\StockMovementController;
 
 
 
@@ -137,6 +138,11 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
         Route::post('/product/update/{id}', [ProductController::class, 'update'])->name('product.update');
         Route::delete('/product/destroy/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+
+        // Stock Adjustments
+        Route::get('/stock-adjustment', [StockMovementController::class, 'index'])->name('stock-adjustment.index');
+        Route::get('/stock-adjustment/create', [StockMovementController::class, 'create'])->name('stock-adjustment.create');
+        Route::post('/stock-adjustment/store', [StockMovementController::class, 'store'])->name('stock-adjustment.store');
     });
 
     // Sales

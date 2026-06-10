@@ -137,6 +137,17 @@ class SaleController extends Controller
                 if ($product) {
                     $product->stock_quantity -= $item['quantity'];
                     $product->save();
+
+                    // Log stock movement
+                    \App\Models\StockMovement::create([
+                        'user_id' => $userId,
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'type' => 'Deduction',
+                        'reference_type' => 'Sale',
+                        'reference_id' => $sale->id,
+                        'reason' => "Sale Invoice #{$sale->id}",
+                    ]);
                 }
             }
 
@@ -297,6 +308,17 @@ class SaleController extends Controller
                     if ($product) {
                         $product->stock_quantity += $oldItem->quantity;
                         $product->save();
+
+                        // Log stock movement
+                        \App\Models\StockMovement::create([
+                            'user_id' => $userId,
+                            'product_id' => $oldItem->product_id,
+                            'quantity' => $oldItem->quantity,
+                            'type' => 'Addition',
+                            'reference_type' => 'Sale',
+                            'reference_id' => $sale->id,
+                            'reason' => "Sale Edit #{$sale->id} (Restored)",
+                        ]);
                     }
                 }
 
@@ -319,6 +341,17 @@ class SaleController extends Controller
                     if ($product) {
                         $product->stock_quantity -= $item['quantity'];
                         $product->save();
+
+                        // Log stock movement
+                        \App\Models\StockMovement::create([
+                            'user_id' => $userId,
+                            'product_id' => $item['product_id'],
+                            'quantity' => $item['quantity'],
+                            'type' => 'Deduction',
+                            'reference_type' => 'Sale',
+                            'reference_id' => $sale->id,
+                            'reason' => "Sale Edit #{$sale->id} (Updated)",
+                        ]);
                     }
 
                     SaleItem::create($saleItem);

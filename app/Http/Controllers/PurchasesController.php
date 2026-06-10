@@ -112,6 +112,17 @@ class PurchasesController extends Controller
                 if ($product) {
                     $product->stock_quantity += $item['quantity'];
                     $product->save();
+
+                    // Log stock movement
+                    \App\Models\StockMovement::create([
+                        'user_id' => Auth::id(),
+                        'product_id' => $item['product_id'],
+                        'quantity' => $item['quantity'],
+                        'type' => 'Addition',
+                        'reference_type' => 'Purchase',
+                        'reference_id' => $purchase->id,
+                        'reason' => "Purchase Bill #{$purchase->id}",
+                    ]);
                 }
             }
 
@@ -245,6 +256,17 @@ class PurchasesController extends Controller
                     if ($product) {
                         $product->stock_quantity -= $oldItem->quantity;
                         $product->save();
+
+                        // Log stock movement
+                        \App\Models\StockMovement::create([
+                            'user_id' => Auth::id(),
+                            'product_id' => $oldItem->product_id,
+                            'quantity' => $oldItem->quantity,
+                            'type' => 'Deduction',
+                            'reference_type' => 'Purchase',
+                            'reference_id' => $purchases->id,
+                            'reason' => "Purchase Edit #{$purchases->id} (Restored)",
+                        ]);
                     }
                 }
 
@@ -268,6 +290,17 @@ class PurchasesController extends Controller
                     if ($product) {
                         $product->stock_quantity += $item['quantity'];
                         $product->save();
+
+                        // Log stock movement
+                        \App\Models\StockMovement::create([
+                            'user_id' => Auth::id(),
+                            'product_id' => $item['product_id'],
+                            'quantity' => $item['quantity'],
+                            'type' => 'Addition',
+                            'reference_type' => 'Purchase',
+                            'reference_id' => $purchases->id,
+                            'reason' => "Purchase Edit #{$purchases->id} (Updated)",
+                        ]);
                     }
 
                     // create purchase Item
