@@ -364,30 +364,28 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Customer</label>
-                    <div class="flex gap-2">
-                        <vSelect
-                            v-model="form.customer_id"
-                            :options="customers"
-                            label="name"
-                            :reduce="customer => customer.id"
-                            placeholder="Search or select customer"
-                            class="w-full text-black bg-white"
-                            @keydown.enter="onEnterKey"
-                        >
-                            <!-- Shown when there are no options at all -->
-                            <template #no-options>
-                                <div class="px-3 py-2 text-gray-500">
-                                    No customers found.
-                                    <button
-                                        @click.stop="showCustomerModal = true"
-                                        class="mt-2 text-blue-600 hover:underline text-sm"
-                                    >
-                                        ➕ Add New Customer
-                                    </button>
-                                </div>
-                            </template>
-                        </vSelect>
-                    </div>
+                    <vSelect
+                        v-model="form.customer_id"
+                        :options="customers"
+                        label="name"
+                        :reduce="customer => customer.id"
+                        placeholder="Search or select customer"
+                        class="w-full text-black bg-white"
+                        @keydown.enter="onEnterKey"
+                    >
+                        <!-- Shown when there are no options at all -->
+                        <template #no-options>
+                            <div class="px-3 py-2 text-gray-500">
+                                No customers found.
+                                <button
+                                    @click.stop="showCustomerModal = true"
+                                    class="mt-2 text-blue-600 hover:underline text-sm"
+                                >
+                                    ➕ Add New Customer
+                                </button>
+                            </div>
+                        </template>
+                    </vSelect>
                 </div>
             </div>
 
@@ -415,14 +413,16 @@ const submitForm = async () => {
                 </thead>
                 <tbody>
                     <tr v-for="(item, index) in form.sale_items" :key="index">
-                        <td class="border-t px-4 py-3">
-                            <select name="product_id" v-model="item.product_id"
-                                class="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
-                                <option value="" disabled>Select Product</option>
-                                <option v-for="product in products" :key="product.id" :value="product.id">
-                                    {{ product.name }}
-                                </option>
-                            </select>
+                        <td class="border-t px-4 py-3 min-w-[220px]">
+                            <vSelect
+                                v-model="item.product_id"
+                                :options="products"
+                                label="name"
+                                :reduce="product => product.id"
+                                placeholder="Search or select product"
+                                class="w-full text-black bg-white"
+                                append-to-body
+                            />
                         </td>
 
                         <td class="border-t px-4 py-3">

@@ -442,14 +442,16 @@ const submitForm = async () => {
                 </thead>
                 <tbody>
                     <tr v-for="(item, index) in form.purchase_items" :key="index">
-                        <td class="border-t px-4 py-3">
-                            <select name="product_id" v-model="item.product_id"
-                                class="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
-                                <option value="" disabled>Select Product</option>
-                                <option v-for="product in products" :key="product.id" :value="product.id">
-                                    {{ product.name }}
-                                </option>
-                            </select>
+                        <td class="border-t px-4 py-3 min-w-[220px]">
+                            <vSelect
+                                v-model="item.product_id"
+                                :options="products"
+                                label="name"
+                                :reduce="product => product.id"
+                                placeholder="Search or select product"
+                                class="w-full text-black bg-white"
+                                append-to-body
+                            />
                         </td>
 
                         <td class="border-t px-4 py-3">
