@@ -24,6 +24,8 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\EstimateController;
 use App\Http\Controllers\StockMovementController;
+use App\Http\Controllers\AgingReportController;
+
 
 
 
@@ -195,6 +197,9 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/paymentsCustomer/create', [CustomerPaymentsController::class, 'create'])->name('paymentsCustomer.create');
         Route::post('/paymentsCustomer/store', [CustomerPaymentsController::class, 'store'])->name('paymentsCustomer.store');
     });
+
+    // AR/AP Aging Report
+    Route::get('/reports/aging', [AgingReportController::class, 'index'])->name('reports.aging');
 
     // Private Ledger
     Route::get('/private-ledger', [PrivateSaleController::class, 'index'])->name('private.index');

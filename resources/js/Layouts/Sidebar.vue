@@ -174,6 +174,15 @@ onMounted(() => {
           </a>
         </li> 
 
+        <li v-if="role === 'store' && (hasPermission('payments customer manage') || hasPermission('payment supplier manage'))" :class="{ 'active': route().current('reports.aging') }">
+          <a
+            :href="route('reports.aging')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">📊</span> <span>AR/AP Aging</span>
+          </a>
+        </li>
+
         <li v-if="role === 'store'" :class="{ 'active': route().current('private*') }">
           <a
             :href="route('private.index')"

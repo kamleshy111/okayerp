@@ -17,11 +17,14 @@ class CustomerPaymentsController extends Controller
         // ->get();
         $userId = Auth::id();
 
-        $customers = SalePayment::whereHas('customer', function ($q) use ($userId) {
+        $query = SalePayment::whereHas('customer', function ($q) use ($userId) {
             $q->where('user_id', $userId);
-        })
-        ->where('accepted', 1)
-        ->with('customer')
+        });
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+
+        $customers = $query->with('customer')
         ->orderBy('payment_date', 'desc')
         ->get()
         ->map(function ($item) {
@@ -85,7 +88,7 @@ class CustomerPaymentsController extends Controller
             'payment_date' => $request->input('payment_date') ?? 0,
             'payment_method' => $request->input('payment_method') ?? 0,
             'note' => $request->input('note'),
-  
+            'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
         ]);
 
         return response()->json(['message' => 'Customer Payments added successfully!']);

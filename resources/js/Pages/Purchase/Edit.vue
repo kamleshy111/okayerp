@@ -23,7 +23,10 @@ const props = defineProps({
     type: Array,
     required: true,
   },
-
+  allocatedPayment: {
+    type: [Number, String],
+    default: 0,
+  },
 });
 
 const suppliers = props.suppliers;
@@ -127,7 +130,7 @@ const grandTotal = computed(() => {
 });
 
 const dueAmount = computed(() => {
-  const paidValue = parseFloat(form.value.paid) || 0;
+  const paidValue = (parseFloat(form.value.paid) || 0) + (parseFloat(props.allocatedPayment) || 0);
   const difference = paidValue - grandTotal.value;
 
   if (difference > 0) {
@@ -140,8 +143,9 @@ const dueAmount = computed(() => {
 });
 
 const paymentStatus = computed(() => {
-  if (form.value.paid === 0) return 'Unpaid';
-  else if (form.value.paid < grandTotal.value) return 'Partial';
+  const paidValue = (parseFloat(form.value.paid) || 0) + (parseFloat(props.allocatedPayment) || 0);
+  if (paidValue === 0) return 'Unpaid';
+  else if (paidValue < grandTotal.value) return 'Partial';
   else return 'Paid';
 });
 
@@ -372,6 +376,12 @@ const submitForm = async () => {
                     <input type="number" v-model="form.paid"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Amount" min="0" />
+                </div>
+
+                <!-- Allocated General Payments -->
+                <div v-if="parseFloat(props.allocatedPayment) > 0" class="flex justify-between items-center text-sm text-gray-500">
+                    <span>Supplier Payments Applied</span>
+                    <span class="font-medium text-[#292688]">₹ {{ props.allocatedPayment }}</span>
                 </div>
 
                 <div v-if="dueAmount.type === 'advance'" class="flex justify-between items-center">

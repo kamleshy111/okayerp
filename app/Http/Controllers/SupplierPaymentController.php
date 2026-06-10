@@ -18,10 +18,14 @@ class SupplierPaymentController extends Controller
         // ->get();
         $userId = Auth::id();
 
-        $suppliers = PurchasePayment::whereHas('supplier', function ($q) use ($userId) {
+        $query = PurchasePayment::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
-        })
-        ->with('supplier')
+        });
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+
+        $suppliers = $query->with('supplier')
         ->orderBy('payment_date', 'desc')
         ->get()
         ->map(function ($item) {
@@ -85,7 +89,7 @@ class SupplierPaymentController extends Controller
             'payment_date' => $request->input('payment_date') ?? 0,
             'payment_method' => $request->input('payment_method') ?? 0,
             'note' => $request->input('note'),
-  
+            'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
         ]);
 
         return response()->json(['message' => 'Supplier Payments added successfully!']);

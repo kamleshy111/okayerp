@@ -16,10 +16,15 @@ class CustomersController extends Controller
         $userId = Auth::id();
 
         $customers = Customer::where('user_id', $userId)
-            ->with([
-                'sales' => fn($q) => $q->where('accepted', 1),
-                'payments' => fn($q) => $q->where('accepted', 1)
-            ])
+            ->with(['sales' => function ($q) {
+                if (session('private_ledger_unlocked') !== true) {
+                    $q->where('accepted', 1);
+                }
+            }, 'payments' => function ($q) {
+                if (session('private_ledger_unlocked') !== true) {
+                    $q->where('accepted', 1);
+                }
+            }])
             ->get();
 
         $customers = $customers->map(function ($customer) {

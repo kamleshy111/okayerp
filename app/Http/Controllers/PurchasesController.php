@@ -139,12 +139,20 @@ class PurchasesController extends Controller
     public function payment($id)
     {
 
-        $purchases = Purchase::where('supplier_id', $id)->get();
+        $query = Purchase::where('supplier_id', $id);
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $purchases = $query->get();
 
         $totalPurchaseAmount = $purchases->sum('grand_total');
         $totalPurchasePaid = $purchases->sum('paid');
 
-        $totalDirectPaid = PurchasePayment::where('supplier_id', $id)->sum('amount');
+        $paymentQuery = PurchasePayment::where('supplier_id', $id);
+        if (session('private_ledger_unlocked') !== true) {
+            $paymentQuery->where('accepted', 1);
+        }
+        $totalDirectPaid = $paymentQuery->sum('amount');
 
         $totalReceived = $totalPurchasePaid + $totalDirectPaid;
     
@@ -186,6 +194,43 @@ class PurchasesController extends Controller
             ];
         });
 
+        $allocatedPayment = 0.0;
+        $totalPayments = \App\Models\PurchasePayment::where('supplier_id', $purchases->supplier_id)
+            ->where('accepted', $purchases->accepted)
+            ->sum('amount');
+        $allPurchases = Purchase::where('supplier_id', $purchases->supplier_id)
+            ->where('accepted', $purchases->accepted)
+            ->orderBy('purchase_date', 'asc')
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        foreach ($allPurchases as $p) {
+            $outstanding = (double)$p->grand_total - (double)$p->paid;
+            if ($outstanding < 0) {
+                $totalPayments += abs($outstanding);
+                continue;
+            }
+            if ($outstanding == 0) {
+                continue;
+            }
+
+            $allocated = 0.0;
+            if ($totalPayments > 0) {
+                if ($totalPayments >= $outstanding) {
+                    $allocated = $outstanding;
+                    $totalPayments -= $outstanding;
+                } else {
+                    $allocated = $totalPayments;
+                    $totalPayments = 0.0;
+                }
+            }
+
+            if ($p->id == $purchases->id) {
+                $allocatedPayment = $allocated;
+                break;
+            }
+        }
+
         $userId = Auth::id();
 
         $products = Product::where('user_id', $userId)->get();
@@ -195,7 +240,8 @@ class PurchasesController extends Controller
             'products' => $products,
             'suppliers' => $suppliers,
             'productItems' => $productItems,
-            'purchases' => $purchases,   
+            'purchases' => $purchases,
+            'allocatedPayment' => $allocatedPayment,
         ]);
     }
 

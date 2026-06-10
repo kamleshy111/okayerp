@@ -14,7 +14,16 @@ class SuppliersController extends Controller
 
         $userId = Auth::id();
 
-        $suppliers = Supplier::where('user_id', $userId)->with('purchases', 'purchasePayments')->get();
+        $suppliers = Supplier::where('user_id', $userId)
+            ->with(['purchases' => function ($q) {
+                if (session('private_ledger_unlocked') !== true) {
+                    $q->where('accepted', 1);
+                }
+            }, 'purchasePayments' => function ($q) {
+                if (session('private_ledger_unlocked') !== true) {
+                    $q->where('accepted', 1);
+                }
+            }])->get();
 
         $suppliers = $suppliers->map(function ($supplier) {
             

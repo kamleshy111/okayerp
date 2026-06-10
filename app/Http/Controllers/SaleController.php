@@ -181,10 +181,12 @@ class SaleController extends Controller
         $totalPurchaseAmount = $sale->sum('grand_total');
         $totalPurchasePaid = $sale->sum('paid');
 
-        $totalDirectPaid = SalePayment::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-                                      ->where('accepted', 1)
-                                      ->where('customer_id', $id)
-                                      ->sum('amount');
+        $paymentQuery = SalePayment::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                                      ->where('customer_id', $id);
+        if (session('private_ledger_unlocked') !== true) {
+            $paymentQuery->where('accepted', 1);
+        }
+        $totalDirectPaid = $paymentQuery->sum('amount');
 
         $totalReceived = $totalPurchasePaid + $totalDirectPaid;
 
@@ -224,6 +226,38 @@ class SaleController extends Controller
             ];
         });
 
+        $allocatedPayment = 0.0;
+        $totalPayments = \App\Models\SalePayment::where('customer_id', $sales->customer_id)
+            ->where('accepted', $sales->accepted)
+            ->sum('amount');
+        $allSales = Sale::where('customer_id', $sales->customer_id)
+            ->where('accepted', $sales->accepted)
+            ->orderBy('created_at', 'asc')
+            ->get();
+
+        foreach ($allSales as $s) {
+            $outstanding = (double)$s->grand_total - (double)$s->paid;
+            if ($outstanding <= 0) {
+                continue;
+            }
+
+            $allocated = 0.0;
+            if ($totalPayments > 0) {
+                if ($totalPayments >= $outstanding) {
+                    $allocated = $outstanding;
+                    $totalPayments -= $outstanding;
+                } else {
+                    $allocated = $totalPayments;
+                    $totalPayments = 0.0;
+                }
+            }
+
+            if ($s->id == $sales->id) {
+                $allocatedPayment = $allocated;
+                break;
+            }
+        }
+
         $userId = Auth::id();
 
         $products = Product::where('user_id', $userId)->get();
@@ -233,7 +267,8 @@ class SaleController extends Controller
             'products' => $products,
             'customers' => $customers,
             'productItems' => $productItems,
-            'sales' => $sales,   
+            'sales' => $sales,
+            'allocatedPayment' => $allocatedPayment,
         ]);
     }
 
