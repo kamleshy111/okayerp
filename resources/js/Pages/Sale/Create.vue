@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed  } from 'vue';
+import { ref, watch, computed, onMounted } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -24,6 +24,7 @@ const products = props.products;
 
 const form = ref({
     customer_id: "",
+    estimate_id: "",
     grand_total: "",
     GstAmount: "",
     accepted: true,
@@ -41,6 +42,51 @@ const form = ref({
             price: "",
             baseAmount: "",
     }],
+});
+
+const prefilledFromEstimateNo = ref('');
+
+const clearEstimatePrefill = () => {
+    form.value.estimate_id = '';
+    prefilledFromEstimateNo.value = '';
+};
+
+onMounted(async () => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const estimateId = urlParams.get('estimate_id');
+    if (estimateId) {
+        try {
+            const response = await axios.get(`/estimate/${estimateId}/get-json`);
+            const estimate = response.data;
+            if (estimate) {
+                if (estimate.status === 'Invoiced') {
+                    toast.error("This estimate has already been converted to a sale!");
+                    return;
+                }
+                form.value.customer_id = estimate.customer_id;
+                form.value.estimate_id = estimate.id;
+                form.value.discount = parseFloat(estimate.discount) || 0;
+                form.value.accepted = estimate.accepted == 1;
+                
+                // Map items
+                form.value.sale_items = estimate.items.map(item => ({
+                    product_id: item.product_id,
+                    unit_type: item.unit_type || "",
+                    sgst: item.sgst || 0,
+                    cgst: item.cgst || 0,
+                    quantity: item.quantity,
+                    price: item.price,
+                    baseAmount: item.base_price,
+                }));
+                
+                prefilledFromEstimateNo.value = estimate.estimate_no;
+                toast.success(`Loaded Estimate ${estimate.estimate_no}`);
+            }
+        } catch (error) {
+            console.error("Error fetching estimate details:", error);
+            toast.error("Failed to load estimate details.");
+        }
+    }
 });
 
 const selectedCustomer = ref(null);
@@ -359,6 +405,16 @@ const submitForm = async () => {
             <a :href="route('sale')"><i style="font-size: 14px;" class="bi bi-chevron-left"></i><span style="margin-left: 5px;">Sale</span></a>
         </div>
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Add Sale</h2>
+            
+            <div v-if="prefilledFromEstimateNo" class="p-4 mb-6 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg flex items-center justify-between shadow-sm">
+                <div class="flex items-center gap-2">
+                    <span class="text-lg">⚡</span>
+                    <span>Prefilled from <strong>Estimate #{{ prefilledFromEstimateNo }}</strong>. Stock levels will be deducted upon saving this sale.</span>
+                </div>
+                <button @click="clearEstimatePrefill" class="text-purple-600 hover:text-purple-900 font-semibold text-xs bg-purple-100 px-2.5 py-1 rounded-md transition duration-150">
+                    Clear Prefill
+                </button>
+            </div>
         <div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

@@ -22,6 +22,7 @@ use App\Http\Controllers\Admin\RolesController;
 
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\EstimateController;
 
 
 
@@ -149,6 +150,16 @@ Route::middleware(['auth', 'role:store'])->group(function () {
 
         //downloadInvoice
         Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
+
+        // Estimates (Quotations)
+        Route::get('/estimate', [EstimateController::class, 'index'])->name('estimate.index');
+        Route::get('/estimate/create', [EstimateController::class, 'create'])->name('estimate.create');
+        Route::post('/estimate/store', [EstimateController::class, 'store'])->name('estimate.store');
+        Route::get('/estimate/{id}/edit', [EstimateController::class, 'edit'])->name('estimate.edit');
+        Route::post('/estimate/update/{id}', [EstimateController::class, 'update'])->name('estimate.update');
+        Route::delete('/estimate/destroy/{id}', [EstimateController::class, 'destroy'])->name('estimate.destroy');
+        Route::get('/estimate/{id}/download-pdf', [EstimateController::class, 'downloadPdf'])->name('estimate.pdf');
+        Route::get('/estimate/{id}/get-json', [EstimateController::class, 'getJson'])->name('estimate.json');
     });
 
 

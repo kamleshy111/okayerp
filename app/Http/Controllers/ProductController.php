@@ -71,7 +71,7 @@ class ProductController extends Controller
         $incrementedNumber = $randomNumber + 1;
 
         // Create a new Product
-        Product::create([
+        $product = Product::create([
             'user_id' => Auth::id(),
             'name' => $request->input('name'),
             'category_id' => $request->input('category_id'),
@@ -82,10 +82,10 @@ class ProductController extends Controller
             'price' => $request->input('price') ?? 0.00,
             'sku' => $incrementedNumber,
             'description' => $request->input('description'),
-  
         ]);
 
-        return response()->json(['message' => 'Product added successfully!']);
+        $product->message = 'Product added successfully!';
+        return response()->json($product);
     }
 
     public function edit($id){

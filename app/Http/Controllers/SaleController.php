@@ -99,6 +99,7 @@ class SaleController extends Controller
             // 1. Insert into `sales` table
             $sale = Sale::create([
                 'customer_id' => $request->input('customer_id'),
+                'estimate_id' => $request->input('estimate_id'),
                 'grand_total' => $request->input('grand_total') ?? 0.00,
                 'total_amount' => $request->input('total_amount') ?? 0.00,
                 'gst_amount' => $request->input('GstAmount') ?? 0.00,
@@ -108,6 +109,15 @@ class SaleController extends Controller
                 'payment_status' => $request->input('payment_status') ?? "Unpaid",
                 'discount'  => $request->input('discount') ?? 0,
             ]);
+
+            // Update Estimate status to Invoiced if estimate_id is passed
+            if ($request->filled('estimate_id')) {
+                $estimate = \App\Models\Estimate::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                    ->find($request->input('estimate_id'));
+                if ($estimate) {
+                    $estimate->update(['status' => 'Invoiced']);
+                }
+            }
 
             // 2. Insert sale items and update stock quantity
             foreach ($request->input('sale_items', []) as $item) {
