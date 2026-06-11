@@ -109,6 +109,7 @@ class PurchaseReturnController extends Controller
             'purchase_id' => $purchase->id,
             'supplier_name' => $purchase->supplier->name ?? '',
             'accepted' => $purchase->accepted,
+            'due_amount' => max(0, (float)$purchase->grand_total - (float)$purchase->paid),
             'items' => $items,
         ]);
     }
@@ -120,6 +121,7 @@ class PurchaseReturnController extends Controller
             'return_date' => 'required|date',
             'refund_method' => 'required|string',
             'reason' => 'nullable|string',
+            'due_deduction' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -171,6 +173,7 @@ class PurchaseReturnController extends Controller
                 'reason' => $request->input('reason'),
                 'refund_amount' => 0,
                 'gst_refund_amount' => 0,
+                'due_deduction' => (float)$request->input('due_deduction', 0),
             ]);
 
             foreach ($request->input('items') as $item) {
@@ -229,15 +232,38 @@ class PurchaseReturnController extends Controller
                 }
             }
 
-            // Update refund totals
+            // Calculate due reduction vs cash refund based on the purchase's original state and request
+            $totalRefund = $refundAmount + $gstRefundAmount;
+            $dueOnPurchase = max(0, (float)$purchase->grand_total - (float)$purchase->paid);
+            $requestedDueDeduction = (float)$request->input('due_deduction', 0);
+            $dueReduction = min($requestedDueDeduction, min($totalRefund, $dueOnPurchase));
+            $remainingRefund = max(0, $totalRefund - $dueReduction);
+
+            // Update refund totals and actual due deduction
             $purchaseReturn->update([
                 'refund_amount' => $refundAmount,
                 'gst_refund_amount' => $gstRefundAmount,
+                'due_deduction' => $dueReduction,
             ]);
 
             // Post to double-entry accounting ledger
             $accountingService = new AccountingService($userId);
             $accountingService->postPurchaseReturn($purchaseReturn);
+
+            // Update original Purchase record
+            $purchase->total_amount = max(0, (float)$purchase->total_amount - (float)$refundAmount);
+            $purchase->gst_amount = max(0, (float)$purchase->gst_amount - (float)$gstRefundAmount);
+            $purchase->grand_total = max(0, (float)$purchase->grand_total - $totalRefund);
+            $purchase->paid = max(0, (float)$purchase->paid - $remainingRefund);
+
+            if ($purchase->paid >= $purchase->grand_total) {
+                $purchase->payment_status = 'Paid';
+            } elseif ($purchase->paid <= 0) {
+                $purchase->payment_status = 'Unpaid';
+            } else {
+                $purchase->payment_status = 'Partial';
+            }
+            $purchase->save();
 
             DB::commit();
 

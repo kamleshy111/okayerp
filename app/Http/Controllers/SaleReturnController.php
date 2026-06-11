@@ -109,6 +109,7 @@ class SaleReturnController extends Controller
             'sale_id' => $sale->id,
             'customer_name' => $sale->customer->name ?? '',
             'accepted' => $sale->accepted,
+            'due_amount' => max(0, (float)$sale->grand_total - (float)$sale->paid),
             'items' => $items,
         ]);
     }
@@ -120,6 +121,7 @@ class SaleReturnController extends Controller
             'return_date' => 'required|date',
             'refund_method' => 'required|string',
             'reason' => 'nullable|string',
+            'due_deduction' => 'nullable|numeric|min:0',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
@@ -171,6 +173,7 @@ class SaleReturnController extends Controller
                 'reason' => $request->input('reason'),
                 'refund_amount' => 0,
                 'gst_refund_amount' => 0,
+                'due_deduction' => (float)$request->input('due_deduction', 0),
             ]);
 
             foreach ($request->input('items') as $item) {
@@ -229,15 +232,38 @@ class SaleReturnController extends Controller
                 }
             }
 
-            // Update refund totals
+            // Calculate due reduction vs cash refund based on the sale's original state and request
+            $totalRefund = $refundAmount + $gstRefundAmount;
+            $dueOnSale = max(0, (float)$sale->grand_total - (float)$sale->paid);
+            $requestedDueDeduction = (float)$request->input('due_deduction', 0);
+            $dueReduction = min($requestedDueDeduction, min($totalRefund, $dueOnSale));
+            $remainingRefund = max(0, $totalRefund - $dueReduction);
+
+            // Update refund totals and actual due deduction
             $saleReturn->update([
                 'refund_amount' => $refundAmount,
                 'gst_refund_amount' => $gstRefundAmount,
+                'due_deduction' => $dueReduction,
             ]);
 
             // Post to double-entry accounting ledger
             $accountingService = new AccountingService($userId);
             $accountingService->postSaleReturn($saleReturn);
+
+            // Update original Sale record
+            $sale->total_amount = max(0, (float)$sale->total_amount - (float)$refundAmount);
+            $sale->gst_amount = max(0, (float)$sale->gst_amount - (float)$gstRefundAmount);
+            $sale->grand_total = max(0, (float)$sale->grand_total - $totalRefund);
+            $sale->paid = max(0, (float)$sale->paid - $remainingRefund);
+
+            if ($sale->paid >= $sale->grand_total) {
+                $sale->payment_status = 'Paid';
+            } elseif ($sale->paid <= 0) {
+                $sale->payment_status = 'Unpaid';
+            } else {
+                $sale->payment_status = 'Partial';
+            }
+            $sale->save();
 
             DB::commit();
 

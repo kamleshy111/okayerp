@@ -164,7 +164,7 @@ class PurchaseReturnTest extends TestCase
         $purchase = Purchase::create([
             'supplier_id' => $supplier->id,
             'total_amount' => 100.00,
-            'grand_total' => 100.00,
+            'grand_total' => 118.00,
             'accepted' => 1, // GST invoice
         ]);
 
@@ -251,5 +251,109 @@ class PurchaseReturnTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_purchase_return_with_custom_due_deduction(): void
+    {
+        $storeUser = User::factory()->create(['role' => 'store']);
+
+        $supplier = Supplier::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Supplier A',
+            'email' => 'supplier@example.com',
+            'phone' => '1234567890',
+        ]);
+
+        $product = Product::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Purchased Item',
+            'sku' => 'PUR-ITEM',
+            'price' => 50.00,
+            'stock_quantity' => 10,
+        ]);
+
+        $purchase = Purchase::create([
+            'supplier_id' => $supplier->id,
+            'total_amount' => 100.00,
+            'gst_amount' => 18.00,
+            'grand_total' => 118.00,
+            'paid' => 80.00,
+            'payment_status' => 'Partial',
+            'accepted' => 1, // GST invoice
+        ]);
+
+        $purchaseItem = PurchaseItem::create([
+            'purchase_id' => $purchase->id,
+            'product_id' => $product->id,
+            'quantity' => 2,
+            'price' => 50.00,
+            'unit_type' => 'Pcs',
+            'sgst' => 9,
+            'cgst' => 9,
+        ]);
+
+        $this->actingAs($storeUser);
+
+        $response = $this->postJson('/purchase-return/store', [
+            'purchase_id' => $purchase->id,
+            'return_date' => '2026-06-11',
+            'refund_method' => 'Cash',
+            'due_deduction' => 20.00,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ]
+            ]
+        ]);
+
+        $response->assertOk();
+
+        // Verify purchase record updates
+        $purchase->refresh();
+        $this->assertEquals(50.00, $purchase->total_amount);
+        $this->assertEquals(9.00, $purchase->gst_amount);
+        $this->assertEquals(59.00, $purchase->grand_total);
+        $this->assertEquals(41.00, $purchase->paid);
+        $this->assertEquals('Partial', $purchase->payment_status);
+
+        // Verify database returns record
+        $this->assertDatabaseHas('purchase_returns', [
+            'purchase_id' => $purchase->id,
+            'due_deduction' => 20.00,
+            'refund_amount' => 50.00,
+            'gst_refund_amount' => 9.00,
+        ]);
+
+        // Verify Journal Entries
+        // Debit: Accounts Payable (AP) = 20.00 (Due Deduction)
+        $this->assertDatabaseHas('journal_entries', [
+            'reference_type' => 'PurchaseReturn',
+            'type' => 'debit',
+            'amount' => 20.00,
+            'description' => 'Purchase Return #PRET-00001 for Bill #' . $purchase->id . ' (Applied to Bill Due)',
+        ]);
+
+        // Debit: Cash = 39.00 (Remaining Cash Refund)
+        $this->assertDatabaseHas('journal_entries', [
+            'reference_type' => 'PurchaseReturn',
+            'type' => 'debit',
+            'amount' => 39.00,
+            'description' => 'Purchase Return #PRET-00001 for Bill #' . $purchase->id . ' (Cash)',
+        ]);
+
+        // Credit: Purchases = 50.00
+        $this->assertDatabaseHas('journal_entries', [
+            'reference_type' => 'PurchaseReturn',
+            'type' => 'credit',
+            'amount' => 50.00,
+        ]);
+
+        // Credit: GST Input = 9.00
+        $this->assertDatabaseHas('journal_entries', [
+            'reference_type' => 'PurchaseReturn',
+            'type' => 'credit',
+            'amount' => 9.00,
+        ]);
     }
 }

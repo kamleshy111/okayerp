@@ -168,7 +168,7 @@ class SaleReturnTest extends TestCase
         $sale = Sale::create([
             'customer_id' => $customer->id,
             'total_amount' => 100.00,
-            'grand_total' => 100.00,
+            'grand_total' => 118.00,
             'accepted' => 1, // GST invoice
         ]);
 
@@ -255,5 +255,109 @@ class SaleReturnTest extends TestCase
 
         $response->assertOk();
         $response->assertHeader('Content-Type', 'application/pdf');
+    }
+
+    public function test_sale_return_with_custom_due_deduction(): void
+    {
+        $storeUser = User::factory()->create(['role' => 'store']);
+
+        $customer = Customer::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Jane Client',
+            'email' => 'jane@client.com',
+            'phone' => '1234567890',
+        ]);
+
+        $product = Product::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Returnable Item',
+            'sku' => 'RET-ITEM',
+            'price' => 50.00,
+            'stock_quantity' => 10,
+        ]);
+
+        $sale = Sale::create([
+            'customer_id' => $customer->id,
+            'total_amount' => 100.00,
+            'gst_amount' => 18.00,
+            'grand_total' => 118.00,
+            'paid' => 80.00,
+            'payment_status' => 'Partial',
+            'accepted' => 1, // GST invoice
+        ]);
+
+        $saleItem = SaleItem::create([
+            'sale_id' => $sale->id,
+            'product_id' => $product->id,
+            'quantity' => 2,
+            'price' => 50.00,
+            'unit_type' => 'Pcs',
+            'sgst' => 9,
+            'cgst' => 9,
+        ]);
+
+        $this->actingAs($storeUser);
+
+        $response = $this->postJson('/sale-return/store', [
+            'sale_id' => $sale->id,
+            'return_date' => '2026-06-11',
+            'refund_method' => 'Cash',
+            'due_deduction' => 20.00,
+            'items' => [
+                [
+                    'product_id' => $product->id,
+                    'quantity' => 1,
+                ]
+            ]
+        ]);
+
+        $response->assertOk();
+
+        // Verify sale record updates
+        $sale->refresh();
+        $this->assertEquals(50.00, $sale->total_amount);
+        $this->assertEquals(9.00, $sale->gst_amount);
+        $this->assertEquals(59.00, $sale->grand_total);
+        $this->assertEquals(41.00, $sale->paid);
+        $this->assertEquals('Partial', $sale->payment_status);
+
+        // Verify database returns record
+        $this->assertDatabaseHas('sale_returns', [
+            'sale_id' => $sale->id,
+            'due_deduction' => 20.00,
+            'refund_amount' => 50.00,
+            'gst_refund_amount' => 9.00,
+        ]);
+
+        // Verify Journal Entries
+        // Debit: Sales = 50.00
+        $this->assertDatabaseHas('journal_entries', [
+            'reference_type' => 'SaleReturn',
+            'type' => 'debit',
+            'amount' => 50.00,
+        ]);
+
+        // Debit: GST Output = 9.00
+        $this->assertDatabaseHas('journal_entries', [
+            'reference_type' => 'SaleReturn',
+            'type' => 'debit',
+            'amount' => 9.00,
+        ]);
+
+        // Credit: Accounts Receivable (AR) = 20.00 (Due Deduction)
+        $this->assertDatabaseHas('journal_entries', [
+            'reference_type' => 'SaleReturn',
+            'type' => 'credit',
+            'amount' => 20.00,
+            'description' => 'Sale Return #RET-00001 for Invoice #' . $sale->id . ' (Applied to Invoice Due)',
+        ]);
+
+        // Credit: Cash = 39.00 (Remaining Cash Refund)
+        $this->assertDatabaseHas('journal_entries', [
+            'reference_type' => 'SaleReturn',
+            'type' => 'credit',
+            'amount' => 39.00,
+            'description' => 'Sale Return #RET-00001 for Invoice #' . $sale->id . ' (Cash)',
+        ]);
     }
 }

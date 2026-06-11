@@ -199,18 +199,30 @@ class AccountingService
         $gstRefund = $return->gst_refund_amount;
         $totalRefund = $baseRefund + $gstRefund;
 
+        // Calculate due reduction vs cash refund based on the stored due_deduction
+        $dueReduction = (float)$return->due_deduction;
+        $remainingRefund = max(0, $totalRefund - $dueReduction);
+
         // Debits (debit Sales and GST Output to reduce revenue & tax liability)
         $this->postEntry($accounts['Sales']->id, 'SaleReturn', $return->id, 'debit', $baseRefund, $date, $desc, $accepted);
         if ($gstRefund > 0) {
             $this->postEntry($accounts['GST_Liability']->id, 'SaleReturn', $return->id, 'debit', $gstRefund, $date, $desc, $accepted);
         }
 
-        // Credits (credit Cash or AR to reflect cash paid out or receivable reduced)
-        if ($return->refund_method === 'Store Credit') {
-            $this->postEntry($accounts['AR']->id, 'SaleReturn', $return->id, 'credit', $totalRefund, $date, $desc, $accepted);
-        } else {
-            // Cash, Card, UPI
-            $this->postEntry($accounts['Cash']->id, 'SaleReturn', $return->id, 'credit', $totalRefund, $date, $desc, $accepted);
+        // Credits:
+        // 1. Portion that reduces due goes directly to AR (receivable balance reduced)
+        if ($dueReduction > 0) {
+            $this->postEntry($accounts['AR']->id, 'SaleReturn', $return->id, 'credit', $dueReduction, $date, $desc . " (Applied to Invoice Due)", $accepted);
+        }
+
+        // 2. Remaining portion is refunded via the chosen refund method
+        if ($remainingRefund > 0) {
+            if ($return->refund_method === 'Store Credit') {
+                $this->postEntry($accounts['AR']->id, 'SaleReturn', $return->id, 'credit', $remainingRefund, $date, $desc . " (Store Credit)", $accepted);
+            } else {
+                // Cash, Card, UPI
+                $this->postEntry($accounts['Cash']->id, 'SaleReturn', $return->id, 'credit', $remainingRefund, $date, $desc . " ({$return->refund_method})", $accepted);
+            }
         }
     }
 
@@ -229,12 +241,24 @@ class AccountingService
         $gstRefund = $return->gst_refund_amount;
         $totalRefund = $baseRefund + $gstRefund;
 
-        // Debits (debit Cash or Accounts Payable to reflect money returned or balance offset)
-        if ($return->refund_method === 'Store Credit') {
-            $this->postEntry($accounts['AP']->id, 'PurchaseReturn', $return->id, 'debit', $totalRefund, $date, $desc, $accepted);
-        } else {
-            // Cash, Card, UPI
-            $this->postEntry($accounts['Cash']->id, 'PurchaseReturn', $return->id, 'debit', $totalRefund, $date, $desc, $accepted);
+        // Calculate due reduction vs cash refund based on the stored due_deduction
+        $dueReduction = (float)$return->due_deduction;
+        $remainingRefund = max(0, $totalRefund - $dueReduction);
+
+        // Debits:
+        // 1. Portion that reduces due goes directly to AP (payable balance reduced)
+        if ($dueReduction > 0) {
+            $this->postEntry($accounts['AP']->id, 'PurchaseReturn', $return->id, 'debit', $dueReduction, $date, $desc . " (Applied to Bill Due)", $accepted);
+        }
+
+        // 2. Remaining portion is refunded via the chosen refund method
+        if ($remainingRefund > 0) {
+            if ($return->refund_method === 'Store Credit') {
+                $this->postEntry($accounts['AP']->id, 'PurchaseReturn', $return->id, 'debit', $remainingRefund, $date, $desc . " (Store Credit)", $accepted);
+            } else {
+                // Cash, Card, UPI
+                $this->postEntry($accounts['Cash']->id, 'PurchaseReturn', $return->id, 'debit', $remainingRefund, $date, $desc . " ({$return->refund_method})", $accepted);
+            }
         }
 
         // Credits (credit Purchases and GST Input to reduce expense & tax asset)

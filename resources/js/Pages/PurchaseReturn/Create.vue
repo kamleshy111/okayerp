@@ -20,6 +20,7 @@ const form = ref({
   return_date: new Date().toISOString().substring(0, 10),
   refund_method: "Cash",
   reason: "",
+  due_deduction: 0,
   items: [],
 });
 
@@ -31,6 +32,7 @@ watch(() => form.value.purchase_id, async (newVal) => {
   if (!newVal) {
     selectedPurchaseDetails.value = null;
     form.value.items = [];
+    form.value.due_deduction = 0;
     return;
   }
 
@@ -51,6 +53,8 @@ watch(() => form.value.purchase_id, async (newVal) => {
       available_qty: item.available_qty,
       quantity: 0, // returned qty input
     }));
+
+    form.value.due_deduction = 0;
   } catch (error) {
     console.error("Error fetching purchase details:", error);
     toast.error("Failed to load purchase details.");
@@ -83,6 +87,21 @@ const grandRefundTotal = computed(() => {
   return baseRefundTotal.value + gstRefundTotal.value;
 });
 
+// Watch grandRefundTotal to suggest the maximum due deduction
+watch(grandRefundTotal, (newVal) => {
+  if (selectedPurchaseDetails.value) {
+    const dueAmount = parseFloat(selectedPurchaseDetails.value.due_amount) || 0;
+    const maxDeduct = Math.min(newVal, dueAmount);
+    form.value.due_deduction = parseFloat(maxDeduct.toFixed(2));
+  } else {
+    form.value.due_deduction = 0;
+  }
+});
+
+const netRefundCashToPay = computed(() => {
+  return Math.max(0, grandRefundTotal.value - (parseFloat(form.value.due_deduction) || 0));
+});
+
 const submitReturn = async () => {
   const payloadItems = form.value.items.filter(item => item.quantity > 0);
 
@@ -104,12 +123,21 @@ const submitReturn = async () => {
     }
   }
 
+  // Validate due deduction amount
+  const dueAmount = parseFloat(selectedPurchaseDetails.value.due_amount) || 0;
+  const maxDeduct = Math.min(grandRefundTotal.value, dueAmount);
+  if (form.value.due_deduction < 0 || form.value.due_deduction > maxDeduct) {
+    toast.error(`Due deduction amount must be between 0 and ₹ ${maxDeduct.toFixed(2)}.`);
+    return;
+  }
+
   try {
     const payload = {
       purchase_id: form.value.purchase_id,
       return_date: form.value.return_date,
       refund_method: form.value.refund_method,
       reason: form.value.reason,
+      due_deduction: form.value.due_deduction,
       items: payloadItems.map(item => ({
         product_id: item.product_id,
         quantity: item.quantity,
@@ -165,9 +193,10 @@ const submitReturn = async () => {
         </div>
 
         <div v-if="selectedPurchaseDetails" class="mt-8 space-y-6">
-          <div class="p-4 bg-slate-50 border rounded-lg text-black grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div class="p-4 bg-slate-50 border rounded-lg text-black grid grid-cols-1 md:grid-cols-3 gap-4">
             <p><strong>Supplier Name:</strong> {{ selectedPurchaseDetails.supplier_name }}</p>
             <p><strong>Tax Scheme:</strong> {{ selectedPurchaseDetails.accepted == 1 ? 'GST Invoice' : 'Non-GST / Private Invoice' }}</p>
+            <p class="text-rose-600 font-semibold"><strong>Original Due:</strong> ₹ {{ parseFloat(selectedPurchaseDetails.due_amount).toFixed(2) }}</p>
           </div>
 
           <h3 class="text-xl font-bold text-[#292688]">Items Purchased</h3>
@@ -249,7 +278,7 @@ const submitReturn = async () => {
             <!-- Refund Totals Panel -->
             <div class="bg-slate-50 p-6 rounded-xl border border-gray-100 flex flex-col justify-between">
               <h4 class="text-lg font-bold text-gray-800 border-b pb-2 mb-4">Refund Summary</h4>
-              <div class="space-y-3">
+              <div class="space-y-4">
                 <div class="flex justify-between">
                   <span class="text-gray-600">Base Refund Total:</span>
                   <span class="font-mono font-bold text-gray-800">₹ {{ baseRefundTotal.toFixed(2) }}</span>
@@ -258,9 +287,26 @@ const submitReturn = async () => {
                   <span class="text-gray-600">GST Refund Total:</span>
                   <span class="font-mono font-bold text-gray-800">₹ {{ gstRefundTotal.toFixed(2) }}</span>
                 </div>
-                <div class="flex justify-between border-t pt-3 font-semibold text-lg">
-                  <span class="text-gray-800">Total Refunded:</span>
+                <div class="flex justify-between border-t pt-3 font-semibold">
+                  <span class="text-gray-800">Total Refund Value:</span>
                   <span class="font-mono text-indigo-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
+                </div>
+                
+                <div class="border-t pt-3 space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700">Deduct from Bill Due (Max: ₹ {{ Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.due_amount) || 0).toFixed(2) }})</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    v-model.number="form.due_deduction"
+                    :min="0"
+                    :max="Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.due_amount) || 0)"
+                    class="w-full border px-3 py-1.5 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold"
+                  />
+                </div>
+
+                <div class="flex justify-between border-t pt-3 font-semibold text-lg">
+                  <span class="text-gray-800">Net Refund (Cash/UPI/Card):</span>
+                  <span class="font-mono text-emerald-700">₹ {{ netRefundCashToPay.toFixed(2) }}</span>
                 </div>
               </div>
 

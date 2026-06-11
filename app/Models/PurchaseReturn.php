@@ -16,6 +16,7 @@ class PurchaseReturn extends Model
         'return_date',
         'refund_amount',
         'gst_refund_amount',
+        'due_deduction',
         'refund_method',
         'reason',
     ];
