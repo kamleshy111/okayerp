@@ -53,6 +53,9 @@ Route::middleware(['auth'])->group(function () {
     //user switch stop
     Route::get('/switch/stop', [StoresController::class, 'user_switch_stop'])->name('switch.stop');
 
+    // Audit Logs
+    Route::get('/audit-logs', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit-logs.index');
+
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {

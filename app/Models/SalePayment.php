@@ -4,8 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 
+use App\Traits\Auditable;
+
 class SalePayment extends Model
 {
+    use Auditable;
+
     protected $fillable = [
         'customer_id', 'amount', 'payment_date', 'payment_method', 'note', 'accepted'
     ];

@@ -201,6 +201,15 @@ onMounted(() => {
           </a>
         </li>
 
+        <li v-if="role === 'admin' || role === 'store'" :class="{ 'active': route().current('audit-logs*') }">
+          <a
+            :href="route('audit-logs.index')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">📋</span> <span>Audit Logs</span>
+          </a>
+        </li>
+
         <li :class="{ 'active': route().current('profile.edit') }">
           <a
             :href="route('profile.edit')"
