@@ -129,7 +129,7 @@ onMounted(() => {
           </a>
         </li>
 
-        <li v-if="role === 'store' && hasPermission('purchase manage')" :class="{ 'active': route().current('purchase*') }">
+        <li v-if="role === 'store' && hasPermission('purchase manage')" :class="{ 'active': route().current('purchase*') && !route().current('purchase-return*') }">
           <a
             :href="route('purchase')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -137,6 +137,15 @@ onMounted(() => {
             <span class="text-xl">📦</span> <span>Purchase</span>
           </a>
         </li> 
+
+        <li v-if="role === 'store' && hasPermission('purchase manage')" :class="{ 'active': route().current('purchase-return*') }">
+          <a
+            :href="route('purchase-return.index')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <span class="text-xl">↩️</span> <span>Purchase Returns</span>
+          </a>
+        </li>
 
         <li v-if="role === 'store' && hasPermission('sale manage')" :class="{ 'active': route().current('estimate*') }">
           <a

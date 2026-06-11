@@ -27,6 +27,7 @@ use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\AgingReportController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\SaleReturnController;
+use App\Http\Controllers\PurchaseReturnController;
 
 
 
@@ -190,6 +191,13 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/purchase/{id}/edit', [PurchasesController::class, 'edit'])->name('purchase.edit');
         Route::post('/purchase/update/{id}', [PurchasesController::class, 'update'])->name('purchase.update');
         Route::delete('/purchase/destroy/{id}', [PurchasesController::class, 'destroy'])->name('purchase.destroy');
+
+        // Purchase Returns
+        Route::get('/purchase-return', [PurchaseReturnController::class, 'index'])->name('purchase-return.index');
+        Route::get('/purchase-return/create', [PurchaseReturnController::class, 'create'])->name('purchase-return.create');
+        Route::get('/purchase-return/purchase/{id}/details', [PurchaseReturnController::class, 'getPurchaseDetails'])->name('purchase-return.purchase-details');
+        Route::post('/purchase-return/store', [PurchaseReturnController::class, 'store'])->name('purchase-return.store');
+        Route::get('/purchase-return/{id}/download-pdf', [PurchaseReturnController::class, 'downloadReturnPdf'])->name('purchase-return.pdf');
     });
 
     //payment Information

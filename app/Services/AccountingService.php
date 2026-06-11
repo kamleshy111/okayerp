@@ -213,4 +213,34 @@ class AccountingService
             $this->postEntry($accounts['Cash']->id, 'SaleReturn', $return->id, 'credit', $totalRefund, $date, $desc, $accepted);
         }
     }
+
+    public function postPurchaseReturn($return)
+    {
+        $this->clearEntries('PurchaseReturn', $return->id);
+
+        $purchase = $return->purchase;
+        $accepted = $purchase->accepted ?? 1;
+        
+        $accounts = $this->getDefaultAccounts($accepted);
+        $date = $return->return_date ?? now()->toDateString();
+        $desc = "Purchase Return #{$return->return_no} for Bill #{$purchase->id}";
+
+        $baseRefund = $return->refund_amount;
+        $gstRefund = $return->gst_refund_amount;
+        $totalRefund = $baseRefund + $gstRefund;
+
+        // Debits (debit Cash or Accounts Payable to reflect money returned or balance offset)
+        if ($return->refund_method === 'Store Credit') {
+            $this->postEntry($accounts['AP']->id, 'PurchaseReturn', $return->id, 'debit', $totalRefund, $date, $desc, $accepted);
+        } else {
+            // Cash, Card, UPI
+            $this->postEntry($accounts['Cash']->id, 'PurchaseReturn', $return->id, 'debit', $totalRefund, $date, $desc, $accepted);
+        }
+
+        // Credits (credit Purchases and GST Input to reduce expense & tax asset)
+        $this->postEntry($accounts['Purchases']->id, 'PurchaseReturn', $return->id, 'credit', $baseRefund, $date, $desc, $accepted);
+        if ($gstRefund > 0) {
+            $this->postEntry($accounts['GST_Receivable']->id, 'PurchaseReturn', $return->id, 'credit', $gstRefund, $date, $desc, $accepted);
+        }
+    }
 }
