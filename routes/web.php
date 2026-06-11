@@ -26,6 +26,7 @@ use App\Http\Controllers\EstimateController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\AgingReportController;
 use App\Http\Controllers\LedgerController;
+use App\Http\Controllers\SaleReturnController;
 
 
 
@@ -172,6 +173,13 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::delete('/estimate/destroy/{id}', [EstimateController::class, 'destroy'])->name('estimate.destroy');
         Route::get('/estimate/{id}/download-pdf', [EstimateController::class, 'downloadPdf'])->name('estimate.pdf');
         Route::get('/estimate/{id}/get-json', [EstimateController::class, 'getJson'])->name('estimate.json');
+
+        // Sales Returns
+        Route::get('/sale-return', [SaleReturnController::class, 'index'])->name('sale-return.index');
+        Route::get('/sale-return/create', [SaleReturnController::class, 'create'])->name('sale-return.create');
+        Route::get('/sale-return/sale/{id}/details', [SaleReturnController::class, 'getSaleDetails'])->name('sale-return.sale-details');
+        Route::post('/sale-return/store', [SaleReturnController::class, 'store'])->name('sale-return.store');
+        Route::get('/sale-return/{id}/download-pdf', [SaleReturnController::class, 'downloadReturnPdf'])->name('sale-return.pdf');
     });
 
 

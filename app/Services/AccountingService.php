@@ -183,4 +183,34 @@ class AccountingService
         $this->postEntry($expenseAccount->id, 'Expense', $expense->id, 'debit', $expense->amount, $date, $desc, $expense->accepted ?? 1);
         $this->postEntry($accounts['Cash']->id, 'Expense', $expense->id, 'credit', $expense->amount, $date, $desc, $expense->accepted ?? 1);
     }
+
+    public function postSaleReturn($return)
+    {
+        $this->clearEntries('SaleReturn', $return->id);
+
+        $sale = $return->sale;
+        $accepted = $sale->accepted ?? 1;
+        
+        $accounts = $this->getDefaultAccounts($accepted);
+        $date = $return->return_date ?? now()->toDateString();
+        $desc = "Sale Return #{$return->return_no} for Invoice #{$sale->id}";
+
+        $baseRefund = $return->refund_amount;
+        $gstRefund = $return->gst_refund_amount;
+        $totalRefund = $baseRefund + $gstRefund;
+
+        // Debits (debit Sales and GST Output to reduce revenue & tax liability)
+        $this->postEntry($accounts['Sales']->id, 'SaleReturn', $return->id, 'debit', $baseRefund, $date, $desc, $accepted);
+        if ($gstRefund > 0) {
+            $this->postEntry($accounts['GST_Liability']->id, 'SaleReturn', $return->id, 'debit', $gstRefund, $date, $desc, $accepted);
+        }
+
+        // Credits (credit Cash or AR to reflect cash paid out or receivable reduced)
+        if ($return->refund_method === 'Store Credit') {
+            $this->postEntry($accounts['AR']->id, 'SaleReturn', $return->id, 'credit', $totalRefund, $date, $desc, $accepted);
+        } else {
+            // Cash, Card, UPI
+            $this->postEntry($accounts['Cash']->id, 'SaleReturn', $return->id, 'credit', $totalRefund, $date, $desc, $accepted);
+        }
+    }
 }
