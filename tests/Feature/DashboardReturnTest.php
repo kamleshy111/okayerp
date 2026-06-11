@@ -147,6 +147,8 @@ class DashboardReturnTest extends TestCase
             ->where('profitLossData.5.purchases', 200)
             ->where('profitLossData.5.expenses', 50)
             ->where('profitLossData.5.profit', 100)
+            ->where('totalCustomerDue', 500)
+            ->where('totalSupplierDue', 300)
         );
     }
 }

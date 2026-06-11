@@ -317,6 +317,16 @@ class DashboardController extends Controller
             ];
         }
 
+        $totalCustomerDue = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+                            ->where('accepted', 1)
+                            ->get()
+                            ->sum(fn($s) => max(0, (float)$s->grand_total - (float)$s->paid));
+
+        $totalSupplierDue = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+                            ->where('accepted', 1)
+                            ->get()
+                            ->sum(fn($p) => max(0, (float)$p->grand_total - (float)$p->paid));
+
         return Inertia::render('Dashboard', [
             'role' => $role,
             'totalProducts' => $totalProducts,
@@ -331,6 +341,8 @@ class DashboardController extends Controller
             'percentageChangeSupplier' => $percentageChangeSupplier,
             'percentageChangePurchases' => $percentageChangePurchases,
             'profitLossData' => $profitLossData,
+            'totalCustomerDue' => round((float)$totalCustomerDue, 2),
+            'totalSupplierDue' => round((float)$totalSupplierDue, 2),
         ]);
     }
 }

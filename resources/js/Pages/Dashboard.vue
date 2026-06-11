@@ -18,6 +18,8 @@ const percentageChangeProduct = computed(() => page.props.percentageChangeProduc
 const percentageChangeCustomer = computed(() => page.props.percentageChangeCustomer ?? 0)
 const percentageChangeSupplier = computed(() => page.props.percentageChangeSupplier ?? 0)
 const percentageChangePurchases = computed(() => page.props.percentageChangePurchases ?? 0)
+const totalCustomerDue = computed(() => page.props.totalCustomerDue ?? 0)
+const totalSupplierDue = computed(() => page.props.totalSupplierDue ?? 0)
 
 // Profit & Loss data for chart
 const profitLossData = computed(() => page.props.profitLossData ?? [])
@@ -169,176 +171,182 @@ const bars = computed(() => {
 
 <template>
 
-    <Head title="Dashboard" />
+    <Head title="Dashboard">
+        <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    </Head>
 
     <AuthenticatedLayout>
 
         <section class="p-6">
-            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-10">
 
-
-                <!-- Total Products -->
-                <div
-                    class="bg-white shadow rounded-lg p-4 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                    <p class="font-semibold text-gray-400 mb-2 uppercase">Product Overview</p>
+                <!-- Card 1: Product Overview -->
+                <div class="bg-white shadow rounded-xl p-5 border-l-4 border-indigo-500 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-blue-100 p-2 rounded-full">
-                            <span class="text-blue-500 text-xl p-0">📦</span>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Catalog</p>
+                            <p class="text-xs text-gray-500 font-medium">Total Products</p>
+                            <p class="text-2xl font-black text-gray-800 mt-1">{{ totalProducts }}</p>
                         </div>
-                        <div class="text-right">
-                            <p class="text-gray-500 text-sm">Total Products</p>
-                            <p class="text-lg font-bold text-gray-800">{{ totalProducts }}</p>
+                        <div class="bg-indigo-50 text-indigo-600 p-3 rounded-xl">
+                            <i class="bi bi-box-seam text-2xl"></i>
                         </div>
                     </div>
-                    <div class="text-sm text-green-500 mb-2">
-                        <span
-                            :class="{
-                                'text-green-500': percentageChangeProduct > 0,
-                                'text-red-500': percentageChangeProduct < 0,
-                                'text-gray-500': percentageChangeProduct === 0
-                            }"
-                        >
-                            {{ percentageChangeProduct > 0 ? '▲' : percentageChangeProduct < 0 ? '▼' : '–' }}
-                            {{ percentageChangeProduct }}%
+                    <div class="flex items-center justify-between mt-4 border-t border-gray-100 pt-3">
+                        <span class="text-xs text-gray-400">
+                            Growth: 
+                            <span :class="['font-bold', percentageChangeProduct >= 0 ? 'text-emerald-500' : 'text-rose-500']">
+                                {{ percentageChangeProduct >= 0 ? '▲' : '▼' }} {{ Math.abs(percentageChangeProduct) }}%
+                            </span>
                         </span>
-
-                        <span class="text-gray-500">Since Last Month</span>
+                        <a :href="route('product')" class="text-xs text-indigo-600 font-bold hover:underline">Manage Products →</a>
                     </div>
-                    <a :href="route('product')" class="text-sm text-blue-500 font-medium">Manage Products</a>
                 </div>
 
-                <!-- Total Categories -->
-                <div
-                    class="bg-white shadow rounded-lg p-4 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                    <p class="font-semibold text-gray-400 mb-2 uppercase">Categories Overview</p>
+                <!-- Card 2: Total Categories -->
+                <div class="bg-white shadow rounded-xl p-5 border-l-4 border-purple-500 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-blue-100 p-2 rounded-full">
-                            <span class="text-blue-500 text-xl p-0">🗂️</span>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Grouping</p>
+                            <p class="text-xs text-gray-500 font-medium">Total Categories</p>
+                            <p class="text-2xl font-black text-gray-800 mt-1">{{ totalCategories }}</p>
                         </div>
-                        <div class="text-right">
-                            <p class="text-gray-500 text-sm">Total Categories</p>
-                            <p class="text-lg font-bold text-gray-800">{{ totalCategories }}</p>
+                        <div class="bg-purple-50 text-purple-600 p-3 rounded-xl">
+                            <i class="bi bi-tags text-2xl"></i>
                         </div>
                     </div>
-                    <a :href="route('category')" class="text-sm text-blue-500 font-medium">Manage Categories</a>
+                    <div class="flex items-center justify-between mt-4 border-t border-gray-100 pt-3">
+                        <span class="text-xs text-gray-400">Inventory groupings</span>
+                        <a :href="route('category')" class="text-xs text-purple-600 font-bold hover:underline">Manage Categories →</a>
+                    </div>
                 </div>
 
-                <!-- Total Customers -->
-                <div
-                    class="bg-white shadow rounded-lg p-4 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                    <p class="font-semibold text-gray-400 mb-2 uppercase">Customers Overview</p>
+                <!-- Card 3: Total Customers -->
+                <div class="bg-white shadow rounded-xl p-5 border-l-4 border-emerald-500 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-blue-100 p-2 rounded-full">
-                            <span class="text-blue-500 text-xl p-0">👥</span>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Directory</p>
+                            <p class="text-xs text-gray-500 font-medium">Total Customers</p>
+                            <p class="text-2xl font-black text-gray-800 mt-1">{{ totalCustomers }}</p>
                         </div>
-                        <div class="text-right">
-                            <p class="text-gray-500 text-sm">Total Customers</p>
-                            <p class="text-lg font-bold text-gray-800">{{ totalCustomers }}</p>
+                        <div class="bg-emerald-50 text-emerald-600 p-3 rounded-xl">
+                            <i class="bi bi-people text-2xl"></i>
                         </div>
                     </div>
-                    <div class="text-sm text-green-500 mb-2">
-                        <span
-                            :class="{
-                                'text-green-500': percentageChangeCustomer > 0,
-                                'text-red-500': percentageChangeCustomer < 0,
-                                'text-gray-500': percentageChangeCustomer === 0
-                            }"
-                        >
-                            {{ percentageChangeCustomer > 0 ? '▲' : percentageChangeCustomer < 0 ? '▼' : '–' }}
-                            {{ percentageChangeCustomer }}%
+                    <div class="flex items-center justify-between mt-4 border-t border-gray-100 pt-3">
+                        <span class="text-xs text-gray-400">
+                            Growth: 
+                            <span :class="['font-bold', percentageChangeCustomer >= 0 ? 'text-emerald-500' : 'text-rose-500']">
+                                {{ percentageChangeCustomer >= 0 ? '▲' : '▼' }} {{ Math.abs(percentageChangeCustomer) }}%
+                            </span>
                         </span>
-
-                        <span class="text-gray-500">Since Last Month</span>
+                        <a :href="route('customer')" class="text-xs text-emerald-600 font-bold hover:underline">Manage Customers →</a>
                     </div>
-                    <a :href="route('customer')" class="text-sm text-blue-500 font-medium">Manage Customers</a>
-                </div>
-                
-                <!-- Total Suppliers -->
-                <div
-                    class="bg-white shadow rounded-lg p-4 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                    <p class="font-semibold text-gray-400 mb-2 uppercase">Suppliers Overview</p>
-                    <div class="flex items-center justify-between mb-4">
-                        <div class="bg-blue-100 p-2 rounded-full">
-                            <span class="text-blue-500 text-xl p-0">👥</span>
-                        </div>
-                        <div class="text-right">
-                            <p class="text-gray-500 text-sm">Total Suppliers</p>
-                            <p class="text-lg font-bold text-gray-800">{{ totalSuppliers }}</p>
-                        </div>
-                    </div>
-                    <div class="text-sm text-green-500 mb-2">
-                        <span
-                            :class="{
-                                'text-green-500': percentageChangeSupplier > 0,
-                                'text-red-500': percentageChangeSupplier < 0,
-                                'text-gray-500': percentageChangeSupplier === 0
-                            }"
-                        >
-                            {{ percentageChangeSupplier > 0 ? '▲' : percentageChangeSupplier < 0 ? '▼' : '–' }}
-                            {{ percentageChangeSupplier }}%
-                        </span>
-
-                        <span class="text-gray-500">Since Last Month</span>
-                    </div>
-                    <a :href="route('supplier')" class="text-sm text-blue-500 font-medium">Manage Suppliers</a>
                 </div>
 
-                <!-- Products In Stock -->
-                <div
-                    class="bg-white shadow rounded-lg p-4 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                    <p class="font-semibold text-gray-400 mb-2 uppercase">Inventory Status</p>
+                <!-- Card 4: Total Suppliers -->
+                <div class="bg-white shadow rounded-xl p-5 border-l-4 border-teal-500 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-green-100 p-2 rounded-full">
-                            <span class="text-green-500 text-xl p-0">✅</span>
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Directory</p>
+                            <p class="text-xs text-gray-500 font-medium">Total Suppliers</p>
+                            <p class="text-2xl font-black text-gray-800 mt-1">{{ totalSuppliers }}</p>
                         </div>
-                        <div class="text-right">
-                            <p class="text-gray-500 text-sm">Products in Stock</p>
-                            <p class="text-lg font-bold text-gray-800">{{ totalStockProducts }}</p>
+                        <div class="bg-teal-50 text-teal-600 p-3 rounded-xl">
+                            <i class="bi bi-truck text-2xl"></i>
                         </div>
                     </div>
-                    <div class="text-sm text-green-500 mb-2">
-                        <span
-                            :class="{
-                                'text-green-500': percentageChangePurchases > 0,
-                                'text-red-500': percentageChangePurchases < 0,
-                                'text-gray-500': percentageChangePurchases === 0
-                            }"
-                        >
-                            {{ percentageChangePurchases > 0 ? '▲' : percentageChangePurchases < 0 ? '▼' : '–' }}
-                            {{ percentageChangePurchases }}%
+                    <div class="flex items-center justify-between mt-4 border-t border-gray-100 pt-3">
+                        <span class="text-xs text-gray-400">
+                            Growth: 
+                            <span :class="['font-bold', percentageChangeSupplier >= 0 ? 'text-emerald-500' : 'text-rose-500']">
+                                {{ percentageChangeSupplier >= 0 ? '▲' : '▼' }} {{ Math.abs(percentageChangeSupplier) }}%
+                            </span>
                         </span>
-                        <span class="text-gray-500">Since Last Month</span></div>
-                    <a :href="route('purchase')" class="text-sm text-blue-500 font-medium">View Inventory</a>
+                        <a :href="route('supplier')" class="text-xs text-teal-600 font-bold hover:underline">Manage Suppliers →</a>
+                    </div>
                 </div>
 
-                <!-- Products In Sales -->
-                <div
-                    class="bg-white shadow rounded-lg p-4 border border-gray-200 hover:shadow-lg transition-shadow duration-300">
-                    <p class="font-semibold text-gray-400 mb-2 uppercase">Inventory Status</p>
+                <!-- Card 5: Customer Outstanding Due -->
+                <div class="bg-rose-50/30 shadow rounded-xl p-5 border-l-4 border-rose-500 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
                     <div class="flex items-center justify-between mb-4">
-                        <div class="bg-green-100 p-2 rounded-full">
-                            <span class="text-green-500 text-xl p-0">✅</span>
+                        <div>
+                            <p class="text-[10px] font-bold text-rose-500 uppercase tracking-wider mb-1">Receivables</p>
+                            <p class="text-xs text-gray-500 font-medium">Customer Dues</p>
+                            <p class="text-2xl font-black text-rose-600 font-mono mt-1">₹ {{ parseFloat(totalCustomerDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</p>
                         </div>
-                        <div class="text-right">
-                            <p class="text-gray-500 text-sm">Products in Sale</p>
-                            <p class="text-lg font-bold text-gray-800">{{ totalSaleProducts }}</p>
+                        <div class="bg-rose-100/60 text-rose-600 p-3 rounded-xl">
+                            <i class="bi bi-cash-coin text-2xl"></i>
                         </div>
                     </div>
-                    <div class="text-sm text-green-500 mb-2">
-                        <span
-                            :class="{
-                                'text-green-500': percentageChangeSale > 0,
-                                'text-red-500': percentageChangeSale < 0,
-                                'text-gray-500': percentageChangeSale === 0
-                            }"
-                        >
-                            {{ percentageChangeSale > 0 ? '▲' : percentageChangeSale < 0 ? '▼' : '–' }}
-                            {{ percentageChangeSale }}%
-                        </span>
+                    <div class="flex items-center justify-between mt-4 border-t border-rose-100/30 pt-3">
+                        <span class="text-xs text-gray-400">Unpaid sales invoices</span>
+                        <a :href="route('sale')" class="text-xs text-rose-600 font-bold hover:underline">View Sales →</a>
+                    </div>
+                </div>
 
-                        <span class="text-gray-500">Since Last Month</span>
+                <!-- Card 6: Supplier Outstanding Due -->
+                <div class="bg-amber-50/30 shadow rounded-xl p-5 border-l-4 border-amber-500 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-amber-500 uppercase tracking-wider mb-1">Payables</p>
+                            <p class="text-xs text-gray-500 font-medium">Supplier Dues</p>
+                            <p class="text-2xl font-black text-amber-600 font-mono mt-1">₹ {{ parseFloat(totalSupplierDue).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}</p>
+                        </div>
+                        <div class="bg-amber-100/60 text-amber-600 p-3 rounded-xl">
+                            <i class="bi bi-wallet2 text-2xl"></i>
+                        </div>
                     </div>
-                    <a :href="route('sale')" class="text-sm text-blue-500 font-medium">View Inventory</a>
+                    <div class="flex items-center justify-between mt-4 border-t border-amber-100/30 pt-3">
+                        <span class="text-xs text-gray-400">Unpaid purchase bills</span>
+                        <a :href="route('purchase')" class="text-xs text-amber-600 font-bold hover:underline">View Purchases →</a>
+                    </div>
+                </div>
+
+                <!-- Card 7: Products In Stock -->
+                <div class="bg-white shadow rounded-xl p-5 border-l-4 border-cyan-500 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Inventory</p>
+                            <p class="text-xs text-gray-500 font-medium">Items In Stock</p>
+                            <p class="text-2xl font-black text-gray-800 mt-1">{{ totalStockProducts }}</p>
+                        </div>
+                        <div class="bg-cyan-50 text-cyan-600 p-3 rounded-xl">
+                            <i class="bi bi-archive text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-4 border-t border-gray-100 pt-3">
+                        <span class="text-xs text-gray-400">
+                            Purchases: 
+                            <span :class="['font-bold', percentageChangePurchases >= 0 ? 'text-emerald-500' : 'text-rose-500']">
+                                {{ percentageChangePurchases >= 0 ? '▲' : '▼' }} {{ Math.abs(percentageChangePurchases) }}%
+                            </span>
+                        </span>
+                        <a :href="route('purchase')" class="text-xs text-cyan-600 font-bold hover:underline">View Inventory →</a>
+                    </div>
+                </div>
+
+                <!-- Card 8: Total Items Sold -->
+                <div class="bg-white shadow rounded-xl p-5 border-l-4 border-slate-500 hover:-translate-y-1 hover:shadow-lg transition-all duration-300">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">Performance</p>
+                            <p class="text-xs text-gray-500 font-medium">Total Items Sold</p>
+                            <p class="text-2xl font-black text-gray-800 mt-1">{{ totalSaleProducts }}</p>
+                        </div>
+                        <div class="bg-slate-50 text-slate-600 p-3 rounded-xl">
+                            <i class="bi bi-cart-check text-2xl"></i>
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-4 border-t border-gray-100 pt-3">
+                        <span class="text-xs text-gray-400">
+                            Sales: 
+                            <span :class="['font-bold', percentageChangeSale >= 0 ? 'text-emerald-500' : 'text-rose-500']">
+                                {{ percentageChangeSale >= 0 ? '▲' : '▼' }} {{ Math.abs(percentageChangeSale) }}%
+                            </span>
+                        </span>
+                        <a :href="route('sale')" class="text-xs text-slate-600 font-bold hover:underline">View Sales →</a>
+                    </div>
                 </div>
 
             </div>
@@ -465,7 +473,7 @@ const bars = computed(() => {
                                     <span class="w-2 h-2 rounded-full bg-emerald-500"></span> Sales:
                                 </span>
                                 <span class="font-mono font-bold text-emerald-400 text-right">
-                                    ${{ parseFloat(profitLossData[hoveredIndex].sales).toFixed(2) }}
+                                    ₹{{ parseFloat(profitLossData[hoveredIndex].sales).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                                 </span>
                             </div>
                             <div class="flex items-center justify-between gap-4 mb-1">
@@ -473,7 +481,7 @@ const bars = computed(() => {
                                     <span class="w-2 h-2 rounded-full bg-rose-500"></span> Purchases:
                                 </span>
                                 <span class="font-mono font-bold text-rose-400 text-right">
-                                    ${{ parseFloat(profitLossData[hoveredIndex].purchases).toFixed(2) }}
+                                    ₹{{ parseFloat(profitLossData[hoveredIndex].purchases).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                                 </span>
                             </div>
                             <div class="flex items-center justify-between gap-4 mb-1.5">
@@ -481,13 +489,13 @@ const bars = computed(() => {
                                     <span class="w-2 h-2 rounded-full bg-amber-500"></span> Expenses:
                                 </span>
                                 <span class="font-mono font-bold text-amber-400 text-right">
-                                    ${{ parseFloat(profitLossData[hoveredIndex].expenses).toFixed(2) }}
+                                    ₹{{ parseFloat(profitLossData[hoveredIndex].expenses).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                                 </span>
                             </div>
                             <div class="flex items-center justify-between gap-4 border-t border-slate-700 pt-1.5 font-semibold">
                                 <span class="text-gray-300">Net Profit:</span>
                                 <span :class="['font-mono text-right', profitLossData[hoveredIndex].profit >= 0 ? 'text-blue-400' : 'text-rose-400']">
-                                    ${{ parseFloat(profitLossData[hoveredIndex].profit).toFixed(2) }}
+                                    ₹{{ parseFloat(profitLossData[hoveredIndex].profit).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                                 </span>
                             </div>
                         </div>
