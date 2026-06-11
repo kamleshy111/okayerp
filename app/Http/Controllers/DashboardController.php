@@ -15,6 +15,8 @@ use App\Models\PurchaseItem;
 use App\Models\Sale;
 use App\Models\Purchase;
 use App\Models\Expense;
+use App\Models\SaleReturn;
+use App\Models\PurchaseReturn;
 use DB;
 use Carbon\Carbon;
 
@@ -139,6 +141,13 @@ class DashboardController extends Controller
                             ->where('sales.accepted', 1)
                             ->sum('sale_items.quantity');
 
+        $returnedSaleProducts = \DB::table('sale_returns')
+                            ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                            ->where('sale_returns.user_id', $userId)
+                            ->sum('sale_return_items.quantity');
+
+        $totalSaleProducts = max(0, $totalSaleProducts - $returnedSaleProducts);
+
         //purchases product  percentage Change
         $lastMonthPurchases = \DB::table('purchase_items')
                             ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
@@ -149,6 +158,15 @@ class DashboardController extends Controller
                             ->whereYear('purchase_items.created_at', $previousMonth->year)
                             ->sum('purchase_items.quantity');
 
+        $lastMonthPurchaseReturns = \DB::table('purchase_returns')
+                            ->join('purchase_return_items', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
+                            ->where('purchase_returns.user_id', $userId)
+                            ->whereMonth('purchase_returns.return_date', $previousMonth->month)
+                            ->whereYear('purchase_returns.return_date', $previousMonth->year)
+                            ->sum('purchase_return_items.quantity');
+
+        $lastMonthPurchases = max(0, $lastMonthPurchases - $lastMonthPurchaseReturns);
+
         $thisMonthPurchases = \DB::table('purchase_items')
                             ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
                             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
@@ -157,6 +175,15 @@ class DashboardController extends Controller
                             ->whereMonth('purchase_items.created_at', $now->month)
                             ->whereYear('purchase_items.created_at', $now->year)
                             ->sum('purchase_items.quantity');
+
+        $thisMonthPurchaseReturns = \DB::table('purchase_returns')
+                            ->join('purchase_return_items', 'purchase_returns.id', '=', 'purchase_return_items.purchase_return_id')
+                            ->where('purchase_returns.user_id', $userId)
+                            ->whereMonth('purchase_returns.return_date', $now->month)
+                            ->whereYear('purchase_returns.return_date', $now->year)
+                            ->sum('purchase_return_items.quantity');
+
+        $thisMonthPurchases = max(0, $thisMonthPurchases - $thisMonthPurchaseReturns);
 
         $percentageChangePurchases = 0;
         if ($lastMonthPurchases > 0) {
@@ -175,6 +202,15 @@ class DashboardController extends Controller
                             ->whereYear('sales.created_at', $previousMonth->year)
                             ->sum('sale_items.quantity');
 
+        $lastMonthSaleReturns = \DB::table('sale_returns')
+                            ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                            ->where('sale_returns.user_id', $userId)
+                            ->whereMonth('sale_returns.return_date', $previousMonth->month)
+                            ->whereYear('sale_returns.return_date', $previousMonth->year)
+                            ->sum('sale_return_items.quantity');
+
+        $lastMonthSales = max(0, $lastMonthSales - $lastMonthSaleReturns);
+
         $thisMonthSales = \DB::table('sales')
                             ->join('customers', 'sales.customer_id', '=', 'customers.id')
                             ->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
@@ -183,6 +219,15 @@ class DashboardController extends Controller
                             ->whereMonth('sales.created_at', $now->month)
                             ->whereYear('sales.created_at', $now->year)
                             ->sum('sale_items.quantity');
+
+        $thisMonthSaleReturns = \DB::table('sale_returns')
+                            ->join('sale_return_items', 'sale_returns.id', '=', 'sale_return_items.sale_return_id')
+                            ->where('sale_returns.user_id', $userId)
+                            ->whereMonth('sale_returns.return_date', $now->month)
+                            ->whereYear('sale_returns.return_date', $now->year)
+                            ->sum('sale_return_items.quantity');
+
+        $thisMonthSales = max(0, $thisMonthSales - $thisMonthSaleReturns);
 
         $percentageChangeSale = 0;
         if ($lastMonthSales > 0) {
@@ -234,23 +279,39 @@ class DashboardController extends Controller
                 ->whereYear('created_at', $year)
                 ->sum('grand_total');
 
+            $salesReturnSum = SaleReturn::where('user_id', $userId)
+                ->whereMonth('return_date', $month)
+                ->whereYear('return_date', $year)
+                ->get()
+                ->sum(fn($r) => $r->refund_amount + $r->gst_refund_amount);
+
+            $netSales = max(0, $salesSum - $salesReturnSum);
+
             $purchasesSum = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
                 ->where('accepted', 1)
                 ->whereMonth('created_at', $month)
                 ->whereYear('created_at', $year)
                 ->sum('grand_total');
 
+            $purchasesReturnSum = PurchaseReturn::where('user_id', $userId)
+                ->whereMonth('return_date', $month)
+                ->whereYear('return_date', $year)
+                ->get()
+                ->sum(fn($r) => $r->refund_amount + $r->gst_refund_amount);
+
+            $netPurchases = max(0, $purchasesSum - $purchasesReturnSum);
+
             $expensesSum = Expense::where('user_id', $userId)
                 ->whereMonth('date', $month)
                 ->whereYear('date', $year)
                 ->sum('amount');
 
-            $profit = $salesSum - $purchasesSum - $expensesSum;
+            $profit = $netSales - $netPurchases - $expensesSum;
 
             $profitLossData[] = [
                 'month' => $monthName,
-                'sales' => round($salesSum, 2),
-                'purchases' => round($purchasesSum, 2),
+                'sales' => round($netSales, 2),
+                'purchases' => round($netPurchases, 2),
                 'expenses' => round($expensesSum, 2),
                 'profit' => round($profit, 2),
             ];
