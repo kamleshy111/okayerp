@@ -298,6 +298,20 @@ const finalBalance = computed(() => {
   }
 });
 
+const advanceApplied = computed(() => {
+  if (!supplierData.value) return 0;
+  const previousAdvance = parseFloat(supplierData.value.advance_amount) || 0;
+  const paidNow = parseFloat(form.value.paid) || 0;
+  return Math.min(previousAdvance, Math.max(0, grandTotal.value - paidNow));
+});
+
+const dueReduced = computed(() => {
+  if (!supplierData.value) return 0;
+  const previousDue = parseFloat(supplierData.value.due_amount) || 0;
+  const paidNow = parseFloat(form.value.paid) || 0;
+  return Math.min(previousDue, Math.max(0, paidNow - grandTotal.value));
+});
+
 //end
 
 
@@ -609,6 +623,17 @@ const submitForm = async () => {
                     <span class="text-red-600 font-bold">₹ {{ supplierData.due_amount }}</span>
                 </div>
 
+                <!-- Wallet / Due Adjustments -->
+                <div v-if="advanceApplied > 0" class="flex justify-between items-center text-sm text-gray-500">
+                    <span>Advance Applied</span>
+                    <span class="font-medium text-blue-600">- ₹ {{ advanceApplied.toFixed(2) }}</span>
+                </div>
+
+                <div v-if="dueReduced > 0" class="flex justify-between items-center text-sm text-gray-500">
+                    <span>Applied to Previous Due</span>
+                    <span class="font-medium text-green-600">- ₹ {{ dueReduced.toFixed(2) }}</span>
+                </div>
+
                 <!-- Final Balance after this payment -->
                 <div v-if="finalBalance?.type === 'advance'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Final Advance</span>
@@ -618,6 +643,11 @@ const submitForm = async () => {
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Final Due</span>
                     <span class="text-red-600 font-bold">₹ {{ finalBalance.amount }}</span>
+                </div>
+
+                <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center">
+                    <span class="text-gray-700 font-semibold">Final Balance</span>
+                    <span class="text-gray-600 font-bold">₹ 0.00 (Clear)</span>
                 </div>
 
                 <!-- Payment Status -->
