@@ -13,7 +13,7 @@ defineProps({
 });
 
 const columns = [
-    { 
+    {
         data: null,
         title: 'S No',
         render: (data, type, row, meta) => meta.row + 1,
@@ -21,23 +21,23 @@ const columns = [
     { data: 'estimate_no', title: 'Estimate No' },
     { data: 'customer_name', title: 'Customer' },
     { data: 'customer_phone', title: 'Phone' },
-    { 
-        data: 'grand_total', 
+    {
+        data: 'grand_total',
         title: 'Grand Total',
         render: (data) => `₹ ${parseFloat(data || 0).toFixed(2)}`
     },
-    { 
-        data: 'estimate_date', 
+    {
+        data: 'estimate_date',
         title: 'Estimate Date',
         render: (data) => data ? new Date(data).toLocaleDateString('en-GB').replace(/\//g, '-') : '-'
     },
-    { 
-        data: 'expiry_date', 
+    {
+        data: 'expiry_date',
         title: 'Expiry Date',
         render: (data) => data ? new Date(data).toLocaleDateString('en-GB').replace(/\//g, '-') : '-'
     },
-    { 
-        data: 'status', 
+    {
+        data: 'status',
         title: 'Status',
         render: (data) => {
             let badgeClass = 'bg-gray-100 text-gray-800';
@@ -54,7 +54,7 @@ const columns = [
         title: 'Actions',
         data: null,
         orderable: false,
-        searchable: false, 
+        searchable: false,
         render: (data, type, row) => {
             let convertBtn = '';
             if (data.status !== 'Invoiced') {
@@ -118,15 +118,18 @@ function deleteEstimate(estimateId) {
 <template>
     <Head title="Estimates & Quotations">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    </Head>  
+    </Head>
 
     <AuthenticatedLayout>
       <div class="p-6">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-3xl font-bold text-[#2e2c92]">Quotations / Estimates</h1>
+          <span class="flex items-center gap-2">
+            <h1 class="text-3xl font-bold text-[#2e2c92] sm:block hidden">Quotations /</h1>
+            <h1 class="text-3xl font-bold text-[#2e2c92]"> Estimates</h1>
+          </span>
           <div class="flex items-center gap-4">
             <a :href="route('estimate.create')" class="hover:bg-[#2e2c92] hover:text-white border border-[#2e2c92] text-[#2e2c92] px-4 py-2 rounded-lg font-medium transition duration-200">
-                <span>+ Create Estimate</span>
+                <span>+ Add</span>
             </a>
           </div>
         </div>

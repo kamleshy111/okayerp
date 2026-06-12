@@ -241,7 +241,8 @@ const submitForm = async () => {
                 <h3 class="text-2xl font-bold mb-4 text-[#292688]">Sale Items</h3>
             </div>
 
-            <table class="w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
+            <!-- Desktop view: Table layout -->
+            <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
                 <thead class="bg-[#292688] text-white">
                     <tr>
                         <th class="px-4 py-2 text-left">Product</th>
@@ -299,24 +300,92 @@ const submitForm = async () => {
                     </tr>
                 </tbody>
             </table>
-            <div class="flex justify-end mt-5">
-                <button @click="openPaymentModal" class="bg-blue-600 text-white px-4 py-2 rounded">
-                Submit & Proceed to Payment
+
+            <!-- Mobile view: Card list of items -->
+            <div class="md:hidden space-y-4">
+                <div v-for="(item, index) in form.sale_items" :key="'mobile-' + index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                    <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                        <span class="font-bold text-sm text-[#292688]">Item #{{ index + 1 }}</span>
+                        <button @click="removeRow(index)" type="button" class="text-red-600 hover:text-red-800 text-sm font-semibold flex items-center gap-1">
+                            <i class="fa fa-trash"></i> Remove
+                        </button>
+                    </div>
+                    
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Product</label>
+                            <select name="product_id" v-model="item.product_id"
+                                class="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm">
+                                <option value="" disabled>Select Product</option>
+                                <option v-for="product in products" :key="product.id" :value="product.id">
+                                    {{ product.name }}
+                                </option>
+                            </select>
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
+                                <input type="number" v-model="item.quantity" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
+                                    placeholder="Qty" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Price</label>
+                                <input type="number" v-model="item.price" required
+                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
+                                    placeholder="Price" />
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500">
+                            <div>
+                                <span class="block text-gray-400">GST</span>
+                                <span class="text-gray-800 font-semibold">{{ (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0) }} %</span>
+                            </div>
+                            <div>
+                                <span class="block text-gray-400">Unit Type</span>
+                                <span class="text-gray-800 font-semibold">{{ item.unit_type || 'N/A' }}</span>
+                            </div>
+                            <div>
+                                <span class="block text-gray-400">Net Amount</span>
+                                <span class="text-gray-800 font-bold">₹ {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button @click="addRow" type="button"
+                    class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-sm">
+                    <i class="fa fa-plus-circle"></i> Add Items
+                </button>
+            </div>
+
+            <div class="flex justify-end mt-6">
+                <button @click="openPaymentModal" class="w-full md:w-auto bg-[#2E2C92] hover:bg-[#1d1b6a] text-white px-6 py-3 rounded-xl font-semibold transition shadow-md hover:shadow-lg">
+                    Submit & Proceed to Payment
                 </button>
             </div>
         </div>
     </div>
     <!-- Payment Modal -->
-    <div v-if="showPaymentModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-        <div class="bg-white p-6 rounded-xl w-96">
-            <h2 class="text-2xl font-bold mb-4">Payment Details</h2>
+    <div v-if="showPaymentModal" 
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
+         style="z-index: 9999;">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                <h2 class="text-xl font-bold text-[#292688]">Payment Details</h2>
+                <button @click="showPaymentModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="fa fa-close"></i>
+                </button>
+            </div>
             
-            <div class="mt-6 space-y-4 border-t pt-4">
+            <div class="space-y-4 border-t pt-4">
 
                 <div class="flex justify-between items-center">
                     <label class="inline-flex items-center space-x-2">
                         <input type="checkbox" v-model="form.accepted" class="form-checkbox h-5 w-5 text-[#292688]">
-                        <span class="text-sm text-gray-700">Apply To GST</span>
+                        <span class="text-sm text-gray-700 font-semibold">Apply To GST</span>
                     </label>
                 </div>
 
@@ -372,15 +441,15 @@ const submitForm = async () => {
                     <span class="text-red-600 font-bold">₹ {{ dueAmount.amount }}</span>
                 </div> 
 
-                <div class="flex justify-between items-center">
+                <div class="flex justify-between items-center pb-4 border-b border-gray-100">
                     <span class="text-gray-700 font-semibold">Payment Status</span>
                     <span class="text-blue-600 font-bold">{{ paymentStatus }}</span>
                 </div>
 
                 <!-- Submit Button -->
-                <div class="flex justify-between">
-                    <button @click="submitForm" class="bg-green-600 text-white px-4 py-2 rounded">Final Submit</button>
-                    <button @click="showPaymentModal = false" class="bg-gray-300 text-black px-4 py-2 rounded">Cancel</button>
+                <div class="flex justify-end gap-3 pt-2">
+                    <button @click="showPaymentModal = false" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer">Cancel</button>
+                    <button @click="submitForm" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer">Final Submit</button>
                 </div>
             </div>
         </div>
