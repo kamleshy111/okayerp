@@ -14,17 +14,17 @@ const props = defineProps({
 
 // Column definitions for DataTable
 const columns = [
-  { 
+  {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
   },
-  { 
+  {
     data: 'name',
     title: 'Role Name',
     render: (data) => `<span class="capitalize font-semibold">${data}</span>`
   },
-  { 
+  {
     data: 'permissions',
     title: 'Permissions',
     render: (data) => {
@@ -33,7 +33,7 @@ const columns = [
         ${data.map(p => `<span class="bg-blue-100 text-[#292688] text-xs px-2 py-0.5 rounded">${p}</span>`).join('')}
       </div>`;
     }
-  },  
+  },
   {
     title: 'Actions',
     data: null,
@@ -120,10 +120,10 @@ function deleteRole(roleId) {
   <AuthenticatedLayout>
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold text-gray-800">Roles Management</h1>
+        <span class="flex gap-2"><h1 class="text-3xl font-bold text-gray-800">Roles</h1><h1 class="text-3xl font-bold text-gray-800 sm:block hidden">Management</h1></span>
         <div>
           <a :href="route('role.create')"
-             class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium transition">
+             class="flex items-center gap-2 bg-[#2e2c92] text-white hover:bg-[#1d1b6a] px-5 py-2.5 rounded-xl font-semibold transition-all duration-300 shadow-md hover:shadow-lg hover:-translate-y-0.5">
             <span>+ Add Role</span>
           </a>
         </div>
@@ -141,7 +141,7 @@ function deleteRole(roleId) {
           </thead>
         </DataTable>
       </div>
-    </div> 
+    </div>
   </AuthenticatedLayout>
 </template>
 
