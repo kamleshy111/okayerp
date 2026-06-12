@@ -33,7 +33,7 @@ class AgingReportController extends Controller
                 $paymentQuery->where('accepted', 1);
                 $saleQuery->where('accepted', 1);
             }
-            $totalPayments = $paymentQuery->sum('amount');
+            $totalPayments = $paymentQuery->whereNull('sale_id')->sum('amount');
             $sales = $saleQuery->orderBy('created_at', 'asc')->get();
 
             $buckets = [

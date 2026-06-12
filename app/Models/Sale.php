@@ -28,4 +28,9 @@ class Sale extends Model
     {
         return $this->belongsTo(Estimate::class);
     }
+
+    public function payments()
+    {
+        return $this->hasMany(SalePayment::class);
+    }
 }

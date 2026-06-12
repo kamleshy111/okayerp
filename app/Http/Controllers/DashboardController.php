@@ -317,15 +317,47 @@ class DashboardController extends Controller
             ];
         }
 
-        $totalCustomerDue = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-                            ->where('accepted', 1)
-                            ->get()
-                            ->sum(fn($s) => max(0, (float)$s->grand_total - (float)$s->paid));
+        $privateLedgerUnlocked = session('private_ledger_unlocked') === true;
 
-        $totalSupplierDue = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
-                            ->where('accepted', 1)
-                            ->get()
-                            ->sum(fn($p) => max(0, (float)$p->grand_total - (float)$p->paid));
+        $customers = Customer::where('user_id', $userId)
+            ->with(['sales' => function ($q) use ($privateLedgerUnlocked) {
+                if (!$privateLedgerUnlocked) {
+                    $q->where('accepted', 1);
+                }
+            }, 'payments' => function ($q) use ($privateLedgerUnlocked) {
+                if (!$privateLedgerUnlocked) {
+                    $q->where('accepted', 1);
+                }
+            }])
+            ->get();
+        
+        $totalCustomerDue = $customers->sum(function ($customer) {
+            $totalSaleAmount = $customer->sales->sum('grand_total');
+            $totalSalePaid = $customer->sales->sum('paid');
+            $totalDirectPaid = $customer->payments->where('sale_id', null)->sum('amount');
+            $balance = $totalSalePaid + $totalDirectPaid - $totalSaleAmount;
+            return $balance < 0 ? abs($balance) : 0;
+        });
+
+        $suppliers = Supplier::where('user_id', $userId)
+            ->with(['purchases' => function ($q) use ($privateLedgerUnlocked) {
+                if (!$privateLedgerUnlocked) {
+                    $q->where('accepted', 1);
+                }
+            }, 'purchasePayments' => function ($q) use ($privateLedgerUnlocked) {
+                if (!$privateLedgerUnlocked) {
+                    $q->where('accepted', 1);
+                }
+            }])
+            ->get();
+
+        $totalSupplierDue = $suppliers->sum(function ($supplier) {
+            $totalPurchaseAmount = $supplier->purchases->sum('grand_total');
+            $totalPurchasePaid = $supplier->purchases->sum('paid');
+            $totalDirectPaid = $supplier->purchasePayments->sum('amount');
+            $balance = $totalPurchasePaid + $totalDirectPaid - $totalPurchaseAmount;
+            return $balance < 0 ? abs($balance) : 0;
+        });
 
         return Inertia::render('Dashboard', [
             'role' => $role,
