@@ -15,6 +15,9 @@ defineProps({
   },
 });
 
+// Emits
+const emit = defineEmits(['close-sidebar']);
+
 const hasPermission = (permission) => {
   return page.props.auth.user?.permissions?.includes(permission);
 };
@@ -26,10 +29,25 @@ onMounted(() => {
 
 <template>
   <!-- Sidebar -->
-  <div>
-    <nav class="flex-1">
-      <ul class="space-y-1.5 pl-3 mt-6">
-        
+  <div class="flex flex-col h-full">
+    <!-- Sidebar Header (Logo/Title & Close Button for mobile) -->
+    <div class="flex items-center justify-between px-4 h-16 border-b border-indigo-700/50">
+        <span class="text-xl font-black tracking-wider text-white">
+            <a :href="route('dashboard')" class="flex items-center gap-3 px-4 py-2 rounded-l-full"> OkayERP </a>
+        </span>
+        <!-- Close button visible only on mobile -->
+        <button @click="emit('close-sidebar')"
+            class="text-indigo-200 hover:text-white md:hidden focus:outline-none"
+        >
+            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+        </button>
+    </div>
+
+    <nav class="flex-1 overflow-y-auto">
+      <ul class="space-y-1.5 pl-3 mt-4 pb-6">
+
         <!-- Dashboard -->
         <li :class="{ 'active': route().current('dashboard') }">
           <a
@@ -52,7 +70,7 @@ onMounted(() => {
           >
             <i class="bi bi-cart3 text-xl"></i> <span>Sales</span>
           </a>
-        </li> 
+        </li>
 
         <li v-if="role === 'store' && hasPermission('sale manage')" :class="{ 'active': route().current('estimate*') }">
           <a
@@ -134,7 +152,7 @@ onMounted(() => {
           >
             <i class="bi bi-bag-plus text-xl"></i> <span>Purchase</span>
           </a>
-        </li> 
+        </li>
 
         <li v-if="role === 'store' && hasPermission('purchase manage')" :class="{ 'active': route().current('purchase-return*') }">
           <a
@@ -152,7 +170,7 @@ onMounted(() => {
           >
             <i class="bi bi-credit-card text-xl"></i> <span>Suppliers Payments</span>
           </a>
-        </li> 
+        </li>
 
         <li v-if="role === 'store' && hasPermission('supplier manage')" :class="{ 'active': route().current('supplier*') }">
           <a
