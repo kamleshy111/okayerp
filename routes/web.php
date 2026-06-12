@@ -55,9 +55,6 @@ Route::middleware(['auth'])->group(function () {
     //user switch stop
     Route::get('/switch/stop', [StoresController::class, 'user_switch_stop'])->name('switch.stop');
 
-    // Audit Logs
-    Route::get('/audit-logs', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit-logs.index');
-
 });
 
 Route::middleware(['auth', 'role:admin'])->group(function () {
@@ -222,6 +219,9 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::get('/reports/aging', [AgingReportController::class, 'index'])->name('reports.aging');
     Route::get('/reports/ledger', [LedgerController::class, 'index'])->name('reports.ledger');
     Route::post('/reports/ledger/repost', [LedgerController::class, 'repost'])->name('reports.ledger.repost');
+
+    // Audit Logs
+    Route::get('/audit-logs', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit-logs.index');
 
     // Private Ledger
     Route::get('/private-ledger', [PrivateSaleController::class, 'index'])->name('private.index');
