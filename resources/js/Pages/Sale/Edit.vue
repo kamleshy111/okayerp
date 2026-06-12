@@ -42,6 +42,7 @@ const form = ref({
     accepted: sales.accepted  === 1,
     paid: sales.paid,
     payment_method: sales.payment_method,
+    discount: sales.discount || 0,
     sale_items: productItems.map(item => ({
                     product_id: item.product_id,
                     quantity: item.quantity,
@@ -122,7 +123,9 @@ const totalAmount = computed(() => {
 });
 
 const grandTotal = computed(() => {
-    return totalAmount.value + totalGST.value;
+    let total = totalAmount.value + totalGST.value;
+    total -= form.value.discount || 0;
+    return total;
 });
 
 const dueAmount = computed(() => {
@@ -310,6 +313,14 @@ const submitForm = async () => {
     <div v-if="showPaymentModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
         <div class="bg-white p-6 rounded-xl w-96">
             <h2 class="text-2xl font-bold mb-4">Payment Details</h2>
+
+            <!-- Discount Amount -->
+            <div class="flex justify-between items-center">
+                <label class="text-gray-700 font-medium">Discount</label>
+                <input type="number" v-model="form.discount"
+                    class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                    placeholder="₹0.00" min="0" />
+            </div>
             
             <div class="mt-6 space-y-4 border-t pt-4">
 

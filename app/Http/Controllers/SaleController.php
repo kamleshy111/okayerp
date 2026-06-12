@@ -354,6 +354,7 @@ class SaleController extends Controller
                     'paid'  => $request->input('paid') ?? 0.00,
                     'payment_method' => $request->input('payment_method') ?? "",
                     'payment_status' => $request->input('payment_status') ?? "Unpaid",
+                    'discount'  => $request->input('discount') ?? 0,
                 ]);
 
                 //SaleItem old get and product in update quantity
