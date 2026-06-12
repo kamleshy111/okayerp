@@ -143,6 +143,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/product/{id}/edit', [ProductController::class, 'edit'])->name('product.edit');
         Route::post('/product/update/{id}', [ProductController::class, 'update'])->name('product.update');
         Route::delete('/product/destroy/{id}', [ProductController::class, 'destroy'])->name('product.destroy');
+        Route::post('/product/import', [ProductController::class, 'import'])->name('product.import');
 
         // Stock Adjustments
         Route::get('/stock-adjustment', [StockMovementController::class, 'index'])->name('stock-adjustment.index');
