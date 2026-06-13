@@ -11,11 +11,16 @@ class PurchasePayment extends Model
     use Auditable;
 
     protected $fillable = [
-        'supplier_id', 'amount', 'payment_date', 'payment_method', 'note', 'accepted'
+        'supplier_id', 'purchase_id', 'amount', 'payment_date', 'payment_method', 'note', 'accepted'
     ];
 
     public function supplier()
     {
         return $this->belongsTo(Supplier::class);
+    }
+
+    public function purchase()
+    {
+        return $this->belongsTo(Purchase::class);
     }
 }

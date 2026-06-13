@@ -155,6 +155,19 @@ class SaleController extends Controller
             $accountingService = new AccountingService($userId);
             $accountingService->postSale($sale);
 
+            // Create a SalePayment record if down payment is made
+            if ($sale->paid > 0) {
+                SalePayment::create([
+                    'customer_id' => $sale->customer_id,
+                    'sale_id' => $sale->id,
+                    'amount' => $sale->paid,
+                    'payment_date' => $sale->created_at ? $sale->created_at->toDateString() : now()->toDateString(),
+                    'payment_method' => $sale->payment_method ?: 'Cash',
+                    'note' => "Payment for Sale Invoice #{$sale->id}",
+                    'accepted' => $sale->accepted,
+                ]);
+            }
+
             DB::commit();
 
             return response()->json([
@@ -188,7 +201,8 @@ class SaleController extends Controller
         $totalPurchasePaid = $sale->sum('paid');
 
         $paymentQuery = SalePayment::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-                                      ->where('customer_id', $id);
+                                      ->where('customer_id', $id)
+                                      ->whereNull('sale_id');
         if (session('private_ledger_unlocked') !== true) {
             $paymentQuery->where('accepted', 1);
         }
@@ -235,6 +249,7 @@ class SaleController extends Controller
         $allocatedPayment = 0.0;
         $totalPayments = \App\Models\SalePayment::where('customer_id', $sales->customer_id)
             ->where('accepted', $sales->accepted)
+            ->whereNull('sale_id')
             ->sum('amount');
         $allSales = Sale::where('customer_id', $sales->customer_id)
             ->where('accepted', $sales->accepted)
@@ -339,6 +354,7 @@ class SaleController extends Controller
                     'paid'  => $request->input('paid') ?? 0.00,
                     'payment_method' => $request->input('payment_method') ?? "",
                     'payment_status' => $request->input('payment_status') ?? "Unpaid",
+                    'discount'  => $request->input('discount') ?? 0,
                 ]);
 
                 //SaleItem old get and product in update quantity
@@ -401,6 +417,33 @@ class SaleController extends Controller
                 $accountingService = new AccountingService($userId);
                 $accountingService->postSale($sale);
 
+                // Update or create/delete associated SalePayment
+                $payment = SalePayment::where('sale_id', $sale->id)->first();
+                if ($sale->paid > 0) {
+                    if ($payment) {
+                        $payment->update([
+                            'customer_id' => $sale->customer_id,
+                            'amount' => $sale->paid,
+                            'payment_method' => $sale->payment_method ?: 'Cash',
+                            'accepted' => $sale->accepted,
+                        ]);
+                    } else {
+                        SalePayment::create([
+                            'customer_id' => $sale->customer_id,
+                            'sale_id' => $sale->id,
+                            'amount' => $sale->paid,
+                            'payment_date' => $sale->created_at ? $sale->created_at->toDateString() : now()->toDateString(),
+                            'payment_method' => $sale->payment_method ?: 'Cash',
+                            'note' => "Payment for Sale Invoice #{$sale->id}",
+                            'accepted' => $sale->accepted,
+                        ]);
+                    }
+                } else {
+                    if ($payment) {
+                        $payment->delete();
+                    }
+                }
+
             });
 
             return response()->json(['message' => 'Sale updated successfully.']);
@@ -446,11 +489,19 @@ class SaleController extends Controller
     
         try {
 
+            $accountingService = new AccountingService(Auth::id());
+
             SaleItem::where('sale_id', $id)->delete();
+
+            // Find and delete associated SalePayment
+            $payment = SalePayment::where('sale_id', $id)->first();
+            if ($payment) {
+                $accountingService->clearEntries('SalePayment', $payment->id);
+                $payment->delete();
+            }
 
             $sale->delete();
     
-            $accountingService = new AccountingService(Auth::id());
             $accountingService->clearEntries('Sale', $id);
 
             DB::commit();

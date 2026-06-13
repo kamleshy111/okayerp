@@ -344,6 +344,20 @@ const finalBalance = computed(() => {
   }
 });
 
+const advanceApplied = computed(() => {
+  if (!customerData.value) return 0;
+  const previousAdvance = parseFloat(customerData.value.advance_amount) || 0;
+  const paidNow = parseFloat(form.value.paid) || 0;
+  return Math.min(previousAdvance, Math.max(0, grandTotal.value - paidNow));
+});
+
+const dueReduced = computed(() => {
+  if (!customerData.value) return 0;
+  const previousDue = parseFloat(customerData.value.due_amount) || 0;
+  const paidNow = parseFloat(form.value.paid) || 0;
+  return Math.min(previousDue, Math.max(0, paidNow - grandTotal.value));
+});
+
 //end
 
 
@@ -526,7 +540,7 @@ const submitForm = async () => {
                             <i class="fa fa-trash"></i> Remove
                         </button>
                     </div>
-                    
+
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Product</label>
@@ -539,7 +553,7 @@ const submitForm = async () => {
                                 class="w-full text-black bg-white"
                             />
                         </div>
-                        
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
@@ -586,7 +600,7 @@ const submitForm = async () => {
         </div>
     </div>
     <!-- Payment Modal -->
-    <div v-if="showPaymentModal" 
+    <div v-if="showPaymentModal"
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
@@ -650,16 +664,27 @@ const submitForm = async () => {
                 </div>
 
                 <!-- Previous Balances -->
-                <div v-if="customerData?.advance_amount && customerData.advance_amount !== '0.00' && finalBalance?.type === 'advance'"
+                <div v-if="customerData?.advance_amount && customerData.advance_amount !== '0.00' && customerData.advance_amount !== 0 && customerData.advance_amount !== '0'"
                     class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Before Advance</span>
+                    <span class="text-gray-700 font-semibold">Previous Advance</span>
                     <span class="text-green-600 font-bold">₹ {{ customerData.advance_amount }}</span>
                 </div>
 
-                <div v-if="customerData?.due_amount && customerData.due_amount !== '0.00' && finalBalance?.type === 'due' && (form.paid || 0) <= Number(customerData.due_amount)"
+                <div v-if="customerData?.due_amount && customerData.due_amount !== '0.00' && customerData.due_amount !== 0 && customerData.due_amount !== '0'"
                     class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Before Due</span>
+                    <span class="text-gray-700 font-semibold">Previous Due</span>
                     <span class="text-red-600 font-bold">₹ {{ customerData.due_amount }}</span>
+                </div>
+
+                <!-- Wallet / Due Adjustments -->
+                <div v-if="advanceApplied > 0" class="flex justify-between items-center text-sm text-gray-500">
+                    <span>Advance Applied from Wallet</span>
+                    <span class="font-medium text-blue-600">- ₹ {{ advanceApplied.toFixed(2) }}</span>
+                </div>
+
+                <div v-if="dueReduced > 0" class="flex justify-between items-center text-sm text-gray-500">
+                    <span>Applied to Previous Due</span>
+                    <span class="font-medium text-green-600">- ₹ {{ dueReduced.toFixed(2) }}</span>
                 </div>
 
                 <!-- Final Balance after this payment -->
@@ -671,6 +696,11 @@ const submitForm = async () => {
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Final Due</span>
                     <span class="text-red-600 font-bold">₹ {{ finalBalance.amount }}</span>
+                </div>
+
+                <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center">
+                    <span class="text-gray-700 font-semibold">Final Balance</span>
+                    <span class="text-gray-600 font-bold">₹ 0.00 (Clear)</span>
                 </div>
 
                 <!-- Payment Status -->
@@ -689,8 +719,8 @@ const submitForm = async () => {
     </div>
 
     <!-- Add Customer Modal -->
-    <div v-if="showCustomerModal" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="showCustomerModal"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 99999;"
          @click.self="showCustomerModal = false">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
@@ -731,13 +761,13 @@ const submitForm = async () => {
             <div class="mt-6 flex justify-end gap-3 pt-2">
                 <button
                     @click="showCustomerModal = false"
-                    class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer font-medium"
+                    class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition cursor-pointer font-medium"
                 >
                     Cancel
                 </button>
                 <button
                     @click="submitCustomer"
-                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer font-medium"
+                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition cursor-pointer font-medium"
                 >
                     Save Customer
                 </button>
