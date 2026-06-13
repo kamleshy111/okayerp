@@ -354,7 +354,7 @@ class DashboardController extends Controller
         $totalSupplierDue = $suppliers->sum(function ($supplier) {
             $totalPurchaseAmount = $supplier->purchases->sum('grand_total');
             $totalPurchasePaid = $supplier->purchases->sum('paid');
-            $totalDirectPaid = $supplier->purchasePayments->sum('amount');
+            $totalDirectPaid = $supplier->purchasePayments->where('purchase_id', null)->sum('amount');
             $balance = $totalPurchasePaid + $totalDirectPaid - $totalPurchaseAmount;
             return $balance < 0 ? abs($balance) : 0;
         });

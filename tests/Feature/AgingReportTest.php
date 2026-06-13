@@ -358,4 +358,47 @@ class AgingReportTest extends TestCase
             ->where('allocatedPayment', 0)
         );
     }
+
+    public function test_aging_report_excludes_linked_purchase_payments(): void
+    {
+        $storeUser = User::factory()->create(['role' => 'store']);
+
+        $supplier = Supplier::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Supplier A',
+            'email' => 'supplier@example.com',
+            'phone' => '9876543210',
+        ]);
+
+        // Purchase 1: grand_total = 1000, paid = 300 (outstanding = 700)
+        $purchase1 = new Purchase([
+            'supplier_id' => $supplier->id,
+            'grand_total' => 1000.00,
+            'paid' => 300.00,
+            'accepted' => 1,
+            'purchase_date' => Carbon::now()->subDays(15)->toDateString(),
+        ]);
+        $purchase1->save();
+
+        // Linked purchase payment: 300
+        PurchasePayment::create([
+            'supplier_id' => $supplier->id,
+            'purchase_id' => $purchase1->id,
+            'amount' => 300.00,
+            'payment_date' => Carbon::now()->toDateString(),
+            'payment_method' => 'Cash',
+        ]);
+
+        $response = $this->actingAs($storeUser)->get('/reports/aging');
+
+        $response->assertOk();
+        $response->assertInertia(fn ($page) => $page
+            ->component('Reports/Aging')
+            ->has('apData', 1)
+            // If linked payment is excluded from general payments, total_due is 700 (1000 - 300)
+            // If it is NOT excluded, it would be counted twice, leaving total_due = 400 (1000 - 300 - 300)
+            ->where('apData.0.total_due', 700)
+            ->where('apSummary.total_payables', 700)
+        );
+    }
 }

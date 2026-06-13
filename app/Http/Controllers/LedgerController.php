@@ -313,8 +313,10 @@ class LedgerController extends Controller
             ->get();
         foreach ($salePayments as $p) { $svc->postCustomerPayment($p); }
 
-        // Supplier Payments
-        $purchasePayments = PurchasePayment::whereHas('supplier', fn($q) => $q->where('user_id', $userId))->get();
+        // Supplier Payments (exclude down payments linked to purchases as they are already posted via postPurchase)
+        $purchasePayments = PurchasePayment::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+            ->whereNull('purchase_id')
+            ->get();
         foreach ($purchasePayments as $p) { $svc->postSupplierPayment($p); }
 
         // Expenses
