@@ -200,7 +200,8 @@ const submitReturn = async () => {
           </div>
 
           <h3 class="text-xl font-bold text-[#292688]">Items Sold</h3>
-          <table class="w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
+          <!-- Desktop view: Table layout -->
+          <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
             <thead class="bg-[#292688] text-white">
               <tr>
                 <th class="px-4 py-2 text-left">Product</th>
@@ -236,6 +237,54 @@ const submitReturn = async () => {
               </tr>
             </tbody>
           </table>
+
+          <!-- Mobile view: Card list of items -->
+          <div class="md:hidden space-y-4">
+            <div v-for="(item, index) in form.items" :key="'mobile-' + index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+              <div class="font-bold text-[#292688] text-base pb-2 border-b border-gray-100">
+                {{ item.product_name }}
+              </div>
+              
+              <div class="grid grid-cols-3 gap-2 text-center bg-white p-3 rounded-lg border border-gray-100 text-xs font-semibold text-gray-600">
+                <div>
+                  <span class="block text-gray-400 font-medium">Original</span>
+                  <span>{{ item.sold_qty }}</span>
+                </div>
+                <div>
+                  <span class="block text-gray-400 font-medium">Returned</span>
+                  <span>{{ item.returned_qty }}</span>
+                </div>
+                <div>
+                  <span class="block text-gray-400 font-medium">Available</span>
+                  <span class="text-indigo-600 font-bold">{{ item.available_qty }}</span>
+                </div>
+              </div>
+
+              <div class="flex items-center justify-between gap-4 pt-2">
+                <div class="w-1/2">
+                  <label class="block text-xs font-semibold text-gray-500 mb-1">Price (Excl. GST)</label>
+                  <span class="font-bold text-gray-800 text-sm">₹ {{ item.price.toFixed(2) }}</span>
+                </div>
+                <div class="w-1/2">
+                  <label class="block text-xs font-semibold text-gray-500 mb-1">Return Qty</label>
+                  <input
+                    type="number"
+                    v-model.number="item.quantity"
+                    min="0"
+                    :max="item.available_qty"
+                    :disabled="item.available_qty === 0"
+                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold text-center"
+                    placeholder="0"
+                  />
+                </div>
+              </div>
+
+              <div class="flex justify-between items-center bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100/50 text-xs font-bold">
+                <span class="text-gray-600">Refund Amount:</span>
+                <span class="text-[#292688] font-mono text-sm">₹ {{ ((item.quantity || 0) * item.price).toFixed(2) }}</span>
+              </div>
+            </div>
+          </div>
 
           <!-- Return Metadata -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
@@ -313,7 +362,7 @@ const submitReturn = async () => {
               <div class="mt-6 flex justify-end">
                 <button
                   @click="submitReturn"
-                  class="bg-[#2E2C92] hover:bg-[#1e1c6e] text-white px-6 py-2.5 rounded-lg font-bold shadow-md transition-colors"
+                  class="w-full md:w-auto bg-[#2E2C92] hover:bg-[#1e1c6e] text-white px-6 py-3 rounded-xl font-bold shadow-md transition-colors"
                 >
                   Process Return
                 </button>
