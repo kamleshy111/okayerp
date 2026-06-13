@@ -29,7 +29,7 @@ class SuppliersController extends Controller
             
             $totalSaleAmount = $supplier->purchases->sum('grand_total');
             $totalSalePaid = $supplier->purchases->sum('paid');
-            $totalDirectPaid = $supplier->purchasePayments->sum('amount');
+            $totalDirectPaid = $supplier->purchasePayments->where('purchase_id', null)->sum('amount');
 
             $totalReceived = $totalSalePaid + $totalDirectPaid;
             $balance = $totalReceived - $totalSaleAmount;

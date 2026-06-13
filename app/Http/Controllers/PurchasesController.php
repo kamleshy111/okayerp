@@ -130,6 +130,19 @@ class PurchasesController extends Controller
             $accountingService = new AccountingService(Auth::id());
             $accountingService->postPurchase($purchase);
 
+            // Create a PurchasePayment record if down payment is made
+            if ($purchase->paid > 0) {
+                PurchasePayment::create([
+                    'supplier_id' => $purchase->supplier_id,
+                    'purchase_id' => $purchase->id,
+                    'amount' => $purchase->paid,
+                    'payment_date' => $purchase->purchase_date ?: now()->toDateString(),
+                    'payment_method' => $purchase->payment_method ?: 'Cash',
+                    'note' => "Payment for Purchase Invoice #{$purchase->id}",
+                    'accepted' => $purchase->accepted,
+                ]);
+            }
+
             DB::commit();
             return response()->json(['message' => 'purchase added successfully.']);
 
@@ -154,7 +167,7 @@ class PurchasesController extends Controller
         $totalPurchaseAmount = $purchases->sum('grand_total');
         $totalPurchasePaid = $purchases->sum('paid');
 
-        $paymentQuery = PurchasePayment::where('supplier_id', $id);
+        $paymentQuery = PurchasePayment::where('supplier_id', $id)->whereNull('purchase_id');
         if (session('private_ledger_unlocked') !== true) {
             $paymentQuery->where('accepted', 1);
         }
@@ -362,6 +375,33 @@ class PurchasesController extends Controller
                 $accountingService = new AccountingService($userId);
                 $accountingService->postPurchase($purchases);
 
+                // Update or create/delete associated PurchasePayment
+                $payment = PurchasePayment::where('purchase_id', $purchases->id)->first();
+                if ($purchases->paid > 0) {
+                    if ($payment) {
+                        $payment->update([
+                            'supplier_id' => $purchases->supplier_id,
+                            'amount' => $purchases->paid,
+                            'payment_method' => $purchases->payment_method ?: 'Cash',
+                            'accepted' => $purchases->accepted,
+                        ]);
+                    } else {
+                        PurchasePayment::create([
+                            'supplier_id' => $purchases->supplier_id,
+                            'purchase_id' => $purchases->id,
+                            'amount' => $purchases->paid,
+                            'payment_date' => $purchases->purchase_date ?: now()->toDateString(),
+                            'payment_method' => $purchases->payment_method ?: 'Cash',
+                            'note' => "Payment for Purchase Invoice #{$purchases->id}",
+                            'accepted' => $purchases->accepted,
+                        ]);
+                    }
+                } else {
+                    if ($payment) {
+                        $payment->delete();
+                    }
+                }
+
             });
 
             return response()->json(['message' => 'Purchase updated successfully.']);
@@ -392,9 +432,17 @@ class PurchasesController extends Controller
 
             PurchaseItem::where('purchase_id', $id)->delete();
 
+            $accountingService = new AccountingService(Auth::id());
+
+            // Find and delete associated PurchasePayment
+            $payment = PurchasePayment::where('purchase_id', $id)->first();
+            if ($payment) {
+                $accountingService->clearEntries('PurchasePayment', $payment->id);
+                $payment->delete();
+            }
+
             $purchase->delete();
     
-            $accountingService = new AccountingService(Auth::id());
             $accountingService->clearEntries('Purchase', $id);
 
             DB::commit();

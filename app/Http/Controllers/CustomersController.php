@@ -30,7 +30,7 @@ class CustomersController extends Controller
         $customers = $customers->map(function ($customer) {
             $totalSaleAmount = $customer->sales->sum('grand_total');
             $totalSalePaid = $customer->sales->sum('paid');
-            $totalDirectPaid = $customer->payments->sum('amount');
+            $totalDirectPaid = $customer->payments->where('sale_id', null)->sum('amount');
 
             $totalReceived = $totalSalePaid + $totalDirectPaid;
             $balance = $totalReceived - $totalSaleAmount;

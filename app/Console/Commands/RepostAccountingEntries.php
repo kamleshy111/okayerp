@@ -51,7 +51,7 @@ class RepostAccountingEntries extends Command
         }
 
         // ---------- SALE PAYMENTS ----------
-        $salePaymentsQuery = SalePayment::with('customer');
+        $salePaymentsQuery = SalePayment::with('customer')->whereNull('sale_id');
         if ($userFilter) {
             $salePaymentsQuery->whereHas('customer', fn ($q) => $q->where('user_id', $userFilter));
         }
@@ -66,7 +66,7 @@ class RepostAccountingEntries extends Command
         }
 
         // ---------- PURCHASE PAYMENTS ----------
-        $purchasePaymentsQuery = PurchasePayment::with('supplier');
+        $purchasePaymentsQuery = PurchasePayment::with('supplier')->whereNull('purchase_id');
         if ($userFilter) {
             $purchasePaymentsQuery->whereHas('supplier', fn ($q) => $q->where('user_id', $userFilter));
         }

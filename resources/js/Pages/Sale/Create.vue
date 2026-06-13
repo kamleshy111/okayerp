@@ -344,6 +344,20 @@ const finalBalance = computed(() => {
   }
 });
 
+const advanceApplied = computed(() => {
+  if (!customerData.value) return 0;
+  const previousAdvance = parseFloat(customerData.value.advance_amount) || 0;
+  const paidNow = parseFloat(form.value.paid) || 0;
+  return Math.min(previousAdvance, Math.max(0, grandTotal.value - paidNow));
+});
+
+const dueReduced = computed(() => {
+  if (!customerData.value) return 0;
+  const previousDue = parseFloat(customerData.value.due_amount) || 0;
+  const paidNow = parseFloat(form.value.paid) || 0;
+  return Math.min(previousDue, Math.max(0, paidNow - grandTotal.value));
+});
+
 //end
 
 
@@ -581,16 +595,27 @@ const submitForm = async () => {
                 </div>
 
                 <!-- Previous Balances -->
-                <div v-if="customerData?.advance_amount && customerData.advance_amount !== '0.00' && finalBalance?.type === 'advance'" 
+                <div v-if="customerData?.advance_amount && customerData.advance_amount !== '0.00' && customerData.advance_amount !== 0 && customerData.advance_amount !== '0'" 
                     class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Before Advance</span>
+                    <span class="text-gray-700 font-semibold">Previous Advance</span>
                     <span class="text-green-600 font-bold">₹ {{ customerData.advance_amount }}</span>
                 </div>
 
-                <div v-if="customerData?.due_amount && customerData.due_amount !== '0.00' && finalBalance?.type === 'due' && (form.paid || 0) <= Number(customerData.due_amount)"
+                <div v-if="customerData?.due_amount && customerData.due_amount !== '0.00' && customerData.due_amount !== 0 && customerData.due_amount !== '0'"
                     class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Before Due</span>
+                    <span class="text-gray-700 font-semibold">Previous Due</span>
                     <span class="text-red-600 font-bold">₹ {{ customerData.due_amount }}</span>
+                </div>
+
+                <!-- Wallet / Due Adjustments -->
+                <div v-if="advanceApplied > 0" class="flex justify-between items-center text-sm text-gray-500">
+                    <span>Advance Applied from Wallet</span>
+                    <span class="font-medium text-blue-600">- ₹ {{ advanceApplied.toFixed(2) }}</span>
+                </div>
+
+                <div v-if="dueReduced > 0" class="flex justify-between items-center text-sm text-gray-500">
+                    <span>Applied to Previous Due</span>
+                    <span class="font-medium text-green-600">- ₹ {{ dueReduced.toFixed(2) }}</span>
                 </div>
 
                 <!-- Final Balance after this payment -->
@@ -602,6 +627,11 @@ const submitForm = async () => {
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Final Due</span>
                     <span class="text-red-600 font-bold">₹ {{ finalBalance.amount }}</span>
+                </div>
+
+                <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center">
+                    <span class="text-gray-700 font-semibold">Final Balance</span>
+                    <span class="text-gray-600 font-bold">₹ 0.00 (Clear)</span>
                 </div>
 
                 <!-- Payment Status -->
