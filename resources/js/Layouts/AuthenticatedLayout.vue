@@ -8,7 +8,7 @@
         ></div>
 
         <!-- Sidebar -->
-        <aside :class="['main-side-header text-white flex flex-col w-64 shrink-0', { 'open': isSidebarOpen }]" id="sidebar">
+        <aside :class="['main-side-header text-white flex flex-col w-64 shrink-0 md:sticky md:top-0 md:h-screen no-scrollbar', { 'open': isSidebarOpen }]" id="sidebar">
             <Sidebar :role="role" :session="session" @close-sidebar="isSidebarOpen = false"/>
         </aside>
 

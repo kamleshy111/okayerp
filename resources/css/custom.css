@@ -1,12 +1,17 @@
 
-body {
+html, body {
   font-family: 'Poppins', sans-serif;
   background-color: #f4f7fc;
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+html::-webkit-scrollbar, body::-webkit-scrollbar {
+  display: none; /* Chrome, Safari, Opera */
 }
 
 .main-side-header {
   background-color: #2E2C92;
-  min-height: 100vh;
+  height: 100vh;
   overflow-y: auto;
 }
 
@@ -118,4 +123,13 @@ table.dataTable > tbody > tr > th, table.dataTable > tbody > tr > td {
     margin-left: 0;
     width: 100%;
   }
+}
+
+/* Hide scrollbar utility */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
 }
