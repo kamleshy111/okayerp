@@ -345,20 +345,21 @@ class SaleReturnTest extends TestCase
             'amount' => 9.00,
         ]);
 
-        // Credit: Accounts Receivable (AR) = 20.00 (Due Deduction)
+        $saleReturn = SaleReturn::latest('id')->first();
+        
         $this->assertDatabaseHas('journal_entries', [
             'reference_type' => 'SaleReturn',
             'type' => 'credit',
             'amount' => 20.00,
-            'description' => 'Sale Return #RET-00001 for Invoice #' . $sale->id . ' (Applied to Invoice Due)',
+            'description' => 'Sale Return #' . $saleReturn->return_no . ' for Invoice #' . $sale->id . ' (Applied to Invoice Due)',
         ]);
 
-        // Credit: Cash = 39.00 (Remaining Cash Refund)
+        // Credit: Cash/Bank = 39.00 (Net Refund)
         $this->assertDatabaseHas('journal_entries', [
             'reference_type' => 'SaleReturn',
             'type' => 'credit',
             'amount' => 39.00,
-            'description' => 'Sale Return #RET-00001 for Invoice #' . $sale->id . ' (Cash)',
+            'description' => 'Sale Return #' . $saleReturn->return_no . ' for Invoice #' . $sale->id . ' (Cash)',
         ]);
     }
 

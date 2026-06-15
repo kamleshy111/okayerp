@@ -157,8 +157,13 @@ class PurchaseReturnController extends Controller
                 $q->where('user_id', $userId);
             })->orderBy('id', 'desc')->first();
 
-            $nextNumber = $lastReturn ? ((int) str_replace('PRET-', '', $lastReturn->return_no)) + 1 : 1;
-            $returnNo = 'PRET-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+            if ($lastReturn) {
+                $parts = explode('-', $lastReturn->return_no);
+                $nextNumber = ((int) end($parts)) + 1;
+            } else {
+                $nextNumber = 1;
+            }
+            $returnNo = 'PRET-' . $userId . '-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
 
             $refundAmount = 0;
             $gstRefundAmount = 0;

@@ -327,20 +327,21 @@ class PurchaseReturnTest extends TestCase
         ]);
 
         // Verify Journal Entries
-        // Debit: Accounts Payable (AP) = 20.00 (Due Deduction)
+        $purchaseReturn = PurchaseReturn::latest('id')->first();
+        
         $this->assertDatabaseHas('journal_entries', [
             'reference_type' => 'PurchaseReturn',
             'type' => 'debit',
             'amount' => 20.00,
-            'description' => 'Purchase Return #PRET-00001 for Bill #' . $purchase->id . ' (Applied to Bill Due)',
+            'description' => 'Purchase Return #' . $purchaseReturn->return_no . ' for Bill #' . $purchase->id . ' (Applied to Bill Due)',
         ]);
 
-        // Debit: Cash = 39.00 (Remaining Cash Refund)
+        // Debit: Cash/Bank = 39.00 (Net Refund)
         $this->assertDatabaseHas('journal_entries', [
             'reference_type' => 'PurchaseReturn',
             'type' => 'debit',
             'amount' => 39.00,
-            'description' => 'Purchase Return #PRET-00001 for Bill #' . $purchase->id . ' (Cash)',
+            'description' => 'Purchase Return #' . $purchaseReturn->return_no . ' for Bill #' . $purchase->id . ' (Cash)',
         ]);
 
         // Credit: Purchases = 50.00
