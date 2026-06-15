@@ -96,7 +96,6 @@ const columns = [
 
     <AuthenticatedLayout>
         <div class="p-6 max-w-7xl mx-auto">
-            <!-- Breadcrumbs / Top Actions -->
             <div class="flex items-center justify-between mb-8">
               <div class="flex items-center gap-3">
                 <a href="/paymentsCustomer" class="flex items-center justify-center w-10 h-10 rounded-lg bg-white shadow-sm border border-gray-200 text-gray-600 hover:text-[#2e2c92] hover:border-[#2e2c92] transition-colors duration-200">
@@ -106,6 +105,16 @@ const columns = [
                   <span class="text-sm font-medium text-gray-500 uppercase tracking-wider">Payments</span>
                   <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Customer Payment History</h1>
                 </div>
+              </div>
+
+              <div class="flex items-center gap-3">
+                <a 
+                  :href="`/paymentsCustomer/${customer.id}/history/download-pdf`"
+                  target="_blank"
+                  class="flex items-center justify-center gap-2 px-4 py-2 bg-[#2e2c92] hover:bg-[#1f1d6b] text-white rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200"
+                >
+                  <i class="fa fa-file-pdf-o"></i> Download PDF
+                </a>
               </div>
             </div>
 

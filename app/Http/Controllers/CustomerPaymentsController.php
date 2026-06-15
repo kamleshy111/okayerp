@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\Customer;
 use App\Models\SalePayment;
 use App\Models\SaleReturn;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerPaymentsController extends Controller
 {
@@ -134,6 +135,62 @@ class CustomerPaymentsController extends Controller
             'customer' => $customer,
             'history' => $history,
         ]);
+    }
+
+    public function downloadHistoryPdf($id) {
+        $userId = Auth::id();
+        
+        $customer = Customer::where('user_id', $userId)->findOrFail($id);
+
+        // Fetch payments for this customer
+        $paymentsQuery = SalePayment::where('customer_id', $id);
+        if (session('private_ledger_unlocked') !== true) {
+            $paymentsQuery->where('accepted', 1);
+        }
+        $payments = $paymentsQuery->get()->map(function ($item) {
+            return [
+                'amount' => (float)$item->amount,
+                'payment_date' => $item->payment_date,
+                'payment_method' => $item->payment_method,
+                'source' => $item->sale_id ? 'Sale' : 'Customer Payment',
+            ];
+        });
+
+        // Fetch returns for this customer
+        $returnsQuery = SaleReturn::whereHas('sale', function ($q) use ($id) {
+            $q->where('customer_id', $id);
+        })->where('user_id', $userId);
+        if (session('private_ledger_unlocked') !== true) {
+            $returnsQuery->whereHas('sale', function ($q) {
+                $q->where('accepted', 1);
+            });
+        }
+        $returns = $returnsQuery->get()->map(function ($item) {
+            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
+            return [
+                'amount' => -1 * $totalRefund,
+                'payment_date' => $item->return_date,
+                'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
+                'source' => 'Return',
+            ];
+        });
+
+        $history = $payments->concat($returns)->sortByDesc('payment_date')->values()->all();
+
+        // Calculate summary stats
+        $totalReceived = 0.0;
+        $totalRefunded = 0.0;
+        foreach ($history as $item) {
+            if ($item['amount'] > 0) {
+                $totalReceived += $item['amount'];
+            } else {
+                $totalRefunded += abs($item['amount']);
+            }
+        }
+        $netAmount = $totalReceived - $totalRefunded;
+
+        $pdf = Pdf::loadView('customer_payment_history_pdf', compact('customer', 'history', 'totalReceived', 'totalRefunded', 'netAmount'))->setPaper('a4');
+        return $pdf->stream("payment_history_" . str_replace(' ', '_', strtolower($customer->name)) . ".pdf");
     }
 
     public function create(){
