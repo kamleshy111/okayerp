@@ -10,6 +10,7 @@ use App\Models\PurchaseItem;
 use App\Models\PurchaseReturn;
 use App\Models\PurchaseReturnItem;
 use App\Models\JournalEntry;
+use App\Models\PurchasePayment;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -355,5 +356,110 @@ class PurchaseReturnTest extends TestCase
             'type' => 'credit',
             'amount' => 9.00,
         ]);
+    }
+
+    public function test_purchase_returns_show_up_in_supplier_payments_list(): void
+    {
+        $storeUser = User::factory()->create(['role' => 'store']);
+
+        $supplier = Supplier::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Supplier A',
+            'email' => 'supplier@example.com',
+            'phone' => '1234567890',
+        ]);
+
+        $purchase = Purchase::create([
+            'supplier_id' => $supplier->id,
+            'total_amount' => 100.00,
+            'grand_total' => 100.00,
+            'accepted' => 1,
+        ]);
+
+        // Create a purchase payment on 2026-06-14 (earlier)
+        $payment1 = PurchasePayment::create([
+            'supplier_id' => $supplier->id,
+            'purchase_id' => $purchase->id,
+            'amount' => 50.00,
+            'payment_date' => '2026-06-14',
+            'payment_method' => 'UPI',
+            'accepted' => 1,
+        ]);
+
+        // Create a return on 2026-06-15 (middle)
+        $return = PurchaseReturn::create([
+            'user_id' => $storeUser->id,
+            'purchase_id' => $purchase->id,
+            'return_no' => 'PRET-99999',
+            'return_date' => '2026-06-15',
+            'refund_amount' => 60.00,
+            'gst_refund_amount' => 10.80,
+            'refund_method' => 'Cash',
+        ]);
+
+        // Create a purchase payment on 2026-06-16 (later)
+        $payment2 = PurchasePayment::create([
+            'supplier_id' => $supplier->id,
+            'purchase_id' => $purchase->id,
+            'amount' => 30.00,
+            'payment_date' => '2026-06-16',
+            'payment_method' => 'Card',
+            'accepted' => 1,
+        ]);
+
+        $this->actingAs($storeUser);
+
+        $response = $this->get('/paymentSupplier');
+        $response->assertOk();
+        
+        $response->assertInertia(fn ($page) => $page
+            ->component('SupplierPayment/Index')
+            ->has('suppliers', 3)
+            ->has('suppliers.0', fn ($page) => $page
+                ->where('amount', 30)
+                ->where('payment_date', '2026-06-16')
+                ->where('source', 'Purchase')
+                ->etc()
+            )
+            ->has('suppliers.1', fn ($page) => $page
+                ->where('amount', -70.8)
+                ->where('payment_date', '2026-06-15')
+                ->where('source', 'Return')
+                ->etc()
+            )
+            ->has('suppliers.2', fn ($page) => $page
+                ->where('amount', 50)
+                ->where('payment_date', '2026-06-14')
+                ->where('source', 'Purchase')
+                ->etc()
+            )
+        );
+
+        $responseHistory = $this->get('/paymentSupplier/' . $supplier->id . '/history');
+        $responseHistory->assertOk();
+        $responseHistory->assertInertia(fn ($page) => $page
+            ->component('SupplierPayment/History')
+            ->has('supplier')
+            ->where('supplier.id', $supplier->id)
+            ->has('history', 3)
+            ->has('history.0', fn ($page) => $page
+                ->where('amount', 30)
+                ->where('payment_date', '2026-06-16')
+                ->where('source', 'Purchase')
+                ->etc()
+            )
+            ->has('history.1', fn ($page) => $page
+                ->where('amount', -70.8)
+                ->where('payment_date', '2026-06-15')
+                ->where('source', 'Return')
+                ->etc()
+            )
+            ->has('history.2', fn ($page) => $page
+                ->where('amount', 50)
+                ->where('payment_date', '2026-06-14')
+                ->where('source', 'Purchase')
+                ->etc()
+            )
+        );
     }
 }

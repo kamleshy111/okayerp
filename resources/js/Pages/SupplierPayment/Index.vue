@@ -1,40 +1,68 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { onMounted } from 'vue';
-import Swal from 'sweetalert2';
-import axios from 'axios';
-
 
 defineProps({
   suppliers: {
         type: Array
     }
-})
+});
+
+// Date formatter helper
+const formatDate = (dateStr) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+};
 
 // Column definitions for DataTable
 const columns = [
-//   { data: 'id', title: 'S No' },
     { 
-    data: null,
-    title: 'S No',
-    render: (data, type, row, meta) => meta.row + 1,
+      data: null,
+      title: 'S No',
+      render: (data, type, row, meta) => meta.row + 1,
     },
-    { data: 'name' },
-    { data: 'email'},
-    { data: 'phone'},
-    { data: 'amount'},
-    {  data: 'payment_date',
-        render: function(data) {
-            if (!data) return '';
-            const date = new Date(data);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
+    { data: 'name', title: 'Name' },
+    { data: 'email', title: 'Email' },
+    { data: 'phone', title: 'Phone' },
+    { 
+      data: 'source',
+      title: 'Source',
+      render: function(data) {
+        if (data === 'Purchase') {
+          return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Purchase</span>`;
+        } else if (data === 'Supplier Payment') {
+          return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">Direct Payment</span>`;
+        } else if (data === 'Return') {
+          return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200">Return</span>`;
+        } else {
+          return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200">${data}</span>`;
         }
+      }
     },
-    { data: 'payment_method'},
+    { 
+      data: 'amount',
+      title: 'Amount',
+      render: function(data) {
+        const val = parseFloat(data);
+        if (val < 0) {
+          return `<span style="color:#dc2626; font-weight:600;">- ₹${Math.abs(val).toFixed(2)}</span>`;
+        } else {
+          return `<span style="color:#16a34a; font-weight:600;">+ ₹${val.toFixed(2)}</span>`;
+        }
+      }
+    },
+    {  
+      data: 'payment_date',
+      title: 'Payment Date',
+      render: function(data) {
+          return formatDate(data);
+      }
+    },
+    { data: 'payment_method', title: 'Payment Method' }
 ];
 </script>
 
@@ -64,6 +92,7 @@ const columns = [
                   <th scope="col">Name</th>
                   <th scope="col">Email</th>
                   <th scope="col">Phone</th>
+                  <th scope="col">Source</th>
                   <th scope="col">Amount</th>
                   <th scope="col">Payment Date</th>
                   <th scope="col">Payment Method</th>
@@ -73,5 +102,5 @@ const columns = [
       </DataTable>
     </div>
   </div>
-    </AuthenticatedLayout>
+  </AuthenticatedLayout>
 </template>

@@ -7,41 +7,132 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Customer;
 use App\Models\SalePayment;
+use App\Models\SaleReturn;
 
 class CustomerPaymentsController extends Controller
 {
     public function index(){
-
-        // $customers = Customer::select('customers.id','customers.name','customers.email','customers.phone','sale_payments.amount','sale_payments.payment_date', 'sale_payments.payment_method')
-        // ->rightJoin('sale_payments','customers.id', '=', 'sale_payments.customer_id')
-        // ->get();
         $userId = Auth::id();
 
-        $query = SalePayment::whereHas('customer', function ($q) use ($userId) {
-            $q->where('user_id', $userId);
-        });
+        // Query payments with direct database joins to avoid heavy model instantiation
+        $paymentsQuery = SalePayment::join('customers', 'sale_payments.customer_id', '=', 'customers.id')
+            ->where('customers.user_id', $userId);
         if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
+            $paymentsQuery->where('sale_payments.accepted', 1);
         }
 
-        $customers = $query->with('customer')
-        ->orderBy('payment_date', 'desc')
-        ->get()
-        ->map(function ($item) {
+        $payments = $paymentsQuery->select(
+            'customers.id as customer_id',
+            'customers.user_id',
+            'customers.name',
+            'customers.email',
+            'customers.phone',
+            'sale_payments.amount',
+            'sale_payments.payment_date',
+            'sale_payments.payment_method',
+            'sale_payments.sale_id'
+        )->get()->map(function ($item) {
             return [
-                'id' => $item->customer->id ?? '',
-                'user_id' => $item->customer->user_id ?? '',
-                'name' => $item->customer->name ?? '',
-                'email' => $item->customer->email ?? '',
-                'phone' => $item->customer->phone ?? '',
-                'amount' => $item->amount,
+                'id' => $item->customer_id,
+                'user_id' => $item->user_id,
+                'name' => $item->name,
+                'email' => $item->email,
+                'phone' => $item->phone,
+                'amount' => (float)$item->amount,
                 'payment_date' => $item->payment_date,
                 'payment_method' => $item->payment_method,
+                'source' => $item->sale_id ? 'Sale' : 'Customer Payment',
             ];
         });
 
+        // Query sale returns with direct database joins
+        $returnsQuery = SaleReturn::join('sales', 'sale_returns.sale_id', '=', 'sales.id')
+            ->join('customers', 'sales.customer_id', '=', 'customers.id')
+            ->where('sale_returns.user_id', $userId);
+        if (session('private_ledger_unlocked') !== true) {
+            $returnsQuery->where('sales.accepted', 1);
+        }
+
+        $returns = $returnsQuery->select(
+            'customers.id as customer_id',
+            'customers.user_id',
+            'customers.name',
+            'customers.email',
+            'customers.phone',
+            'sale_returns.refund_amount',
+            'sale_returns.gst_refund_amount',
+            'sale_returns.return_date as payment_date',
+            'sale_returns.refund_method',
+            'sale_returns.return_no'
+        )->get()->map(function ($item) {
+            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
+            return [
+                'id' => $item->customer_id,
+                'user_id' => $item->user_id,
+                'name' => $item->name,
+                'email' => $item->email,
+                'phone' => $item->phone,
+                'amount' => -1 * $totalRefund,
+                'payment_date' => $item->payment_date,
+                'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
+                'source' => 'Return',
+            ];
+        });
+
+        // Merge both arrays and sort by payment_date descending
+        $detailedHistory = $payments->concat($returns)
+            ->sortByDesc('payment_date')
+            ->values()
+            ->all();
+
         return Inertia::render('CustomerPayment/Index',[
-            'customers' => $customers,
+            'customers' => $detailedHistory,
+        ]);
+    }
+
+    public function history($id) {
+        $userId = Auth::id();
+        
+        $customer = Customer::where('user_id', $userId)->findOrFail($id);
+
+        // Fetch payments for this customer
+        $paymentsQuery = SalePayment::where('customer_id', $id);
+        if (session('private_ledger_unlocked') !== true) {
+            $paymentsQuery->where('accepted', 1);
+        }
+        $payments = $paymentsQuery->get()->map(function ($item) {
+            return [
+                'amount' => (float)$item->amount,
+                'payment_date' => $item->payment_date,
+                'payment_method' => $item->payment_method,
+                'source' => $item->sale_id ? 'Sale' : 'Customer Payment',
+            ];
+        });
+
+        // Fetch returns for this customer
+        $returnsQuery = SaleReturn::whereHas('sale', function ($q) use ($id) {
+            $q->where('customer_id', $id);
+        })->where('user_id', $userId);
+        if (session('private_ledger_unlocked') !== true) {
+            $returnsQuery->whereHas('sale', function ($q) {
+                $q->where('accepted', 1);
+            });
+        }
+        $returns = $returnsQuery->get()->map(function ($item) {
+            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
+            return [
+                'amount' => -1 * $totalRefund,
+                'payment_date' => $item->return_date,
+                'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
+                'source' => 'Return',
+            ];
+        });
+
+        $history = $payments->concat($returns)->sortByDesc('payment_date')->values()->all();
+
+        return Inertia::render('CustomerPayment/History', [
+            'customer' => $customer,
+            'history' => $history,
         ]);
     }
 
