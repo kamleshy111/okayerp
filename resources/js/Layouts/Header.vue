@@ -27,7 +27,7 @@ const session = computed(() => props.session || {});
 </script>
 
 <template>
-    <nav class="border-b border-gray-100 bg-white">
+    <nav class="sticky top-0 z-30 border-b border-gray-100 bg-white shadow-sm">
         <div class="mx-auto px-4 sm:px-6 lg:px-8">
             <div class="flex h-16 justify-between items-center">
                 <!-- Sidebar Toggle Button for Mobile -->

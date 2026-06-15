@@ -367,7 +367,9 @@ const submitForm = async () => {
             <!-- Line Items Table -->
             <div class="mt-6">
                 <h3 class="text-lg font-bold mb-3 text-[#292688]">Quotation Items</h3>
-                <div class="overflow-x-auto">
+                
+                <!-- Desktop view: Table layout -->
+                <div class="hidden md:block overflow-x-auto">
                     <table class="w-full table-auto border border-gray-200 rounded-lg overflow-hidden">
                         <thead class="bg-[#292688] text-white text-sm">
                             <tr>
@@ -442,6 +444,77 @@ const submitForm = async () => {
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Mobile view: Card list of items -->
+                <div class="md:hidden space-y-4">
+                    <div v-for="(item, index) in form.estimate_items" :key="'mobile-' + index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+                        <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                            <span class="font-bold text-sm text-[#292688]">Item #{{ index + 1 }}</span>
+                            <button @click="removeRow(index)" type="button" class="text-red-600 hover:text-red-800 text-sm font-semibold flex items-center gap-1">
+                                <i class="fa fa-trash"></i> Remove
+                            </button>
+                        </div>
+
+                        <div class="space-y-3">
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Product</label>
+                                <vSelect
+                                    v-model="item.product_id"
+                                    :options="products"
+                                    label="name"
+                                    :reduce="product => product.id"
+                                    placeholder="Search product"
+                                    class="w-full text-black bg-white"
+                                >
+                                    <template #no-options>
+                                        <div class="px-3 py-2 text-gray-500 text-xs">
+                                            No products found.
+                                            <button
+                                                @click.stop="openProductModal(index)"
+                                                class="mt-1 text-blue-600 hover:underline text-xs block"
+                                            >
+                                                ➕ Add New Product
+                                            </button>
+                                        </div>
+                                    </template>
+                                </vSelect>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
+                                    <input type="number" v-model="item.quantity" min="1" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm text-center" />
+                                </div>
+                                <div>
+                                    <label class="block text-xs font-semibold text-gray-500 mb-1">Price</label>
+                                    <input type="number" step="0.01" v-model="item.price" min="0" required
+                                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm text-right" />
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500 font-semibold">
+                                <div>
+                                    <span class="block text-gray-400">GST</span>
+                                    <span class="text-gray-800 font-semibold">{{ (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0) }} %</span>
+                                </div>
+                                <div>
+                                    <span class="block text-gray-400">Unit Type</span>
+                                    <span class="text-gray-800 font-semibold">{{ item.unit_type || '-' }}</span>
+                                </div>
+                                <div>
+                                    <span class="block text-gray-400">Net Amount</span>
+                                    <span class="text-gray-800 font-bold">₹ {{ (parseFloat(item.quantity || 0) * parseFloat(item.price || 0)).toFixed(2) }}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button @click="addRow" type="button"
+                        class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-sm">
+                        <i class="fa fa-plus-circle"></i> Add Item
+                    </button>
+                </div>
             </div>
 
             <!-- Tax, Discount, Notes, and Summary Block -->
@@ -495,7 +568,7 @@ const submitForm = async () => {
                     </div>
 
                     <div class="pt-4 flex gap-3">
-                        <button @click="submitForm" class="flex-1 bg-[#2E2C92] hover:bg-[#201e6a] text-white py-2.5 rounded-lg font-semibold shadow-md transition duration-200 text-center">
+                        <button @click="submitForm" class="flex-1 bg-[#2E2C92] hover:bg-[#201e6a] text-white py-2.5 rounded-lg font-semibold shadow-md transition duration-200 text-center cursor-pointer">
                             Save Changes
                         </button>
                         <a :href="route('estimate.index')" class="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-100 font-semibold text-gray-700 transition duration-200 text-center text-sm">
@@ -508,69 +581,85 @@ const submitForm = async () => {
     </div>
 
     <!-- Quick Add Customer Modal -->
-    <div v-if="showCustomerModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50" style="z-index: 99999;">
-        <div class="bg-white p-6 rounded-xl w-full max-w-md shadow-lg">
-            <h2 class="text-xl font-bold mb-4 text-[#2E2C92]">Add New Customer</h2>
+    <div v-if="showCustomerModal" 
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+         style="z-index: 99999;"
+         @click.self="showCustomerModal = false">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                <h2 class="text-xl font-bold text-[#2E2C92]">Add New Customer</h2>
+                <button @click="showCustomerModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="fa fa-close"></i>
+                </button>
+            </div>
 
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newCustomer.name" required class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <input type="text" v-model="newCustomer.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Phone <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newCustomer.phone" required class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <input type="text" v-model="newCustomer.phone" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
-                    <input type="email" v-model="newCustomer.email" required class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <input type="email" v-model="newCustomer.email" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">GST Number</label>
-                    <input type="text" v-model="newCustomer.gst_number" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" placeholder="e.g. 22AAAAA1111A1Z1" />
+                    <input type="text" v-model="newCustomer.gst_number" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" placeholder="e.g. 22AAAAA1111A1Z1" />
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
-                    <textarea v-model="newCustomer.address" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" rows="2"></textarea>
+                    <textarea v-model="newCustomer.address" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" rows="2"></textarea>
                 </div>
             </div>
 
-            <div class="mt-6 flex justify-between">
-                <button
-                    @click="submitCustomer"
-                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors"
-                >
-                    Save Customer
-                </button>
+            <div class="mt-6 flex justify-end gap-3 pt-2">
                 <button
                     @click="showCustomerModal = false"
-                    class="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded font-medium transition-colors"
+                    class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer"
                 >
                     Cancel
+                </button>
+                <button
+                    @click="submitCustomer"
+                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer"
+                >
+                    Save Customer
                 </button>
             </div>
         </div>
     </div>
 
     <!-- Quick Add Product Modal -->
-    <div v-if="showProductModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50" style="z-index: 99999;">
-        <div class="bg-white p-6 rounded-xl w-full max-w-lg shadow-lg max-h-[90vh] overflow-y-auto">
-            <h2 class="text-xl font-bold mb-4 text-[#2E2C92]">Add New Product</h2>
+    <div v-if="showProductModal" 
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+         style="z-index: 99999;"
+         @click.self="showProductModal = false">
+        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                <h2 class="text-xl font-bold text-[#2E2C92]">Add New Product</h2>
+                <button @click="showProductModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="fa fa-close"></i>
+                </button>
+            </div>
 
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Product Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newProduct.name" required class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <input type="text" v-model="newProduct.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <select v-model="newProduct.category_id" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none">
+                        <select v-model="newProduct.category_id" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none bg-white">
                             <option value="">Select Category</option>
                             <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
                         </select>
@@ -578,7 +667,7 @@ const submitForm = async () => {
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Unit Type</label>
-                        <select v-model="newProduct.unit_type" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none">
+                        <select v-model="newProduct.unit_type" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none bg-white">
                             <option value="">Select Unit</option>
                             <option v-for="(label, val) in unitTypes" :key="val" :value="val">{{ label }}</option>
                         </select>
@@ -588,45 +677,45 @@ const submitForm = async () => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">SGST (%)</label>
-                        <input type="number" step="0.01" v-model.number="newProduct.sgst" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                        <input type="number" step="0.01" v-model.number="newProduct.sgst" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">CGST (%)</label>
-                        <input type="number" step="0.01" v-model.number="newProduct.cgst" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                        <input type="number" step="0.01" v-model.number="newProduct.cgst" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">HSN/SAC Code</label>
-                        <input type="text" v-model="newProduct.hsn_code" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                        <input type="text" v-model="newProduct.hsn_code" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹)</label>
-                        <input type="number" step="0.01" v-model.number="newProduct.price" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                        <input type="number" step="0.01" v-model.number="newProduct.price" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                     </div>
                 </div>
 
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea v-model="newProduct.description" class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" rows="2"></textarea>
+                    <textarea v-model="newProduct.description" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" rows="2"></textarea>
                 </div>
             </div>
 
-            <div class="mt-6 flex justify-between">
-                <button
-                    @click="submitProduct"
-                    class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded font-medium transition-colors"
-                >
-                    Save Product
-                </button>
+            <div class="mt-6 flex justify-end gap-3 pt-2">
                 <button
                     @click="showProductModal = false"
-                    class="bg-gray-300 hover:bg-gray-400 text-black px-4 py-2 rounded font-medium transition-colors"
+                    class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer"
                 >
                     Cancel
+                </button>
+                <button
+                    @click="submitProduct"
+                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer"
+                >
+                    Save Product
                 </button>
             </div>
         </div>

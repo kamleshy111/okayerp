@@ -245,10 +245,10 @@ const submitEditForm = async () => {
 
     <!-- Add Expense Modal Popup -->
     <div v-if="isAddModalOpen" 
-         class="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all duration-300" 
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
          style="z-index: 9999;"
          @click.self="isAddModalOpen = false">
-      <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full mx-4 transform transition-all duration-300 border border-gray-100 space-y-6">
+      <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
         <div class="flex justify-between items-center pb-3 border-b border-gray-100">
           <h2 class="text-2xl font-bold text-[#292688]">Add Expense</h2>
           <button @click="isAddModalOpen = false" class="text-gray-400 hover:text-gray-600 transition">
@@ -313,10 +313,10 @@ const submitEditForm = async () => {
 
     <!-- Edit Expense Modal Popup -->
     <div v-if="isEditModalOpen" 
-         class="fixed inset-0 flex items-center justify-center bg-black/50 backdrop-blur-sm transition-all duration-300" 
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
          style="z-index: 9999;"
          @click.self="isEditModalOpen = false">
-      <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full mx-4 transform transition-all duration-300 border border-gray-100 space-y-6">
+      <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
         <div class="flex justify-between items-center pb-3 border-b border-gray-100">
           <h2 class="text-2xl font-bold text-[#292688]">Edit Expense</h2>
           <button @click="isEditModalOpen = false" class="text-gray-400 hover:text-gray-600 transition">

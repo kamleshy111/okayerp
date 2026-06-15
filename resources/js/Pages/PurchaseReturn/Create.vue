@@ -200,7 +200,9 @@ const submitReturn = async () => {
           </div>
 
           <h3 class="text-xl font-bold text-[#292688]">Items Purchased</h3>
-          <table class="w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
+          
+          <!-- Desktop view: Table layout -->
+          <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
             <thead class="bg-[#292688] text-white">
               <tr>
                 <th class="px-4 py-2 text-left">Product</th>
@@ -226,7 +228,7 @@ const submitReturn = async () => {
                     min="0"
                     :max="item.available_qty"
                     :disabled="item.available_qty === 0"
-                    class="w-full px-2 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition disabled:bg-gray-100 disabled:text-gray-400"
+                    class="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition disabled:bg-gray-100 disabled:text-gray-400"
                     placeholder="0"
                   />
                 </td>
@@ -237,6 +239,54 @@ const submitReturn = async () => {
             </tbody>
           </table>
 
+          <!-- Mobile view: Stacked card layout -->
+          <div class="md:hidden space-y-4">
+            <div v-for="(item, index) in form.items" :key="'mobile-' + index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
+              <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                <span class="font-bold text-sm text-[#292688]">{{ item.product_name }}</span>
+                <span class="text-xs bg-indigo-50 text-indigo-700 px-2.5 py-1 rounded-full font-semibold">
+                  Cost: ₹ {{ item.price.toFixed(2) }}
+                </span>
+              </div>
+
+              <div class="grid grid-cols-3 gap-2 text-center text-xs bg-white p-3 rounded-lg border border-gray-100 font-medium text-gray-500">
+                <div>
+                  <span class="block text-gray-400 mb-0.5">Original Qty</span>
+                  <span class="text-gray-800 font-semibold">{{ item.purchased_qty }}</span>
+                </div>
+                <div>
+                  <span class="block text-gray-400 mb-0.5">Returned</span>
+                  <span class="text-gray-800 font-semibold">{{ item.returned_qty }}</span>
+                </div>
+                <div>
+                  <span class="block text-gray-400 mb-0.5 text-indigo-600">Available</span>
+                  <span class="text-indigo-700 font-bold">{{ item.available_qty }}</span>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-2 gap-4 items-center">
+                <div>
+                  <label class="block text-xs font-semibold text-gray-500 mb-1">Return Qty</label>
+                  <input
+                    type="number"
+                    v-model.number="item.quantity"
+                    min="0"
+                    :max="item.available_qty"
+                    :disabled="item.available_qty === 0"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm disabled:bg-gray-100 disabled:text-gray-400"
+                    placeholder="0"
+                  />
+                </div>
+                <div class="text-right">
+                  <span class="block text-xs font-semibold text-gray-400">Refund Amount</span>
+                  <span class="text-lg font-bold text-gray-800">
+                    ₹ {{ ((item.quantity || 0) * item.price).toFixed(2) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- Return Metadata -->
           <div class="grid grid-cols-1 md:grid-cols-2 gap-6 border-t pt-6">
             <div class="space-y-4">
@@ -246,7 +296,7 @@ const submitReturn = async () => {
                   type="date"
                   v-model="form.return_date"
                   required
-                  class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
+                  class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                 />
               </div>
 
@@ -255,7 +305,7 @@ const submitReturn = async () => {
                 <select
                   v-model="form.refund_method"
                   required
-                  class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
+                  class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                 >
                   <option value="Cash">Cash</option>
                   <option value="Card">Card</option>
@@ -269,7 +319,7 @@ const submitReturn = async () => {
                 <textarea
                   v-model="form.reason"
                   rows="3"
-                  class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
+                  class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                   placeholder="e.g. Broken packaging, wrong shipment..."
                 ></textarea>
               </div>
@@ -300,7 +350,7 @@ const submitReturn = async () => {
                     v-model.number="form.due_deduction"
                     :min="0"
                     :max="Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.due_amount) || 0)"
-                    class="w-full border px-3 py-1.5 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold"
+                    class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold"
                   />
                 </div>
 
@@ -313,7 +363,7 @@ const submitReturn = async () => {
               <div class="mt-6 flex justify-end">
                 <button
                   @click="submitReturn"
-                  class="bg-[#2E2C92] hover:bg-[#1e1c6e] text-white px-6 py-2.5 rounded-lg font-bold shadow-md transition-colors"
+                  class="w-full md:w-auto bg-[#2E2C92] hover:bg-[#1e1c6e] text-white px-6 py-3 rounded-xl font-bold shadow-md hover:shadow-lg transition-colors cursor-pointer"
                 >
                   Process Return
                 </button>

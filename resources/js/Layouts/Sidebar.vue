@@ -45,7 +45,7 @@ onMounted(() => {
         </button>
     </div>
 
-    <nav class="flex-1 overflow-y-auto">
+    <nav class="flex-1 overflow-y-auto no-scrollbar">
       <ul class="space-y-1.5 pl-3 mt-4 pb-6">
 
         <!-- Dashboard -->
