@@ -212,6 +212,16 @@
         <td>Paid</td>
         <td class="text-right">{{ number_format($sale->paid, 2) }}</td>
       </tr>
+      @if(isset($allocatedPayment) && $allocatedPayment > 0)
+      <tr>
+        <td>Advance Applied</td>
+        <td class="text-right">{{ number_format($allocatedPayment, 2) }}</td>
+      </tr>
+      @endif
+      <tr>
+        <td>Balance Due</td>
+        <td class="text-right">{{ number_format(max(0, $sale->grand_total - $sale->paid - ($allocatedPayment ?? 0)), 2) }}</td>
+      </tr>
       <tr class="payment-status-row">
         <td>Payment Status</td>
         <td class="text-right">{{ $sale->payment_status }}</td>

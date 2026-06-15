@@ -469,7 +469,42 @@ class SaleController extends Controller
             abort(403, 'Sale not found or unauthorized access');
         }
 
-        $pdf = Pdf::loadView('invoice', compact('sale'))->setPaper('a4');
+        $allocatedPayment = 0.0;
+        if ($sale->customer) {
+            $totalPayments = \App\Models\SalePayment::where('customer_id', $sale->customer_id)
+                ->where('accepted', $sale->accepted)
+                ->whereNull('sale_id')
+                ->sum('amount');
+            $allSales = Sale::where('customer_id', $sale->customer_id)
+                ->where('accepted', $sale->accepted)
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            foreach ($allSales as $s) {
+                $outstanding = (double)$s->grand_total - (double)$s->paid;
+                if ($outstanding <= 0) {
+                    continue;
+                }
+
+                $allocated = 0.0;
+                if ($totalPayments > 0) {
+                    if ($totalPayments >= $outstanding) {
+                        $allocated = $outstanding;
+                        $totalPayments -= $outstanding;
+                    } else {
+                        $allocated = $totalPayments;
+                        $totalPayments = 0.0;
+                    }
+                }
+
+                if ($s->id == $sale->id) {
+                    $allocatedPayment = $allocated;
+                    break;
+                }
+            }
+        }
+
+        $pdf = Pdf::loadView('invoice', compact('sale', 'allocatedPayment'))->setPaper('a4');
         return $pdf->stream("invoice_{$sale->id}.pdf");
     }
 
@@ -512,5 +547,59 @@ class SaleController extends Controller
     
             return response()->json(['message' => 'Failed to delete purchase.', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    public function show($id)
+    {
+        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
+                    ->with(['saleItems.product', 'customer.user']);
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $sale = $query->find($id);
+
+        if (!$sale) {
+            abort(403, 'Sale not found or unauthorized access');
+        }
+
+        $allocatedPayment = 0.0;
+        if ($sale->customer) {
+            $totalPayments = \App\Models\SalePayment::where('customer_id', $sale->customer_id)
+                ->where('accepted', $sale->accepted)
+                ->whereNull('sale_id')
+                ->sum('amount');
+            $allSales = Sale::where('customer_id', $sale->customer_id)
+                ->where('accepted', $sale->accepted)
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            foreach ($allSales as $s) {
+                $outstanding = (double)$s->grand_total - (double)$s->paid;
+                if ($outstanding <= 0) {
+                    continue;
+                }
+
+                $allocated = 0.0;
+                if ($totalPayments > 0) {
+                    if ($totalPayments >= $outstanding) {
+                        $allocated = $outstanding;
+                        $totalPayments -= $outstanding;
+                    } else {
+                        $allocated = $totalPayments;
+                        $totalPayments = 0.0;
+                    }
+                }
+
+                if ($s->id == $sale->id) {
+                    $allocatedPayment = $allocated;
+                    break;
+                }
+            }
+        }
+
+        return Inertia::render('Sale/Show', [
+            'sale' => $sale,
+            'allocatedPayment' => $allocatedPayment,
+        ]);
     }
 }
