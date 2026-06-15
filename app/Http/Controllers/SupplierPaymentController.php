@@ -107,7 +107,7 @@ class SupplierPaymentController extends Controller
                 'amount' => (float)$item->amount,
                 'payment_date' => $item->payment_date,
                 'payment_method' => $item->payment_method,
-                'source' => $item->purchase_id ? 'Purchase' : 'Supplier Payment',
+                'source' => $item->purchase_id ? 'Purchase (Bill #' . $item->purchase_id . ')' : 'Supplier Payment',
             ];
         });
 
@@ -126,7 +126,7 @@ class SupplierPaymentController extends Controller
                 'amount' => -1 * $totalRefund,
                 'payment_date' => $item->return_date,
                 'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
-                'source' => 'Return',
+                'source' => 'Return (Bill #' . $item->purchase_id . ')',
             ];
         });
 
@@ -153,7 +153,7 @@ class SupplierPaymentController extends Controller
                 'amount' => (float)$item->amount,
                 'payment_date' => $item->payment_date,
                 'payment_method' => $item->payment_method,
-                'source' => $item->purchase_id ? 'Purchase' : 'Supplier Payment',
+                'source' => $item->purchase_id ? 'Purchase (Bill #' . $item->purchase_id . ')' : 'Supplier Payment',
             ];
         });
 
@@ -172,7 +172,7 @@ class SupplierPaymentController extends Controller
                 'amount' => -1 * $totalRefund,
                 'payment_date' => $item->return_date,
                 'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
-                'source' => 'Return',
+                'source' => 'Return (Bill #' . $item->purchase_id . ')',
             ];
         });
 

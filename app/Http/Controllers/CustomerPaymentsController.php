@@ -106,7 +106,7 @@ class CustomerPaymentsController extends Controller
                 'amount' => (float)$item->amount,
                 'payment_date' => $item->payment_date,
                 'payment_method' => $item->payment_method,
-                'source' => $item->sale_id ? 'Sale' : 'Customer Payment',
+                'source' => $item->sale_id ? 'Sale (Invoice #' . $item->sale_id . ')' : 'Customer Payment',
             ];
         });
 
@@ -125,7 +125,7 @@ class CustomerPaymentsController extends Controller
                 'amount' => -1 * $totalRefund,
                 'payment_date' => $item->return_date,
                 'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
-                'source' => 'Return',
+                'source' => 'Return (Invoice #' . $item->sale_id . ')',
             ];
         });
 
@@ -152,7 +152,7 @@ class CustomerPaymentsController extends Controller
                 'amount' => (float)$item->amount,
                 'payment_date' => $item->payment_date,
                 'payment_method' => $item->payment_method,
-                'source' => $item->sale_id ? 'Sale' : 'Customer Payment',
+                'source' => $item->sale_id ? 'Sale (Invoice #' . $item->sale_id . ')' : 'Customer Payment',
             ];
         });
 
@@ -171,7 +171,7 @@ class CustomerPaymentsController extends Controller
                 'amount' => -1 * $totalRefund,
                 'payment_date' => $item->return_date,
                 'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
-                'source' => 'Return',
+                'source' => 'Return (Invoice #' . $item->sale_id . ')',
             ];
         });
 
