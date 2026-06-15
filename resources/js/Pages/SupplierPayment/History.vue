@@ -107,6 +107,16 @@ const columns = [
                   <h1 class="text-3xl font-extrabold text-gray-900 tracking-tight">Supplier Payment History</h1>
                 </div>
               </div>
+
+              <div class="flex items-center gap-3">
+                <a 
+                  :href="`/paymentSupplier/${supplier.id}/history/download-pdf`"
+                  target="_blank"
+                  class="flex items-center justify-center gap-2 px-4 py-2 bg-[#2e2c92] hover:bg-[#1f1d6b] text-white rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200"
+                >
+                  <i class="fa fa-file-pdf-o"></i> Download PDF
+                </a>
+              </div>
             </div>
 
             <!-- Supplier Info & Stats Dashboard -->

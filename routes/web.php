@@ -214,6 +214,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/paymentSupplier/create', [SupplierPaymentController::class, 'create'])->name('paymentSupplier.create');
         Route::post('/paymentSupplier/store', [SupplierPaymentController::class, 'store'])->name('paymentSupplier.store');
         Route::get('/paymentSupplier/{id}/history', [SupplierPaymentController::class, 'history'])->name('paymentSupplier.history');
+        Route::get('/paymentSupplier/{id}/history/download-pdf', [SupplierPaymentController::class, 'downloadHistoryPdf'])->name('paymentSupplier.history.pdf');
     });
 
     //customer_payment 

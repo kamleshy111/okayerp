@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Supplier;
 use App\Models\PurchasePayment;
 use App\Models\PurchaseReturn;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class SupplierPaymentController extends Controller
 {
@@ -135,6 +136,62 @@ class SupplierPaymentController extends Controller
             'supplier' => $supplier,
             'history' => $history,
         ]);
+    }
+
+    public function downloadHistoryPdf($id) {
+        $userId = Auth::id();
+        
+        $supplier = Supplier::with('user')->where('user_id', $userId)->findOrFail($id);
+
+        // Fetch payments for this supplier
+        $paymentsQuery = PurchasePayment::where('supplier_id', $id);
+        if (session('private_ledger_unlocked') !== true) {
+            $paymentsQuery->where('accepted', 1);
+        }
+        $payments = $paymentsQuery->get()->map(function ($item) {
+            return [
+                'amount' => (float)$item->amount,
+                'payment_date' => $item->payment_date,
+                'payment_method' => $item->payment_method,
+                'source' => $item->purchase_id ? 'Purchase' : 'Supplier Payment',
+            ];
+        });
+
+        // Fetch returns for this supplier
+        $returnsQuery = PurchaseReturn::whereHas('purchase', function ($q) use ($id) {
+            $q->where('supplier_id', $id);
+        })->where('user_id', $userId);
+        if (session('private_ledger_unlocked') !== true) {
+            $returnsQuery->whereHas('purchase', function ($q) {
+                $q->where('accepted', 1);
+            });
+        }
+        $returns = $returnsQuery->get()->map(function ($item) {
+            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
+            return [
+                'amount' => -1 * $totalRefund,
+                'payment_date' => $item->return_date,
+                'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
+                'source' => 'Return',
+            ];
+        });
+
+        $history = $payments->concat($returns)->sortByDesc('payment_date')->values()->all();
+
+        // Calculate summary stats
+        $totalPaid = 0.0;
+        $totalRefunded = 0.0;
+        foreach ($history as $item) {
+            if ($item['amount'] > 0) {
+                $totalPaid += $item['amount'];
+            } else {
+                $totalRefunded += abs($item['amount']);
+            }
+        }
+        $netAmount = $totalPaid - $totalRefunded;
+
+        $pdf = Pdf::loadView('supplier_payment_history_pdf', compact('supplier', 'history', 'totalPaid', 'totalRefunded', 'netAmount'))->setPaper('a4');
+        return $pdf->stream("payment_history_" . str_replace(' ', '_', strtolower($supplier->name)) . ".pdf");
     }
 
     public function create(){
