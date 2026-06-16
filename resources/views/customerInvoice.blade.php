@@ -28,7 +28,7 @@
         </div>
 
         @foreach ($data as $sale)
-            <h4>Sale ID: {{ $sale['sale_id'] }} | Date: {{ $sale['sale_date'] }}</h4>
+            <h4>Invoice #{{ $sale['sale_id'] }} | Date: {{ $sale['sale_date'] }}</h4>
             <table class="sale-table">
                 <thead>
                     <tr>
