@@ -10,6 +10,10 @@ const props = defineProps({
   allocatedPayment: {
     type: [Number, String],
     default: 0
+  },
+  returnDueDeduction: {
+    type: [Number, String],
+    default: 0
   }
 });
 
@@ -203,9 +207,13 @@ const triggerPrint = () => {
                 <span class="text-gray-500 font-medium">Advance Applied</span>
                 <span class="text-emerald-600 font-semibold">₹{{ parseFloat(allocatedPayment).toFixed(2) }}</span>
               </div>
+              <div v-if="parseFloat(returnDueDeduction) > 0" class="flex justify-between py-3">
+                <span class="text-gray-500 font-medium">Return Credit Applied</span>
+                <span class="text-emerald-600 font-semibold">₹{{ parseFloat(returnDueDeduction).toFixed(2) }}</span>
+              </div>
               <div class="flex justify-between py-3 text-base font-bold bg-[#f8fafc] px-4 rounded-lg mt-2 border border-gray-100">
                 <span class="text-gray-700">Balance Due</span>
-                <span class="text-rose-600">₹{{ Math.max(0, parseFloat(purchase.grand_total) - parseFloat(purchase.paid) - parseFloat(allocatedPayment)).toFixed(2) }}</span>
+                <span class="text-rose-600">₹{{ Math.max(0, parseFloat(purchase.grand_total) - parseFloat(purchase.paid) - parseFloat(allocatedPayment) - parseFloat(returnDueDeduction)).toFixed(2) }}</span>
               </div>
             </div>
           </div>

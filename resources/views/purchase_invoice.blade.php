@@ -226,9 +226,15 @@
           <td class="text-right">{{ number_format($allocatedPayment, 2) }}</td>
         </tr>
       @endif
+      @if(isset($returnDueDeduction) && $returnDueDeduction > 0)
+        <tr>
+          <td>Return Credit Applied</td>
+          <td class="text-right">{{ number_format($returnDueDeduction, 2) }}</td>
+        </tr>
+      @endif
       <tr>
         <td>Balance Due</td>
-        <td class="text-right">{{ number_format(max(0, $purchase->grand_total - $purchase->paid - ($allocatedPayment ?? 0)), 2) }}</td>
+        <td class="text-right">{{ number_format(max(0, $purchase->grand_total - $purchase->paid - ($allocatedPayment ?? 0) - ($returnDueDeduction ?? 0)), 2) }}</td>
       </tr>
       <tr class="payment-status-row">
         <td>Payment Status</td>

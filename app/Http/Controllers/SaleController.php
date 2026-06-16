@@ -257,7 +257,8 @@ class SaleController extends Controller
             ->get();
 
         foreach ($allSales as $s) {
-            $outstanding = (double)$s->grand_total - (double)$s->paid;
+            $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $s->id)->sum('due_deduction');
+            $outstanding = (double)$s->grand_total - (double)$s->paid - (double)$returnDueDeduction;
             if ($outstanding <= 0) {
                 continue;
             }
@@ -481,7 +482,8 @@ class SaleController extends Controller
                 ->get();
 
             foreach ($allSales as $s) {
-                $outstanding = (double)$s->grand_total - (double)$s->paid;
+                $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $s->id)->sum('due_deduction');
+                $outstanding = (double)$s->grand_total - (double)$s->paid - (double)$returnDueDeduction;
                 if ($outstanding <= 0) {
                     continue;
                 }
@@ -503,8 +505,10 @@ class SaleController extends Controller
                 }
             }
         }
+        $allocatedPayment = round($allocatedPayment, 2);
+        $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
 
-        $pdf = Pdf::loadView('invoice', compact('sale', 'allocatedPayment'))->setPaper('a4');
+        $pdf = Pdf::loadView('invoice', compact('sale', 'allocatedPayment', 'returnDueDeduction'))->setPaper('a4');
         return $pdf->stream("invoice_{$sale->id}.pdf");
     }
 
@@ -574,7 +578,8 @@ class SaleController extends Controller
                 ->get();
 
             foreach ($allSales as $s) {
-                $outstanding = (double)$s->grand_total - (double)$s->paid;
+                $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $s->id)->sum('due_deduction');
+                $outstanding = (double)$s->grand_total - (double)$s->paid - (double)$returnDueDeduction;
                 if ($outstanding <= 0) {
                     continue;
                 }
@@ -597,9 +602,12 @@ class SaleController extends Controller
             }
         }
 
+        $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+
         return Inertia::render('Sale/Show', [
             'sale' => $sale,
             'allocatedPayment' => $allocatedPayment,
+            'returnDueDeduction' => $returnDueDeduction,
         ]);
     }
 }

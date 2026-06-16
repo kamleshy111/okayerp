@@ -316,10 +316,10 @@ class SaleReturnTest extends TestCase
 
         // Verify sale record updates
         $sale->refresh();
-        $this->assertEquals(50.00, $sale->total_amount);
-        $this->assertEquals(9.00, $sale->gst_amount);
-        $this->assertEquals(59.00, $sale->grand_total);
-        $this->assertEquals(41.00, $sale->paid);
+        $this->assertEquals(100.00, $sale->total_amount);
+        $this->assertEquals(18.00, $sale->gst_amount);
+        $this->assertEquals(118.00, $sale->grand_total);
+        $this->assertEquals(80.00, $sale->paid);
         $this->assertEquals('Partial', $sale->payment_status);
 
         // Verify database returns record
@@ -450,19 +450,19 @@ class SaleReturnTest extends TestCase
             ->has('history.0', fn ($page) => $page
                 ->where('amount', 30)
                 ->where('payment_date', '2026-06-16')
-                ->where('source', 'Sale')
+                ->where('source', 'Sale (Invoice #' . $sale->id . ')')
                 ->etc()
             )
             ->has('history.1', fn ($page) => $page
                 ->where('amount', -70.8)
                 ->where('payment_date', '2026-06-15')
-                ->where('source', 'Return')
+                ->where('source', 'Return (Invoice #' . $sale->id . ')')
                 ->etc()
             )
             ->has('history.2', fn ($page) => $page
                 ->where('amount', 50)
                 ->where('payment_date', '2026-06-14')
-                ->where('source', 'Sale')
+                ->where('source', 'Sale (Invoice #' . $sale->id . ')')
                 ->etc()
             )
         );

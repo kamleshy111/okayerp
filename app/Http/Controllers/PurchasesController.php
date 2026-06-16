@@ -225,7 +225,8 @@ class PurchasesController extends Controller
             ->get();
 
         foreach ($allPurchases as $p) {
-            $outstanding = (double)$p->grand_total - (double)$p->paid;
+            $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $p->id)->sum('due_deduction');
+            $outstanding = (double)$p->grand_total - (double)$p->paid - (double)$returnDueDeduction;
             if ($outstanding < 0) {
                 $totalPayments += abs($outstanding);
                 continue;
@@ -482,7 +483,8 @@ class PurchasesController extends Controller
                 ->get();
 
             foreach ($allPurchases as $p) {
-                $outstanding = (double)$p->grand_total - (double)$p->paid;
+                $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $p->id)->sum('due_deduction');
+                $outstanding = (double)$p->grand_total - (double)$p->paid - (double)$returnDueDeduction;
                 if ($outstanding < 0) {
                     $totalPayments += abs($outstanding);
                     continue;
@@ -509,9 +511,12 @@ class PurchasesController extends Controller
             }
         }
 
+        $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->sum('due_deduction');
+
         return Inertia::render('Purchase/Show', [
             'purchase' => $purchase,
             'allocatedPayment' => $allocatedPayment,
+            'returnDueDeduction' => $returnDueDeduction,
         ]);
     }
 
@@ -541,7 +546,8 @@ class PurchasesController extends Controller
                 ->get();
 
             foreach ($allPurchases as $p) {
-                $outstanding = (double)$p->grand_total - (double)$p->paid;
+                $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $p->id)->sum('due_deduction');
+                $outstanding = (double)$p->grand_total - (double)$p->paid - (double)$returnDueDeduction;
                 if ($outstanding < 0) {
                     $totalPayments += abs($outstanding);
                     continue;
@@ -568,7 +574,10 @@ class PurchasesController extends Controller
             }
         }
 
-        $pdf = Pdf::loadView('purchase_invoice', compact('purchase', 'allocatedPayment'))->setPaper('a4');
+        $allocatedPayment = round($allocatedPayment, 2);
+        $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->sum('due_deduction');
+
+        $pdf = Pdf::loadView('purchase_invoice', compact('purchase', 'allocatedPayment', 'returnDueDeduction'))->setPaper('a4');
         return $pdf->stream("purchase_invoice_{$purchase->id}.pdf");
     }
 }

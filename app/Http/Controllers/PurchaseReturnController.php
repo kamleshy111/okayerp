@@ -239,7 +239,8 @@ class PurchaseReturnController extends Controller
 
             // Calculate due reduction vs cash refund based on the purchase's original state and request
             $totalRefund = $refundAmount + $gstRefundAmount;
-            $dueOnPurchase = max(0, (float)$purchase->grand_total - (float)$purchase->paid);
+            $previousDueDeductions = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->where('id', '!=', $purchaseReturn->id)->sum('due_deduction');
+            $dueOnPurchase = max(0, (float)$purchase->grand_total - (float)$purchase->paid - $previousDueDeductions);
             $requestedDueDeduction = (float)$request->input('due_deduction', 0);
             $dueReduction = min($requestedDueDeduction, min($totalRefund, $dueOnPurchase));
             $remainingRefund = max(0, $totalRefund - $dueReduction);
@@ -255,15 +256,13 @@ class PurchaseReturnController extends Controller
             $accountingService = new AccountingService($userId);
             $accountingService->postPurchaseReturn($purchaseReturn);
 
-            // Update original Purchase record
-            $purchase->total_amount = max(0, (float)$purchase->total_amount - (float)$refundAmount);
-            $purchase->gst_amount = max(0, (float)$purchase->gst_amount - (float)$gstRefundAmount);
-            $purchase->grand_total = max(0, (float)$purchase->grand_total - $totalRefund);
-            $purchase->paid = max(0, (float)$purchase->paid - $remainingRefund);
+            // Calculate effective balance due to update payment status
+            $totalDueDeductions = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->sum('due_deduction');
+            $effectiveBalance = max(0, (float)$purchase->grand_total - (float)$purchase->paid - $totalDueDeductions);
 
-            if ($purchase->paid >= $purchase->grand_total) {
+            if ($effectiveBalance <= 0) {
                 $purchase->payment_status = 'Paid';
-            } elseif ($purchase->paid <= 0) {
+            } elseif ((float)$purchase->paid + $totalDueDeductions <= 0) {
                 $purchase->payment_status = 'Unpaid';
             } else {
                 $purchase->payment_status = 'Partial';
