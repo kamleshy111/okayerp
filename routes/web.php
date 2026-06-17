@@ -159,6 +159,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/sale', [SaleController::class, 'index'])->name('sale');
         Route::get('/sale/create', [SaleController::class, 'create'])->name('sale.create');
         Route::post('/sale/store', [SaleController::class, 'store'])->name('sale.store');
+        Route::post('/sale/scan', [SaleController::class, 'scan'])->name('sale.scan');
+        Route::post('/sale/store-scanned', [SaleController::class, 'storeScanned'])->name('sale.store-scanned');
         Route::get('/sale/{id}/edit', [SaleController::class, 'edit'])->name('sale.edit');
         Route::get('/sale/{id}', [SaleController::class, 'show'])->name('sale.show');
         Route::post('/sale/update/{id}', [SaleController::class, 'update'])->name('sale.update');
@@ -190,6 +192,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/purchase', [PurchasesController::class, 'index'])->name('purchase');
         Route::get('/purchase/create', [PurchasesController::class, 'create'])->name('purchase.create');
         Route::post('/purchase/store', [PurchasesController::class, 'store'])->name('purchase.store');
+        Route::post('/purchase/scan', [PurchasesController::class, 'scan'])->name('purchase.scan');
+        Route::post('/purchase/store-scanned', [PurchasesController::class, 'storeScanned'])->name('purchase.store-scanned');
         Route::get('/purchase/{id}/edit', [PurchasesController::class, 'edit'])->name('purchase.edit');
         Route::get('/purchase/{id}', [PurchasesController::class, 'show'])->name('purchase.show');
         Route::get('/purchase/{id}/download-pdf', [PurchasesController::class, 'downloadInvoice'])->name('purchase.invoice.download');
