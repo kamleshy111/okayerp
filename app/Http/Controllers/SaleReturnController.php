@@ -157,8 +157,13 @@ class SaleReturnController extends Controller
                 $q->where('user_id', $userId);
             })->orderBy('id', 'desc')->first();
 
-            $nextNumber = $lastReturn ? ((int) str_replace('RET-', '', $lastReturn->return_no)) + 1 : 1;
-            $returnNo = 'RET-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+            if ($lastReturn) {
+                $parts = explode('-', $lastReturn->return_no);
+                $nextNumber = ((int) end($parts)) + 1;
+            } else {
+                $nextNumber = 1;
+            }
+            $returnNo = 'RET-' . $userId . '-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
 
             $refundAmount = 0;
             $gstRefundAmount = 0;
@@ -234,7 +239,8 @@ class SaleReturnController extends Controller
 
             // Calculate due reduction vs cash refund based on the sale's original state and request
             $totalRefund = $refundAmount + $gstRefundAmount;
-            $dueOnSale = max(0, (float)$sale->grand_total - (float)$sale->paid);
+            $previousDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->where('id', '!=', $saleReturn->id)->sum('due_deduction');
+            $dueOnSale = max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions);
             $requestedDueDeduction = (float)$request->input('due_deduction', 0);
             $dueReduction = min($requestedDueDeduction, min($totalRefund, $dueOnSale));
             $remainingRefund = max(0, $totalRefund - $dueReduction);
@@ -250,15 +256,13 @@ class SaleReturnController extends Controller
             $accountingService = new AccountingService($userId);
             $accountingService->postSaleReturn($saleReturn);
 
-            // Update original Sale record
-            $sale->total_amount = max(0, (float)$sale->total_amount - (float)$refundAmount);
-            $sale->gst_amount = max(0, (float)$sale->gst_amount - (float)$gstRefundAmount);
-            $sale->grand_total = max(0, (float)$sale->grand_total - $totalRefund);
-            $sale->paid = max(0, (float)$sale->paid - $remainingRefund);
+            // Calculate effective balance due to update payment status
+            $totalDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+            $effectiveBalance = max(0, (float)$sale->grand_total - (float)$sale->paid - $totalDueDeductions);
 
-            if ($sale->paid >= $sale->grand_total) {
+            if ($effectiveBalance <= 0) {
                 $sale->payment_status = 'Paid';
-            } elseif ($sale->paid <= 0) {
+            } elseif ((float)$sale->paid + $totalDueDeductions <= 0) {
                 $sale->payment_status = 'Unpaid';
             } else {
                 $sale->payment_status = 'Partial';

@@ -10,6 +10,7 @@ use App\Models\SaleItem;
 use App\Models\SaleReturn;
 use App\Models\SaleReturnItem;
 use App\Models\JournalEntry;
+use App\Models\SalePayment;
 use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -315,10 +316,10 @@ class SaleReturnTest extends TestCase
 
         // Verify sale record updates
         $sale->refresh();
-        $this->assertEquals(50.00, $sale->total_amount);
-        $this->assertEquals(9.00, $sale->gst_amount);
-        $this->assertEquals(59.00, $sale->grand_total);
-        $this->assertEquals(41.00, $sale->paid);
+        $this->assertEquals(100.00, $sale->total_amount);
+        $this->assertEquals(18.00, $sale->gst_amount);
+        $this->assertEquals(118.00, $sale->grand_total);
+        $this->assertEquals(80.00, $sale->paid);
         $this->assertEquals('Partial', $sale->payment_status);
 
         // Verify database returns record
@@ -344,20 +345,126 @@ class SaleReturnTest extends TestCase
             'amount' => 9.00,
         ]);
 
-        // Credit: Accounts Receivable (AR) = 20.00 (Due Deduction)
+        $saleReturn = SaleReturn::latest('id')->first();
+        
         $this->assertDatabaseHas('journal_entries', [
             'reference_type' => 'SaleReturn',
             'type' => 'credit',
             'amount' => 20.00,
-            'description' => 'Sale Return #RET-00001 for Invoice #' . $sale->id . ' (Applied to Invoice Due)',
+            'description' => 'Sale Return #' . $saleReturn->return_no . ' for Invoice #' . $sale->id . ' (Applied to Invoice Due)',
         ]);
 
-        // Credit: Cash = 39.00 (Remaining Cash Refund)
+        // Credit: Cash/Bank = 39.00 (Net Refund)
         $this->assertDatabaseHas('journal_entries', [
             'reference_type' => 'SaleReturn',
             'type' => 'credit',
             'amount' => 39.00,
-            'description' => 'Sale Return #RET-00001 for Invoice #' . $sale->id . ' (Cash)',
+            'description' => 'Sale Return #' . $saleReturn->return_no . ' for Invoice #' . $sale->id . ' (Cash)',
         ]);
+    }
+
+    public function test_sale_returns_show_up_in_customer_payments_list(): void
+    {
+        $storeUser = User::factory()->create(['role' => 'store']);
+
+        $customer = Customer::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Jane Client',
+            'email' => 'jane@client.com',
+            'phone' => '1234567890',
+        ]);
+
+        $sale = Sale::create([
+            'customer_id' => $customer->id,
+            'total_amount' => 100.00,
+            'grand_total' => 100.00,
+            'accepted' => 1,
+        ]);
+
+        // Create a sale payment on 2026-06-14 (earlier)
+        $payment1 = SalePayment::create([
+            'customer_id' => $customer->id,
+            'sale_id' => $sale->id,
+            'amount' => 50.00,
+            'payment_date' => '2026-06-14',
+            'payment_method' => 'UPI',
+            'accepted' => 1,
+        ]);
+
+        // Create a return on 2026-06-15 (middle)
+        $return = SaleReturn::create([
+            'user_id' => $storeUser->id,
+            'sale_id' => $sale->id,
+            'return_no' => 'RET-99999',
+            'return_date' => '2026-06-15',
+            'refund_amount' => 60.00,
+            'gst_refund_amount' => 10.80,
+            'refund_method' => 'Cash',
+        ]);
+
+        // Create a sale payment on 2026-06-16 (later)
+        $payment2 = SalePayment::create([
+            'customer_id' => $customer->id,
+            'sale_id' => $sale->id,
+            'amount' => 30.00,
+            'payment_date' => '2026-06-16',
+            'payment_method' => 'Card',
+            'accepted' => 1,
+        ]);
+
+        $this->actingAs($storeUser);
+
+        $response = $this->get('/paymentsCustomer');
+        $response->assertOk();
+        
+        $response->assertInertia(fn ($page) => $page
+            ->component('CustomerPayment/Index')
+            ->has('customers', 3)
+            ->has('customers.0', fn ($page) => $page
+                ->where('amount', 30)
+                ->where('payment_date', '2026-06-16')
+                ->where('source', 'Sale')
+                ->etc()
+            )
+            ->has('customers.1', fn ($page) => $page
+                ->where('amount', -70.8)
+                ->where('payment_date', '2026-06-15')
+                ->where('source', 'Return')
+                ->etc()
+            )
+            ->has('customers.2', fn ($page) => $page
+                ->where('amount', 50)
+                ->where('payment_date', '2026-06-14')
+                ->where('source', 'Sale')
+                ->etc()
+            )
+        );
+
+        $responseHistory = $this->get('/paymentsCustomer/' . $customer->id . '/history');
+        $responseHistory->assertOk();
+        $responseHistory->assertInertia(fn ($page) => $page
+            ->component('CustomerPayment/History')
+            ->has('customer')
+            ->where('customer.id', $customer->id)
+            ->has('history', 3)
+            ->has('history.0', fn ($page) => $page
+                ->where('amount', 30)
+                ->where('payment_date', '2026-06-16')
+                ->where('source', 'Sale (Invoice #' . $sale->id . ')')
+                ->etc()
+            )
+            ->has('history.1', fn ($page) => $page
+                ->where('amount', -70.8)
+                ->where('payment_date', '2026-06-15')
+                ->where('source', 'Return (Invoice #' . $sale->id . ')')
+                ->etc()
+            )
+            ->has('history.2', fn ($page) => $page
+                ->where('amount', 50)
+                ->where('payment_date', '2026-06-14')
+                ->where('source', 'Sale (Invoice #' . $sale->id . ')')
+                ->etc()
+            )
+        );
     }
 }

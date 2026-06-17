@@ -90,7 +90,7 @@ onMounted(() => {
           </a>
         </li>
 
-        <li v-if="role === 'store' && hasPermission('payments customer manage')" :class="{ 'active': route().current('paymentsCustomer*') }">
+        <li v-if="role === 'store' && hasPermission('payments customer manage')" :class="{ 'active': route().current('paymentsCustomer*') && !route().current('paymentsCustomer.history') }">
           <a
             :href="route('paymentsCustomer')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -99,7 +99,7 @@ onMounted(() => {
           </a>
         </li>
 
-        <li v-if="role === 'store' && hasPermission('customer manage')" :class="{ 'active': route().current('customer*') }">
+        <li v-if="role === 'store' && hasPermission('customer manage')" :class="{ 'active': route().current('customer*') || route().current('paymentsCustomer.history') }">
           <a
             :href="route('customer')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -163,7 +163,7 @@ onMounted(() => {
           </a>
         </li>
 
-        <li v-if="role === 'store' && hasPermission('payment supplier manage')" :class="{ 'active': route().current('paymentSupplier*') }">
+        <li v-if="role === 'store' && hasPermission('payment supplier manage')" :class="{ 'active': route().current('paymentSupplier*') && !route().current('paymentSupplier.history') }">
           <a
             :href="route('paymentSupplier')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
@@ -172,7 +172,7 @@ onMounted(() => {
           </a>
         </li>
 
-        <li v-if="role === 'store' && hasPermission('supplier manage')" :class="{ 'active': route().current('supplier*') }">
+        <li v-if="role === 'store' && hasPermission('supplier manage')" :class="{ 'active': route().current('supplier*') || route().current('paymentSupplier.history') }">
           <a
             :href="route('supplier')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"

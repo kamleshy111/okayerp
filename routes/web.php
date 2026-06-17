@@ -160,6 +160,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/sale/create', [SaleController::class, 'create'])->name('sale.create');
         Route::post('/sale/store', [SaleController::class, 'store'])->name('sale.store');
         Route::get('/sale/{id}/edit', [SaleController::class, 'edit'])->name('sale.edit');
+        Route::get('/sale/{id}', [SaleController::class, 'show'])->name('sale.show');
         Route::post('/sale/update/{id}', [SaleController::class, 'update'])->name('sale.update');
         Route::delete('/sale/destroy/{id}', [SaleController::class, 'destroy'])->name('sale.destroy');
 
@@ -190,6 +191,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/purchase/create', [PurchasesController::class, 'create'])->name('purchase.create');
         Route::post('/purchase/store', [PurchasesController::class, 'store'])->name('purchase.store');
         Route::get('/purchase/{id}/edit', [PurchasesController::class, 'edit'])->name('purchase.edit');
+        Route::get('/purchase/{id}', [PurchasesController::class, 'show'])->name('purchase.show');
+        Route::get('/purchase/{id}/download-pdf', [PurchasesController::class, 'downloadInvoice'])->name('purchase.invoice.download');
         Route::post('/purchase/update/{id}', [PurchasesController::class, 'update'])->name('purchase.update');
         Route::delete('/purchase/destroy/{id}', [PurchasesController::class, 'destroy'])->name('purchase.destroy');
 
@@ -210,6 +213,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/paymentSupplier', [SupplierPaymentController::class, 'index'])->name('paymentSupplier');
         Route::get('/paymentSupplier/create', [SupplierPaymentController::class, 'create'])->name('paymentSupplier.create');
         Route::post('/paymentSupplier/store', [SupplierPaymentController::class, 'store'])->name('paymentSupplier.store');
+        Route::get('/paymentSupplier/{id}/history', [SupplierPaymentController::class, 'history'])->name('paymentSupplier.history');
+        Route::get('/paymentSupplier/{id}/history/download-pdf', [SupplierPaymentController::class, 'downloadHistoryPdf'])->name('paymentSupplier.history.pdf');
     });
 
     //customer_payment 
@@ -217,6 +222,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/paymentsCustomer', [CustomerPaymentsController::class, 'index'])->name('paymentsCustomer');
         Route::get('/paymentsCustomer/create', [CustomerPaymentsController::class, 'create'])->name('paymentsCustomer.create');
         Route::post('/paymentsCustomer/store', [CustomerPaymentsController::class, 'store'])->name('paymentsCustomer.store');
+        Route::get('/paymentsCustomer/{id}/history', [CustomerPaymentsController::class, 'history'])->name('paymentsCustomer.history');
+        Route::get('/paymentsCustomer/{id}/history/download-pdf', [CustomerPaymentsController::class, 'downloadHistoryPdf'])->name('paymentsCustomer.history.pdf');
     });
 
     // AR/AP Aging Report

@@ -13,6 +13,7 @@ use App\Models\PurchaseItem;
 use App\Models\Payment;
 use App\Models\PurchasePayment;
 use App\Services\AccountingService;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class PurchasesController extends Controller
 {
@@ -224,7 +225,8 @@ class PurchasesController extends Controller
             ->get();
 
         foreach ($allPurchases as $p) {
-            $outstanding = (double)$p->grand_total - (double)$p->paid;
+            $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $p->id)->sum('due_deduction');
+            $outstanding = (double)$p->grand_total - (double)$p->paid - (double)$returnDueDeduction;
             if ($outstanding < 0) {
                 $totalPayments += abs($outstanding);
                 continue;
@@ -453,5 +455,129 @@ class PurchasesController extends Controller
     
             return response()->json(['message' => 'Failed to delete purchase.', 'error' => $e->getMessage()], 500);
         }
+    }
+
+    public function show($id)
+    {
+        $userId = Auth::id();
+        $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+                        ->with(['items.product', 'supplier.user']);
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $purchase = $query->find($id);
+
+        if (!$purchase) {
+            abort(403, 'Purchase not found or unauthorized access');
+        }
+
+        $allocatedPayment = 0.0;
+        if ($purchase->supplier) {
+            $totalPayments = \App\Models\PurchasePayment::where('supplier_id', $purchase->supplier_id)
+                ->where('accepted', $purchase->accepted)
+                ->sum('amount');
+            $allPurchases = Purchase::where('supplier_id', $purchase->supplier_id)
+                ->where('accepted', $purchase->accepted)
+                ->orderBy('purchase_date', 'asc')
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            foreach ($allPurchases as $p) {
+                $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $p->id)->sum('due_deduction');
+                $outstanding = (double)$p->grand_total - (double)$p->paid - (double)$returnDueDeduction;
+                if ($outstanding < 0) {
+                    $totalPayments += abs($outstanding);
+                    continue;
+                }
+                if ($outstanding == 0) {
+                    continue;
+                }
+
+                $allocated = 0.0;
+                if ($totalPayments > 0) {
+                    if ($totalPayments >= $outstanding) {
+                        $allocated = $outstanding;
+                        $totalPayments -= $outstanding;
+                    } else {
+                        $allocated = $totalPayments;
+                        $totalPayments = 0.0;
+                    }
+                }
+
+                if ($p->id == $purchase->id) {
+                    $allocatedPayment = $allocated;
+                    break;
+                }
+            }
+        }
+
+        $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->sum('due_deduction');
+
+        return Inertia::render('Purchase/Show', [
+            'purchase' => $purchase,
+            'allocatedPayment' => $allocatedPayment,
+            'returnDueDeduction' => $returnDueDeduction,
+        ]);
+    }
+
+    public function downloadInvoice(Request $request, $id)
+    {
+        $userId = Auth::id();
+        $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+                        ->with(['items.product', 'supplier.user']);
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where('accepted', 1);
+        }
+        $purchase = $query->find($id);
+
+        if (!$purchase) {
+            abort(403, 'Purchase not found or unauthorized access');
+        }
+
+        $allocatedPayment = 0.0;
+        if ($purchase->supplier) {
+            $totalPayments = \App\Models\PurchasePayment::where('supplier_id', $purchase->supplier_id)
+                ->where('accepted', $purchase->accepted)
+                ->sum('amount');
+            $allPurchases = Purchase::where('supplier_id', $purchase->supplier_id)
+                ->where('accepted', $purchase->accepted)
+                ->orderBy('purchase_date', 'asc')
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            foreach ($allPurchases as $p) {
+                $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $p->id)->sum('due_deduction');
+                $outstanding = (double)$p->grand_total - (double)$p->paid - (double)$returnDueDeduction;
+                if ($outstanding < 0) {
+                    $totalPayments += abs($outstanding);
+                    continue;
+                }
+                if ($outstanding == 0) {
+                    continue;
+                }
+
+                $allocated = 0.0;
+                if ($totalPayments > 0) {
+                    if ($totalPayments >= $outstanding) {
+                        $allocated = $outstanding;
+                        $totalPayments -= $outstanding;
+                    } else {
+                        $allocated = $totalPayments;
+                        $totalPayments = 0.0;
+                    }
+                }
+
+                if ($p->id == $purchase->id) {
+                    $allocatedPayment = $allocated;
+                    break;
+                }
+            }
+        }
+
+        $allocatedPayment = round($allocatedPayment, 2);
+        $returnDueDeduction = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->sum('due_deduction');
+
+        $pdf = Pdf::loadView('purchase_invoice', compact('purchase', 'allocatedPayment', 'returnDueDeduction'))->setPaper('a4');
+        return $pdf->stream("purchase_invoice_{$purchase->id}.pdf");
     }
 }
