@@ -43,8 +43,13 @@ class PurchasesController extends Controller
         });
                     
 
+        $products = Product::where('user_id', $userId)->get();
+        $suppliers = Supplier::where('user_id', $userId)->get();
+
         return Inertia::render('Purchase/Index',[
             'purchases' => $purchases,
+            'suppliers' => $suppliers,
+            'products' => $products,
         ]);
     }
 
