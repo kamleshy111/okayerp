@@ -346,15 +346,6 @@ const saveScannedSale = async () => {
         <div class="flex items-center justify-between mb-6">
           <h1 class="text-3xl font-bold">Sales</h1>
           <div class="flex items-center gap-4">
-            <!-- Hidden input for file scanning -->
-            <input type="file" ref="scanInput" class="hidden" accept="image/*,application/pdf" @change="handleFileChange" />
-
-            <!-- Scan button -->
-            <button @click="triggerScan"
-                class="hover:bg-[#2e2c92] bg-white border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer transition">
-                 <i class="fa fa-camera"></i>
-                 <span>Scan Invoice</span>
-            </button>
 
             <a :href="route('sale.create')" class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
                 <span>+ Add Sale</span>
