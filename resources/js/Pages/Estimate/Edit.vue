@@ -65,7 +65,12 @@ const newCustomer = ref({
   phone: '',
   email: '',
   gst_number: '',
-  address: ''
+  address: '',
+  city: '',
+  district: '',
+  state: '',
+  country: '',
+  pin_code: ''
 });
 
 // Product Quick Add Modal State
@@ -94,7 +99,12 @@ const openCustomerModalWithName = (name) => {
     phone: '',
     email: '',
     gst_number: '',
-    address: ''
+    address: '',
+    city: '',
+    district: '',
+    state: '',
+    country: '',
+    pin_code: ''
   };
   showCustomerModal.value = true;
 };
@@ -127,7 +137,12 @@ const submitCustomer = async () => {
       phone: '',
       email: '',
       gst_number: '',
-      address: ''
+      address: '',
+      city: '',
+      district: '',
+      state: '',
+      country: '',
+      pin_code: ''
     };
 
     toast.success("Customer added successfully!");
@@ -617,6 +632,35 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Address</label>
                     <textarea v-model="newCustomer.address" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" rows="2"></textarea>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
+                        <input type="text" v-model="newCustomer.city" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">District</label>
+                        <input type="text" v-model="newCustomer.district" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
+                        <input type="text" v-model="newCustomer.state" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                        <input type="text" v-model="newCustomer.country" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">PIN Code</label>
+                        <input type="text" v-model="newCustomer.pin_code" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    </div>
                 </div>
             </div>
 

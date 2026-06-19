@@ -99,6 +99,11 @@ class CustomersController extends Controller
             'phone' => $request->input('phone'),
             'gst_number' => $request->input('gst_number'),
             'address' => $request->input('address'),
+            'city' => $request->input('city'),
+            'district' => $request->input('district'),
+            'state' => $request->input('state'),
+            'country' => $request->input('country'),
+            'pin_code' => $request->input('pin_code'),
             'status' => $request->input('status') ?? 'inactive',
         ]);
 
@@ -154,6 +159,11 @@ class CustomersController extends Controller
             'phone' => $data->phone ?? '',
             'gst_number' => $data->gst_number ?? '',
             'address' => $data->address ?? '',
+            'city' => $data->city ?? '',
+            'district' => $data->district ?? '',
+            'state' => $data->state ?? '',
+            'country' => $data->country ?? '',
+            'pin_code' => $data->pin_code ?? '',
         ];
 
         return Inertia::render('Customer/Edit',[
@@ -193,6 +203,11 @@ class CustomersController extends Controller
             $customer->phone = $request->input("phone");
             $customer->gst_number = $request->input("gst_number");
             $customer->address = $request->input("address");
+            $customer->city = $request->input("city");
+            $customer->district = $request->input("district");
+            $customer->state = $request->input("state");
+            $customer->country = $request->input("country");
+            $customer->pin_code = $request->input("pin_code");
             $customer->status = $request->input("status") ?? 'inactive';
             $customer->save();
 
