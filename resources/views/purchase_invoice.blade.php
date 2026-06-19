@@ -158,6 +158,9 @@
         @if($purchase->supplier->user->email)
           Email: {{ $purchase->supplier->user->email }}
         @endif
+        @if($purchase->supplier->user->gstin)
+          <br>GSTIN: {{ $purchase->supplier->user->gstin }}
+        @endif
       @else
         Your Company Name<br>
         Phone: N/A<br>

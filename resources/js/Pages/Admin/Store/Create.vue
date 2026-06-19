@@ -13,6 +13,11 @@ const form = ref({
     address: "",
     password: "",
     password_confirmation: "",
+    bank_name: "",
+    account_number: "",
+    ifsc_code: "",
+    branch_name: "",
+    gstin: "",
 });
 
 // name input ref
@@ -43,6 +48,11 @@ const submitForm = async () => {
       address: "",
       password: "",
       password_confirmation: "",
+      bank_name: "",
+      account_number: "",
+      ifsc_code: "",
+      branch_name: "",
+      gstin: "",
     };
     
     await nextTick();
@@ -114,6 +124,50 @@ const submitForm = async () => {
                     <input type="text" name="address" v-model="form.address" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter address" />
+                </div>
+            </div>
+
+            <!-- Bank Details -->
+            <div class="border-t border-gray-200 mt-7 pt-7">
+                <h3 class="text-lg font-bold mb-4 text-[#292688]">Bank Details</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-black font-medium mb-2">Bank Name</label>
+                        <input type="text" name="bank_name" v-model="form.bank_name"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter bank name" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">Account Number</label>
+                        <input type="text" name="account_number" v-model="form.account_number"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter account number" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                    <div>
+                        <label class="block text-black font-medium mb-2">IFSC Code</label>
+                        <input type="text" name="ifsc_code" v-model="form.ifsc_code"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter IFSC code" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">Branch Name</label>
+                        <input type="text" name="branch_name" v-model="form.branch_name"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter branch name" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                    <div>
+                        <label class="block text-black font-medium mb-2">GSTIN</label>
+                        <input type="text" name="gstin" v-model="form.gstin"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter GSTIN" />
+                    </div>
                 </div>
             </div>
 

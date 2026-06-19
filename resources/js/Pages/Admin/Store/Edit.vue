@@ -16,6 +16,11 @@ const form = ref({
     email: storesDetail.email,
     address: storesDetail.address,
     profile_photo: null,
+    bank_name: storesDetail.bank_name || "",
+    account_number: storesDetail.account_number || "",
+    ifsc_code: storesDetail.ifsc_code || "",
+    branch_name: storesDetail.branch_name || "",
+    gstin: storesDetail.gstin || "",
 });
 
 // preview state
@@ -40,6 +45,11 @@ const submitForm = async () => {
         formData.append('phone', form.value.phone);
         formData.append('email', form.value.email);
         formData.append('address', form.value.address);
+        formData.append('bank_name', form.value.bank_name || '');
+        formData.append('account_number', form.value.account_number || '');
+        formData.append('ifsc_code', form.value.ifsc_code || '');
+        formData.append('branch_name', form.value.branch_name || '');
+        formData.append('gstin', form.value.gstin || '');
 
         if (form.value.profile_photo) {
             formData.append('profile_photo', form.value.profile_photo);
@@ -109,6 +119,50 @@ const submitForm = async () => {
                     </div>
                 </div>
 
+            </div>
+
+            <!-- Bank Details -->
+            <div class="border-t border-gray-200 mt-7 pt-7">
+                <h3 class="text-lg font-bold mb-4 text-[#292688]">Bank Details</h3>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-black font-medium mb-2">Bank Name</label>
+                        <input type="text" name="bank_name" v-model="form.bank_name"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter bank name" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">Account Number</label>
+                        <input type="text" name="account_number" v-model="form.account_number"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter account number" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                    <div>
+                        <label class="block text-black font-medium mb-2">IFSC Code</label>
+                        <input type="text" name="ifsc_code" v-model="form.ifsc_code"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter IFSC code" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">Branch Name</label>
+                        <input type="text" name="branch_name" v-model="form.branch_name"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter branch name" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                    <div>
+                        <label class="block text-black font-medium mb-2">GSTIN</label>
+                        <input type="text" name="gstin" v-model="form.gstin"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter GSTIN" />
+                    </div>
+                </div>
             </div>
 
             <div class="pt-4">

@@ -135,7 +135,10 @@
               Phone: {{ $sale->customer->user->phone }}<br>
             @endif
             @if($sale->customer->user->email)
-              Email: {{ $sale->customer->user->email }}
+              Email: {{ $sale->customer->user->email }}<br>
+            @endif
+            @if($sale->customer->user->gstin)
+              GSTIN: {{ $sale->customer->user->gstin }}
             @endif
           @else
             Your Company<br>
@@ -158,6 +161,9 @@
       {{ $sale->customer->phone ?? 'N/A' }}<br>
       {{ $sale->customer->email ?? 'N/A' }}<br>
       {{ $sale->customer->address ?? 'N/A' }}
+      @if(!empty($sale->customer->gst_number))
+        <br>GSTIN: {{ $sale->customer->gst_number }}
+      @endif
     </div>
 
     <table class="invoice-table">
