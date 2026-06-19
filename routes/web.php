@@ -224,6 +224,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/paymentsCustomer/store', [CustomerPaymentsController::class, 'store'])->name('paymentsCustomer.store');
         Route::get('/paymentsCustomer/{id}/history', [CustomerPaymentsController::class, 'history'])->name('paymentsCustomer.history');
         Route::get('/paymentsCustomer/{id}/history/download-pdf', [CustomerPaymentsController::class, 'downloadHistoryPdf'])->name('paymentsCustomer.history.pdf');
+        
+        Route::get('/customer/{id}/payment-info', [CustomerPaymentsController::class, 'paymentInfo'])->name('customer.payment.info');
     });
 
     // AR/AP Aging Report

@@ -38,7 +38,7 @@ class SaleController extends Controller
                 'phone' => $item->customer->phone ?? '',
                 'grand_total' => $item->grand_total,
                 'sale_date' => $item->created_at->format('d-m-Y'),
-                'payment_status' => $item->payment_status,
+                'payment_status' => $item->paid >= $item->grand_total ? 'Paid' : $item->payment_status,
             ];
         });
 
@@ -197,8 +197,17 @@ class SaleController extends Controller
                     ->where('customer_id', $id)
                     ->get();
 
-        $totalPurchaseAmount = $sale->sum('grand_total');
-        $totalPurchasePaid = $sale->sum('paid');
+        $dueAmount = 0;
+        $advanceAmount = 0;
+
+        foreach ($sale as $s) {
+            $saleBalance = $s->paid - $s->grand_total;
+            if ($saleBalance < 0) {
+                $dueAmount += abs($saleBalance);
+            } elseif ($saleBalance > 0) {
+                $advanceAmount += $saleBalance;
+            }
+        }
 
         $paymentQuery = SalePayment::whereHas('customer', fn($q) => $q->where('user_id', $userId))
                                       ->where('customer_id', $id)
@@ -207,16 +216,16 @@ class SaleController extends Controller
             $paymentQuery->where('accepted', 1);
         }
         $totalDirectPaid = $paymentQuery->sum('amount');
+        
+        $advanceAmount += $totalDirectPaid;
+        
+        $netBalance = $advanceAmount - $dueAmount;
 
-        $totalReceived = $totalPurchasePaid + $totalDirectPaid;
-
-        $balance = $totalReceived - $totalPurchaseAmount;
-    
         return response()->json([
             'customer_id' => $id,
-            'due_amount' => $balance < 0 ? abs($balance) : 0,
-            'advance_amount' => $balance > 0 ? $balance : 0,
-            'status' => $balance === 0 ? 'clear' : ($balance < 0 ? 'due' : 'advance'),
+            'due_amount' => $dueAmount,
+            'advance_amount' => $advanceAmount,
+            'status' => $netBalance === 0 ? 'clear' : ($netBalance < 0 ? 'due' : 'advance'),
         ]);
     }
 
@@ -567,47 +576,14 @@ class SaleController extends Controller
         }
 
         $allocatedPayment = 0.0;
-        if ($sale->customer) {
-            $totalPayments = \App\Models\SalePayment::where('customer_id', $sale->customer_id)
-                ->where('accepted', $sale->accepted)
-                ->whereNull('sale_id')
-                ->sum('amount');
-            $allSales = Sale::where('customer_id', $sale->customer_id)
-                ->where('accepted', $sale->accepted)
-                ->orderBy('created_at', 'asc')
-                ->get();
-
-            foreach ($allSales as $s) {
-                $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $s->id)->sum('due_deduction');
-                $outstanding = (double)$s->grand_total - (double)$s->paid - (double)$returnDueDeduction;
-                if ($outstanding <= 0) {
-                    continue;
-                }
-
-                $allocated = 0.0;
-                if ($totalPayments > 0) {
-                    if ($totalPayments >= $outstanding) {
-                        $allocated = $outstanding;
-                        $totalPayments -= $outstanding;
-                    } else {
-                        $allocated = $totalPayments;
-                        $totalPayments = 0.0;
-                    }
-                }
-
-                if ($s->id == $sale->id) {
-                    $allocatedPayment = $allocated;
-                    break;
-                }
-            }
-        }
-
         $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+        $payments = \App\Models\SalePayment::where('sale_id', $sale->id)->orderBy('payment_date', 'asc')->get();
 
         return Inertia::render('Sale/Show', [
             'sale' => $sale,
             'allocatedPayment' => $allocatedPayment,
             'returnDueDeduction' => $returnDueDeduction,
+            'payments' => $payments,
         ]);
     }
 }

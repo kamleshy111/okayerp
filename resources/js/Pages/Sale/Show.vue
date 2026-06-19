@@ -14,6 +14,10 @@ const props = defineProps({
   returnDueDeduction: {
     type: [Number, String],
     default: 0
+  },
+  payments: {
+    type: Array,
+    default: () => []
   }
 });
 
@@ -154,6 +158,41 @@ const triggerPrint = () => {
           </table>
         </div>
 
+        <!-- Payment History Table (If any) -->
+        <div v-if="payments && payments.length > 0" class="mb-8">
+          <h4 class="text-sm font-bold text-gray-800 uppercase tracking-wider mb-3">Payment History</h4>
+          <div class="overflow-x-auto border border-gray-200 rounded-xl">
+            <table class="w-full text-sm text-left text-gray-600">
+              <thead class="bg-[#f8fafc] text-gray-700 border-b border-gray-200">
+                <tr>
+                  <th scope="col" class="px-6 py-3 font-bold">Date</th>
+                  <th scope="col" class="px-6 py-3 font-bold">Method</th>
+                  <th scope="col" class="px-6 py-3 font-bold">Note</th>
+                  <th scope="col" class="px-6 py-3 font-bold text-right">Amount</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y divide-gray-100">
+                <tr v-for="payment in payments" :key="payment.id" class="hover:bg-gray-50/50">
+                  <td class="px-6 py-3 font-medium text-gray-900">
+                    {{ formatDate(payment.payment_date || payment.created_at) }}
+                  </td>
+                  <td class="px-6 py-3 text-gray-600">
+                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium" :class="{'bg-blue-100 text-blue-800': payment.payment_method === 'Advance Wallet', 'bg-gray-100 text-gray-800': payment.payment_method !== 'Advance Wallet'}">
+                      {{ payment.payment_method || 'N/A' }}
+                    </span>
+                  </td>
+                  <td class="px-6 py-3 text-gray-500 text-xs">
+                    {{ payment.note || '-' }}
+                  </td>
+                  <td class="px-6 py-3 text-right font-semibold text-emerald-600">
+                    ₹{{ parseFloat(payment.amount).toFixed(2) }}
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         <!-- Totals & Summary section -->
         <div class="flex flex-col md:flex-row justify-between items-start gap-8">
           <!-- Left side: Payment Info & Notes -->
@@ -167,12 +206,12 @@ const triggerPrint = () => {
                   <span 
                     class="px-2 py-0.5 text-xs font-semibold rounded"
                     :class="{
-                      'bg-emerald-100 text-emerald-800': sale.payment_status === 'Paid' || sale.payment_status === 'Advance',
-                      'bg-amber-100 text-amber-800': sale.payment_status === 'Partial',
-                      'bg-rose-100 text-rose-800': sale.payment_status === 'Unpaid'
+                      'bg-emerald-100 text-emerald-800': (parseFloat(sale.paid) + parseFloat(returnDueDeduction)) >= parseFloat(sale.grand_total),
+                      'bg-amber-100 text-amber-800': (parseFloat(sale.paid) + parseFloat(returnDueDeduction)) > 0 && (parseFloat(sale.paid) + parseFloat(returnDueDeduction)) < parseFloat(sale.grand_total),
+                      'bg-rose-100 text-rose-800': (parseFloat(sale.paid) + parseFloat(returnDueDeduction)) <= 0
                     }"
                   >
-                    {{ sale.payment_status }}
+                    {{ (parseFloat(sale.paid) + parseFloat(returnDueDeduction)) >= parseFloat(sale.grand_total) ? 'Paid' : ((parseFloat(sale.paid) + parseFloat(returnDueDeduction)) > 0 ? 'Partial' : 'Unpaid') }}
                   </span>
                 </div>
               </div>
@@ -202,17 +241,22 @@ const triggerPrint = () => {
                 <span class="text-gray-500 font-medium">Paid</span>
                 <span class="text-emerald-600 font-semibold">₹{{ parseFloat(sale.paid).toFixed(2) }}</span>
               </div>
-              <div v-if="parseFloat(allocatedPayment) > 0" class="flex justify-between py-3">
-                <span class="text-gray-500 font-medium">Advance Applied</span>
-                <span class="text-emerald-600 font-semibold">₹{{ parseFloat(allocatedPayment).toFixed(2) }}</span>
-              </div>
               <div v-if="parseFloat(returnDueDeduction) > 0" class="flex justify-between py-3">
                 <span class="text-gray-500 font-medium">Return Credit Applied</span>
                 <span class="text-emerald-600 font-semibold">₹{{ parseFloat(returnDueDeduction).toFixed(2) }}</span>
               </div>
-              <div class="flex justify-between py-3 text-base font-bold bg-[#f8fafc] px-4 rounded-lg mt-2 border border-gray-100">
+              
+              <div v-if="(parseFloat(sale.paid) + parseFloat(returnDueDeduction)) < parseFloat(sale.grand_total)" class="flex justify-between py-3 text-base font-bold bg-[#f8fafc] px-4 rounded-lg mt-2 border border-gray-100">
                 <span class="text-gray-700">Balance Due</span>
-                <span class="text-rose-600">₹{{ Math.max(0, parseFloat(sale.grand_total) - parseFloat(sale.paid) - parseFloat(allocatedPayment) - parseFloat(returnDueDeduction)).toFixed(2) }}</span>
+                <span class="text-rose-600">₹{{ (parseFloat(sale.grand_total) - (parseFloat(sale.paid) + parseFloat(returnDueDeduction))).toFixed(2) }}</span>
+              </div>
+              <div v-else-if="(parseFloat(sale.paid) + parseFloat(returnDueDeduction)) > parseFloat(sale.grand_total)" class="flex justify-between py-3 text-base font-bold bg-[#f8fafc] px-4 rounded-lg mt-2 border border-gray-100">
+                <span class="text-gray-700">Advance Balance</span>
+                <span class="text-emerald-600">₹{{ ((parseFloat(sale.paid) + parseFloat(returnDueDeduction)) - parseFloat(sale.grand_total)).toFixed(2) }}</span>
+              </div>
+              <div v-else class="flex justify-between py-3 text-base font-bold bg-[#f8fafc] px-4 rounded-lg mt-2 border border-gray-100">
+                <span class="text-gray-700">Balance Due</span>
+                <span class="text-emerald-600">₹0.00</span>
               </div>
             </div>
           </div>

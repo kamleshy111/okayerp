@@ -188,16 +188,16 @@ const previousDue = computed(() => {
 
 const finalBalance = computed(() => {
   if (!customerData.value) return null;
-  const prevNet = customerBalanceExcludingCurrentSale.value;
+
   const paidNow = parseFloat(form.value.paid) || 0;
-  const currentNet = paidNow - grandTotal.value;
+  // Use allocatedPayment since this is Edit mode where payments might already be allocated
+  const paidValue = paidNow + (parseFloat(props.allocatedPayment) || 0);
+  const currentNet = paidValue - grandTotal.value;
 
-  const finalNet = prevNet + currentNet;
-
-  if (finalNet > 0) {
-    return { type: 'advance', amount: finalNet };
-  } else if (finalNet < 0) {
-    return { type: 'due', amount: Math.abs(finalNet) };
+  if (currentNet > 0) {
+    return { type: 'advance', amount: currentNet };
+  } else if (currentNet < 0) {
+    return { type: 'due', amount: Math.abs(currentNet) };
   } else {
     return { type: 'none', amount: 0 };
   }
@@ -217,8 +217,11 @@ const dueReduced = computed(() => {
 
 const paymentStatus = computed(() => {
   const paidValue = (parseFloat(form.value.paid) || 0) + (parseFloat(props.allocatedPayment) || 0);
+  const currentNet = paidValue - grandTotal.value;
+
   if (paidValue === 0) return 'Unpaid';
-  else if (paidValue < grandTotal.value) return 'Partial';
+  else if (currentNet < 0) return 'Due';
+  else if (currentNet > 0) return 'Advance';
   else return 'Paid';
 });
 
@@ -509,37 +512,15 @@ const submitForm = async () => {
                     <span class="font-medium text-[#292688]">₹ {{ props.allocatedPayment }}</span>
                 </div>
 
-                <!-- Previous Balances -->
-                <div v-if="previousAdvance > 0" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Previous Advance</span>
-                    <span class="text-green-600 font-bold">₹ {{ previousAdvance.toFixed(2) }}</span>
-                </div>
-
-                <div v-if="previousDue > 0" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Previous Due</span>
-                    <span class="text-red-600 font-bold">₹ {{ previousDue.toFixed(2) }}</span>
-                </div>
-
-                <!-- Wallet / Due Adjustments -->
-                <div v-if="advanceApplied > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Advance Applied from Wallet</span>
-                    <span class="font-medium text-blue-600">- ₹ {{ advanceApplied.toFixed(2) }}</span>
-                </div>
-
-                <div v-if="dueReduced > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Applied to Previous Due</span>
-                    <span class="font-medium text-green-600">- ₹ {{ dueReduced.toFixed(2) }}</span>
-                </div>
-
                 <!-- Final Balance after this payment -->
                 <div v-if="finalBalance?.type === 'advance'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Advance</span>
-                    <span class="text-green-600 font-bold">₹ {{ finalBalance.amount.toFixed(2) }}</span>
+                    <span class="text-gray-700 font-semibold">Advance Amount</span>
+                    <span class="text-green-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
 
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Due</span>
-                    <span class="text-red-600 font-bold">₹ {{ finalBalance.amount.toFixed(2) }}</span>
+                    <span class="text-gray-700 font-semibold">Due Amount</span>
+                    <span class="text-red-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
 
                 <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center">

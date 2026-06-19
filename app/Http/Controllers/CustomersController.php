@@ -28,16 +28,24 @@ class CustomersController extends Controller
             ->get();
 
         $customers = $customers->map(function ($customer) {
-            $totalSaleAmount = $customer->sales->sum('grand_total');
-            $totalSalePaid = $customer->sales->sum('paid');
+            $dueAmount = 0;
+            $advanceAmount = 0;
+
+            foreach ($customer->sales as $sale) {
+                $saleBalance = $sale->paid - $sale->grand_total;
+                if ($saleBalance < 0) {
+                    $dueAmount += abs($saleBalance);
+                } elseif ($saleBalance > 0) {
+                    $advanceAmount += $saleBalance;
+                }
+            }
+
             $totalDirectPaid = $customer->payments->where('sale_id', null)->sum('amount');
+            $advanceAmount += $totalDirectPaid;
 
-            $totalReceived = $totalSalePaid + $totalDirectPaid;
-            $balance = $totalReceived - $totalSaleAmount;
-
-            $dueAmount = $balance < 0 ? abs($balance) : 0;
-            $advanceAmount = $balance > 0 ? $balance : 0;
-            $status = $balance === 0 ? 'clear' : ($balance < 0 ? 'due' : 'advance');
+            // Optional: calculate a status (not strictly used anymore since we have separate columns)
+            $netBalance = $advanceAmount - $dueAmount;
+            $status = $netBalance === 0 ? 'clear' : ($netBalance < 0 ? 'due' : 'advance');
 
             return [
                 'id' => $customer->id,

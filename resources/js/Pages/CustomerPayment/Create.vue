@@ -9,12 +9,78 @@ import axios from 'axios';
 
 const { customers } = usePage().props;
 
+const customerInfo = ref({
+    advance_amount: 0,
+    due_invoices: []
+});
+
+const today = new Date().toISOString().split('T')[0];
+
 const form = ref({
     customer_id: "",
+    sale_id: "",
     amount: "",
-    payment_date: "",
+    payment_date: today,
     payment_method: "",
     note: "",
+    use_advance: false,
+    advance_amount_used: 0,
+});
+
+import { watch } from 'vue';
+
+watch(() => form.value.customer_id, async (newId) => {
+    if (newId) {
+        try {
+            const res = await axios.get(`/customer/${newId}/payment-info`);
+            customerInfo.value = res.data;
+            form.value.sale_id = "";
+            form.value.use_advance = false;
+            form.value.advance_amount_used = 0;
+            // Optionally auto-set the max advance
+        } catch(e) {
+            console.error("Error fetching payment info");
+        }
+    }
+});
+
+watch(() => form.value.use_advance, (newVal) => {
+    if (!newVal) {
+        form.value.advance_amount_used = 0;
+    } else {
+        if (form.value.sale_id) {
+            const invoice = customerInfo.value.due_invoices.find(inv => inv.id === form.value.sale_id);
+            if (invoice) {
+                let due = parseFloat(invoice.due) || 0;
+                let available = parseFloat(customerInfo.value.advance_amount) || 0;
+                form.value.advance_amount_used = Math.min(due, available);
+            }
+        }
+    }
+});
+
+watch(() => form.value.sale_id, (newSaleId) => {
+    if (newSaleId) {
+        const invoice = customerInfo.value.due_invoices.find(inv => inv.id === newSaleId);
+        if (invoice) {
+            let due = parseFloat(invoice.due) || 0;
+            let advanceUsed = form.value.use_advance ? parseFloat(form.value.advance_amount_used) || 0 : 0;
+            form.value.amount = Math.max(0, due - advanceUsed);
+        }
+    } else {
+        form.value.amount = "";
+    }
+});
+
+watch(() => form.value.advance_amount_used, (newVal) => {
+    if (form.value.sale_id) {
+        const invoice = customerInfo.value.due_invoices.find(inv => inv.id === form.value.sale_id);
+        if (invoice) {
+            let due = parseFloat(invoice.due) || 0;
+            let advanceUsed = parseFloat(newVal) || 0;
+            form.value.amount = Math.max(0, due - advanceUsed);
+        }
+    }
 });
 
 // Submit the form data
@@ -23,17 +89,33 @@ const submitForm = async () => {
     const response = await axios.post(`/paymentsCustomer/store`, form.value);
     toast.success(response.data.message);
 
+    // Refresh payment info for selected customer
+    if(form.value.customer_id) {
+        const res = await axios.get(`/customer/${form.value.customer_id}/payment-info`);
+        customerInfo.value = res.data;
+    }
+
     // Reset the form
     form.value = {
-      customer_id: "",
+      customer_id: form.value.customer_id,
+      sale_id: "",
       amount: "",
-      payment_date: "",
+      payment_date: today,
       payment_method: "",
       note: "",
+      use_advance: false,
+      advance_amount_used: 0,
     };
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
-    toast.error(errorMessage);
+    if (typeof errorMessage === 'object') {
+        Object.values(errorMessage).forEach(msgArray => {
+            if(Array.isArray(msgArray)) msgArray.forEach(m => toast.error(m));
+            else toast.error(msgArray);
+        });
+    } else {
+        toast.error(errorMessage);
+    }
   }
 };
 </script>
@@ -61,10 +143,39 @@ const submitForm = async () => {
                         </select>
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">Amount</label>
+                    <label class="block text-black font-medium mb-2">Invoice (Optional)</label>
+                    <select name="sale_id" v-model="form.sale_id"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
+                        <option value="">Direct Payment (No Invoice)</option>
+                        <option v-for="invoice in customerInfo.due_invoices" :key="invoice.id" :value="invoice.id">
+                            Inv #{{ invoice.invoice_no }} (Due: ₹{{ invoice.due }})
+                        </option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Advance Usage Section -->
+            <div v-if="form.sale_id && customerInfo.advance_amount > 0" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
+                <div class="flex items-center gap-3 mb-4">
+                    <input type="checkbox" id="use_advance" v-model="form.use_advance" class="w-5 h-5 text-[#292688] rounded focus:ring-[#292688]">
+                    <label for="use_advance" class="text-black font-medium">Use Advance Balance (Available: ₹{{ (parseFloat(customerInfo.advance_amount) - (form.use_advance ? parseFloat(form.advance_amount_used || 0) : 0)).toFixed(2) }})</label>
+                </div>
+                <div v-if="form.use_advance" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label class="block text-black font-medium mb-2">Advance Amount to Apply</label>
+                        <input type="number" v-model="form.advance_amount_used"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter amount to apply" />
+                    </div>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">Cash/Bank Amount</label>
                     <input type="number" name="amount" v-model="form.amount"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="Amount" />
+                        placeholder="Enter remaining cash/bank amount" />
                 </div>
             </div>
 

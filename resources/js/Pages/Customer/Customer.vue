@@ -25,15 +25,33 @@ const columns = [
     { data: 'phone'},
     {
       data: null,
+      title: 'Due',
       render: function (data) {
-        const amount = data.due_amount || data.advance_amount || 0;
-        const status = data.status;
-        if (status === 'due') {
-          return `<span style="color:red">- ₹${amount}</span>`;
-        } else if (status === 'advance') {
-          return `<span style="color:green">+ ₹${amount}</span>`;
+        const amount = parseFloat(data.due_amount) || 0;
+        return amount > 0 ? `<span style="color:red">₹${amount}</span>` : '₹0';
+      }
+    },
+    {
+      data: null,
+      title: 'Advance',
+      render: function (data) {
+        const amount = parseFloat(data.advance_amount) || 0;
+        return amount > 0 ? `<span style="color:green">₹${amount}</span>` : '₹0';
+      }
+    },
+    {
+      data: null,
+      title: 'Net Balance',
+      render: function (data) {
+        const advance = parseFloat(data.advance_amount) || 0;
+        const due = parseFloat(data.due_amount) || 0;
+        const net = advance - due;
+        if (net > 0) {
+          return `<span style="color:green">+ ₹${net.toFixed(2)}</span>`;
+        } else if (net < 0) {
+          return `<span style="color:red">- ₹${Math.abs(net).toFixed(2)}</span>`;
         } else {
-          return `<span style="color:green">₹0</span>`;
+          return `<span style="color:green">₹0.00</span>`;
         }
       }
     },
@@ -118,7 +136,9 @@ function deleteCustomer(customerId) {
                   <th scope="col">Name</th>
                   <th scope="col">Email</th>
                   <th scope="col">Phone</th>
-                  <th scope="col">Volate</th>
+                  <th scope="col">Due</th>
+                  <th scope="col">Advance</th>
+                  <th scope="col">Net Balance</th>
                   <th scope="col">Action</th>
               </tr>
           </thead>
