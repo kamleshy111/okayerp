@@ -30,11 +30,6 @@ const formatDate = (dateStr) => {
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
 };
-
-// Print utility
-const triggerPrint = () => {
-  window.print();
-};
 </script>
 
 <template>
@@ -57,14 +52,6 @@ const triggerPrint = () => {
         </div>
 
         <div class="flex items-center gap-3 w-full sm:w-auto">
-          <!-- Print Button -->
-          <button 
-            @click="triggerPrint"
-            class="flex items-center justify-center gap-2 px-4 py-2 border border-gray-300 rounded-lg text-sm font-semibold text-gray-700 bg-white hover:bg-gray-50 shadow-sm transition-colors duration-200 w-full sm:w-auto"
-          >
-            <i class="fa fa-print"></i> Print
-          </button>
-          
           <!-- Download PDF -->
           <a 
             :href="`/sale/${sale.id}/download-pdf`"
