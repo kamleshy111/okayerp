@@ -10,8 +10,14 @@ const form = ref({
     name: "",
     email: "",
     phone: "",
+    gstin: "",
     address: "",
     status: "",
+    city: "",
+    district: "",
+    state: "",
+    country: "",
+    pin_code: "",
 });
 
 // Submit the form data
@@ -25,9 +31,14 @@ const submitForm = async () => {
       name: "",
       email: "",
       phone: "",
+      gstin: "",
       address: "",
       status: "",
- 
+      city: "",
+      district: "",
+      state: "",
+      country: "",
+      pin_code: "",
     };
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
@@ -76,6 +87,51 @@ const submitForm = async () => {
                     <input type="text" name="address" v-model="form.address"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter address" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">City</label>
+                    <input type="text" name="city" v-model="form.city"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter City" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">District</label>
+                    <input type="text" name="district" v-model="form.district"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter District" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">State</label>
+                    <input type="text" name="state" v-model="form.state"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter State" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Country</label>
+                    <input type="text" name="country" v-model="form.country"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter Country" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">PIN Code</label>
+                    <input type="text" name="pin_code" v-model="form.pin_code"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter PIN Code" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">GSTIN</label>
+                    <input type="text" name="gstin" v-model="form.gstin"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter GSTIN" />
                 </div>
             </div>
             <div class="pt-4">

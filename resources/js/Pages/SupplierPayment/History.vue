@@ -99,7 +99,7 @@ const columns = [
             <!-- Breadcrumbs / Top Actions -->
             <div class="flex items-center justify-between mb-8">
               <div class="flex items-center gap-3">
-                <a href="/paymentSupplier" class="flex items-center justify-center w-10 h-10 rounded-lg bg-white shadow-sm border border-gray-200 text-gray-600 hover:text-[#2e2c92] hover:border-[#2e2c92] transition-colors duration-200">
+                <a href="/supplier" class="flex items-center justify-center w-10 h-10 rounded-lg bg-white shadow-sm border border-gray-200 text-gray-600 hover:text-[#2e2c92] hover:border-[#2e2c92] transition-colors duration-200">
                   <i class="fa fa-arrow-left"></i>
                 </a>
                 <div>
