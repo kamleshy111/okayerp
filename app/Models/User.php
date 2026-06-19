@@ -27,6 +27,11 @@ class User extends Authenticatable
         'email',
         'password',
         'ledger_pin',
+        'bank_name',
+        'account_number',
+        'ifsc_code',
+        'branch_name',
+        'gstin',
     ];
 
     /**

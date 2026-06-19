@@ -473,7 +473,7 @@ const submitForm = async () => {
                             {{ (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0) }} %
                         </td>
                         <td class="border-t px-4 py-3">
-                            <input type="number" name="quantity" v-model="item.quantity" required
+                            <input type="text" name="quantity" v-model="item.quantity" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Qty" />
                         </td>
@@ -481,7 +481,7 @@ const submitForm = async () => {
                             {{ item.unit_type }}
                         </td>
                         <td class="border-t px-4 py-3">
-                            <input type="number" name="price" v-model="item.price" required
+                            <input type="text" name="price" v-model="item.price" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Price" />
                         </td>
@@ -530,13 +530,13 @@ const submitForm = async () => {
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
-                                <input type="number" v-model="item.quantity" required
+                                <input type="text" v-model="item.quantity" required
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Qty" />
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Price</label>
-                                <input type="number" v-model="item.price" required
+                                <input type="text" v-model="item.price" required
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Price" />
                             </div>
@@ -640,7 +640,7 @@ const submitForm = async () => {
 
                 <div class="flex justify-between items-center">
                     <label class="text-gray-700 font-medium">Transport Amount</label>
-                    <input type="number" v-model="form.transport"
+                    <input type="text" v-model="form.transport"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
 
@@ -682,7 +682,7 @@ const submitForm = async () => {
                 <!-- Paid Amount -->
                 <div class="flex justify-between items-center">
                     <label class="text-gray-700 font-medium">Paid Amount</label>
-                    <input type="number" v-model.number="form.paid"
+                    <input type="text" v-model="form.paid"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Amount" min="0" />
                 </div>

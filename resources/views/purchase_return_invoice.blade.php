@@ -144,6 +144,9 @@
       {{ $return->purchase->supplier->user->phone ?? 'N/A' }}<br>
       {{ $return->purchase->supplier->user->email ?? 'N/A' }}<br>
       {{ $return->purchase->supplier->user->address ?? 'N/A' }}
+      @if(!empty($return->purchase->supplier->user->gstin))
+        <br>GSTIN: {{ $return->purchase->supplier->user->gstin }}
+      @endif
     </div>
 
     <table class="invoice-table">

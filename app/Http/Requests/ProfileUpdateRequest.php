@@ -29,6 +29,11 @@ class ProfileUpdateRequest extends FormRequest
             ],
             'profile_photo' => ['nullable', 'max:2048'], // 2MB max
             'ledger_pin' => ['nullable', 'string', 'digits:4'],
+            'bank_name' => ['nullable', 'string', 'max:255'],
+            'account_number' => ['nullable', 'string', 'max:255'],
+            'ifsc_code' => ['nullable', 'string', 'max:255'],
+            'branch_name' => ['nullable', 'string', 'max:255'],
+            'gstin' => ['nullable', 'string', 'max:255'],
         ];
     }
 }

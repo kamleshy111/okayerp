@@ -46,6 +46,11 @@ class StoresController extends Controller
         // Validate input
         $request->validate([
             'email'         => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'bank_name'      => ['nullable', 'string', 'max:255'],
+            'account_number' => ['nullable', 'string', 'max:255'],
+            'ifsc_code'      => ['nullable', 'string', 'max:255'],
+            'branch_name'    => ['nullable', 'string', 'max:255'],
+            'gstin'          => ['nullable', 'string', 'max:255'],
         ]);
 
         // Create User
@@ -55,7 +60,12 @@ class StoresController extends Controller
             'phone'     => $request->phone ?? '',
             'address'   => $request->address ?? '',
             'password'  => Hash::make($request->password),
-            'role' => $request->role === 'admin' ? 'admin' : 'store',
+            'role'      => $request->role === 'admin' ? 'admin' : 'store',
+            'bank_name'      => $request->bank_name ?? '',
+            'account_number' => $request->account_number ?? '',
+            'ifsc_code'      => $request->ifsc_code ?? '',
+            'branch_name'    => $request->branch_name ?? '',
+            'gstin'          => $request->gstin ?? '',
         ]);
 
         return response()->json([
@@ -79,6 +89,11 @@ class StoresController extends Controller
             'email' => $data->email ?? '',
             'profile_photo' => $data->profile_photo ?? '',
             'address' => $data->address ?? '',
+            'bank_name' => $data->bank_name ?? '',
+            'account_number' => $data->account_number ?? '',
+            'ifsc_code' => $data->ifsc_code ?? '',
+            'branch_name' => $data->branch_name ?? '',
+            'gstin' => $data->gstin ?? '',
         ];
 
         return Inertia::render('Admin/Store/Edit',[
@@ -100,7 +115,12 @@ class StoresController extends Controller
             'phone'  => 'nullable|string|max:20',
             'email'  => 'required|email|unique:users,email,' . $storeId,
             'address'=> 'nullable|string|max:255',
-            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048'
+            'profile_photo' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'bank_name' => 'nullable|string|max:255',
+            'account_number' => 'nullable|string|max:255',
+            'ifsc_code' => 'nullable|string|max:255',
+            'branch_name' => 'nullable|string|max:255',
+            'gstin' => 'nullable|string|max:255',
         ]);
 
         // Update fields
@@ -108,6 +128,11 @@ class StoresController extends Controller
         $store->phone   = $request->phone;
         $store->email   = $request->email;
         $store->address = $request->address;
+        $store->bank_name = $request->bank_name;
+        $store->account_number = $request->account_number;
+        $store->ifsc_code = $request->ifsc_code;
+        $store->branch_name = $request->branch_name;
+        $store->gstin = $request->gstin;
 
         // Handle profile photo upload
         if ($request->hasFile('profile_photo')) {
