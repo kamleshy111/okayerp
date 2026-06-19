@@ -15,7 +15,13 @@ const form = ref({
     name: supplierDetail.name,
     email: supplierDetail.email,
     phone: supplierDetail.phone,
+    gstin: supplierDetail.gstin || "",
     address: supplierDetail.address,
+    city: supplierDetail.city || "",
+    district: supplierDetail.district || "",
+    state: supplierDetail.state || "",
+    country: supplierDetail.country || "",
+    pin_code: supplierDetail.pin_code || "",
 });
 
 // Form submit handler
@@ -72,6 +78,51 @@ const submitForm = async () => {
                         <input type="text" v-model="form.address" name="address"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="address" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                    <div>
+                        <label class="block text-black font-medium mb-2">City</label>
+                        <input type="text" v-model="form.city" name="city"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="City" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">District</label>
+                        <input type="text" v-model="form.district" name="district"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="District" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                    <div>
+                        <label class="block text-black font-medium mb-2">State</label>
+                        <input type="text" v-model="form.state" name="state"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="State" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">Country</label>
+                        <input type="text" v-model="form.country" name="country"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Country" />
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                    <div>
+                        <label class="block text-black font-medium mb-2">PIN Code</label>
+                        <input type="text" v-model="form.pin_code" name="pin_code"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="PIN Code" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">GSTIN</label>
+                        <input type="text" v-model="form.gstin" name="gstin"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="GSTIN" />
                     </div>
                 </div>
 

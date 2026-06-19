@@ -23,6 +23,7 @@ const columns = [
     { data: 'name' },
     { data: 'email'},
     { data: 'phone'},
+    { data: 'gstin', defaultContent: '-' },
     {
       data: null,
       render: function (data) {
@@ -117,6 +118,7 @@ function deleteSupplier(supplierId) {
                   <th scope="col">Name</th>
                   <th scope="col">Email</th>
                   <th scope="col">Phone</th>
+                  <th scope="col">GSTIN</th>
                   <th scope="col">Volate</th>
                   <th scope="col">Action</th>
               </tr>

@@ -43,6 +43,7 @@ class SuppliersController extends Controller
                 'name' => $supplier->name,
                 'phone' => $supplier->phone,
                 'email' => $supplier->email,
+                'gstin' => $supplier->gstin,
                 'due_amount' => $dueAmount,
                 'advance_amount' => $advanceAmount,
                 'status' => $status,
@@ -70,6 +71,7 @@ class SuppliersController extends Controller
                 Rule::unique('suppliers', 'email')->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
             'phone' => 'required',
+            'gstin' => 'nullable|string|max:255',
         ], [
          
             'name.required' => 'Name is required.',
@@ -88,7 +90,13 @@ class SuppliersController extends Controller
             'name' => $request->input('name'),
             'email' => $request->input('email'),
             'phone' => $request->input('phone'),
+            'gstin' => $request->input('gstin'),
             'address' => $request->input('address'),
+            'city' => $request->input('city'),
+            'district' => $request->input('district'),
+            'state' => $request->input('state'),
+            'country' => $request->input('country'),
+            'pin_code' => $request->input('pin_code'),
         ]);
 
         $supplier->message = 'Supplier added successfully!';
@@ -110,7 +118,13 @@ class SuppliersController extends Controller
             'name' => $data->name ?? '',
             'email' => $data->email ?? '',
             'phone' => $data->phone ?? '',
+            'gstin' => $data->gstin ?? '',
             'address' => $data->address ?? '',
+            'city' => $data->city ?? '',
+            'district' => $data->district ?? '',
+            'state' => $data->state ?? '',
+            'country' => $data->country ?? '',
+            'pin_code' => $data->pin_code ?? '',
         ];
 
         return Inertia::render('Supplier/Edit',[
@@ -131,6 +145,7 @@ class SuppliersController extends Controller
                     ->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
             'phone' => 'required',
+            'gstin' => 'nullable|string|max:255',
         ], [
          
             'name.required' => 'Name is required.',
@@ -148,7 +163,13 @@ class SuppliersController extends Controller
             $supplier->name = $request->input("name");
             $supplier->email = $request->input("email");
             $supplier->phone = $request->input("phone");
+            $supplier->gstin = $request->input("gstin");
             $supplier->address = $request->input("address");
+            $supplier->city = $request->input("city");
+            $supplier->district = $request->input("district");
+            $supplier->state = $request->input("state");
+            $supplier->country = $request->input("country");
+            $supplier->pin_code = $request->input("pin_code");
             $supplier->save();
 
             return response()->json(['message' => 'Supplier updated successfully.']);
