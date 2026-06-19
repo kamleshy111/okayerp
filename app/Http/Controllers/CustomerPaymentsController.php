@@ -23,6 +23,8 @@ class CustomerPaymentsController extends Controller
         }
 
         $payments = $paymentsQuery->select(
+            'sale_payments.id as transaction_id',
+            'sale_payments.created_at',
             'customers.id as customer_id',
             'customers.user_id',
             'customers.name',
@@ -34,6 +36,8 @@ class CustomerPaymentsController extends Controller
             'sale_payments.sale_id'
         )->get()->map(function ($item) {
             return [
+                'transaction_id' => $item->transaction_id,
+                'created_at' => $item->created_at,
                 'id' => $item->customer_id,
                 'user_id' => $item->user_id,
                 'name' => $item->name,
@@ -55,6 +59,8 @@ class CustomerPaymentsController extends Controller
         }
 
         $returns = $returnsQuery->select(
+            'sale_returns.id as transaction_id',
+            'sale_returns.created_at',
             'customers.id as customer_id',
             'customers.user_id',
             'customers.name',
@@ -68,6 +74,8 @@ class CustomerPaymentsController extends Controller
         )->get()->map(function ($item) {
             $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
             return [
+                'transaction_id' => $item->transaction_id,
+                'created_at' => $item->created_at,
                 'id' => $item->customer_id,
                 'user_id' => $item->user_id,
                 'name' => $item->name,
@@ -80,9 +88,9 @@ class CustomerPaymentsController extends Controller
             ];
         });
 
-        // Merge both arrays and sort by payment_date descending
+        // Merge both arrays and sort by ID descending (transaction_id)
         $detailedHistory = $payments->concat($returns)
-            ->sortByDesc('payment_date')
+            ->sortByDesc('transaction_id')
             ->values()
             ->all();
 
@@ -204,19 +212,52 @@ class CustomerPaymentsController extends Controller
         ]);
     }
 
-    public function store(Request $request){
+    public function paymentInfo($id) {
+        $userId = Auth::id();
+        $customer = Customer::where('user_id', $userId)->with('sales')->find($id);
+        
+        if (!$customer) {
+            return response()->json(['error' => 'Not found'], 404);
+        }
 
+        $dueInvoices = [];
+        $advanceAmount = 0;
+
+        foreach ($customer->sales as $sale) {
+            $saleBalance = $sale->paid - $sale->grand_total;
+            if ($saleBalance < 0) {
+                $dueInvoices[] = [
+                    'id' => $sale->id,
+                    'invoice_no' => $sale->id,
+                    'date' => $sale->created_at->format('Y-m-d'),
+                    'grand_total' => $sale->grand_total,
+                    'due' => abs($saleBalance)
+                ];
+            } elseif ($saleBalance > 0) {
+                $advanceAmount += $saleBalance;
+            }
+        }
+
+        $totalDirectPaid = SalePayment::where('customer_id', $id)
+                                      ->whereNull('sale_id')
+                                      ->sum('amount');
+        $advanceAmount += $totalDirectPaid;
+
+        return response()->json([
+            'advance_amount' => $advanceAmount,
+            'due_invoices' => $dueInvoices
+        ]);
+    }
+
+    public function store(Request $request){
         $validated = $request->validate([
             'customer_id' => 'required',
-            'amount'    => 'required',
-            'payment_date'    => 'required',
-            'payment_method'    => 'required',
+            'amount' => 'required_without:use_advance',
+            'payment_date' => 'required',
         ], [
             'customer_id.required' => 'Customer Name is required.',
-            'amount.required' => 'Amount is required.',
-
+            'amount.required_without' => 'Amount is required if not using advance entirely.',
             'payment_date.required' => 'Date is required.',
-            'payment_method.required' => 'Payment Method is required.',
         ]);
 
         if (!$validated) {
@@ -229,18 +270,84 @@ class CustomerPaymentsController extends Controller
             return response()->json(['message' => 'Selected customer is invalid or unauthorized.'], 403);
         }
 
-        // Create a new Sale Payment
-        $salePayment = SalePayment::create([
-            'customer_id' => $request->input('customer_id'),
-            'amount' => $request->input('amount') ?? '',
-            'payment_date' => $request->input('payment_date') ?? 0,
-            'payment_method' => $request->input('payment_method') ?? 0,
-            'note' => $request->input('note'),
-            'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
-        ]);
+        $saleId = $request->input('sale_id');
+        $useAdvance = filter_var($request->input('use_advance'), FILTER_VALIDATE_BOOLEAN);
+        $advanceAmountUsed = (float)($request->input('advance_amount_used') ?? 0);
+        $cashAmount = (float)($request->input('amount') ?? 0);
+
+        $sale = null;
+        if ($saleId) {
+            $sale = \App\Models\Sale::where('customer_id', $request->input('customer_id'))->find($saleId);
+        }
 
         $accountingService = new \App\Services\AccountingService($userId);
-        $accountingService->postCustomerPayment($salePayment);
+
+        // Process Advance Application if any
+        if ($useAdvance && $advanceAmountUsed > 0 && $sale) {
+            // 1. Positive payment allocated to invoice
+            $advancePayment = SalePayment::create([
+                'customer_id' => $request->input('customer_id'),
+                'sale_id' => $sale->id,
+                'amount' => $advanceAmountUsed,
+                'payment_date' => $request->input('payment_date'),
+                'payment_method' => 'Advance Wallet',
+                'note' => 'Paid from Advance Balance' . ($request->input('note') ? ' - ' . $request->input('note') : ''),
+                'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
+            ]);
+            
+            // 2. Negative payment to decrease the overall advance pool
+            SalePayment::create([
+                'customer_id' => $request->input('customer_id'),
+                'sale_id' => null,
+                'amount' => -$advanceAmountUsed,
+                'payment_date' => $request->input('payment_date'),
+                'payment_method' => 'Advance Deduction',
+                'note' => 'Applied to Invoice #' . $sale->id,
+                'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
+            ]);
+
+            $sale->paid += $advanceAmountUsed;
+            if ($sale->paid >= $sale->grand_total) {
+                $sale->payment_status = 'Paid';
+            } elseif ($sale->paid > 0) {
+                $sale->payment_status = 'Partial';
+            }
+            $sale->save();
+            
+            // Post journal entry for advance applied? Usually, advance is unearned revenue, 
+            // but for simplicity we'll just process the positive payment to clear AR
+            $accountingService->postCustomerPayment($advancePayment);
+        }
+
+        // Process Standard Cash/Bank Payment if any
+        if ($cashAmount > 0) {
+            $method = $request->input('payment_method');
+            if (empty($method)) {
+                return response()->json(['message' => ['payment_method' => ['Payment Method is required for new payments.']]], 422);
+            }
+
+            $salePayment = SalePayment::create([
+                'customer_id' => $request->input('customer_id'),
+                'sale_id' => $saleId ?: null,
+                'amount' => $cashAmount,
+                'payment_date' => $request->input('payment_date'),
+                'payment_method' => $method,
+                'note' => $request->input('note'),
+                'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
+            ]);
+
+            if ($sale) {
+                $sale->paid += $cashAmount;
+                if ($sale->paid >= $sale->grand_total) {
+                    $sale->payment_status = 'Paid';
+                } elseif ($sale->paid > 0) {
+                    $sale->payment_status = 'Partial';
+                }
+                $sale->save();
+            }
+
+            $accountingService->postCustomerPayment($salePayment);
+        }
 
         return response()->json(['message' => 'Customer Payments added successfully!']);
     }

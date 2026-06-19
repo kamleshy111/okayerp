@@ -24,7 +24,20 @@ const columns = [
     { data: 'email'},
     { data: 'grand_total' },
     { data: 'sale_date'},
-    {data: 'payment_status'},
+    {
+      data: 'payment_status',
+      render: function (data) {
+        if (data === 'Due' || data === 'Partial') {
+          return `<span style="color:red; font-weight:bold;">${data}</span>`;
+        } else if (data === 'Advance') {
+          return `<span style="color:green; font-weight:bold;">${data}</span>`;
+        } else if (data === 'Paid') {
+          return `<span style="color:green; font-weight:bold;">${data}</span>`;
+        } else {
+          return `<span>${data || 'Unpaid'}</span>`;
+        }
+      }
+    },
     {
         title: 'Actions',
         data: null,

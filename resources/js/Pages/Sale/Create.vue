@@ -258,18 +258,13 @@ const grandTotal = computed(() => {
 const paymentStatus = computed(() => {
   if (!customerData.value) return 'Unpaid';
 
-  const previousAdvance = parseFloat(customerData.value.advance_amount) || 0;
-  const previousDue = parseFloat(customerData.value.due_amount) || 0;
   const paidNow = parseFloat(form.value.paid) || 0;
-
-  const previousNet = previousAdvance - previousDue;
   const currentNet = paidNow - grandTotal.value;
-  const finalNet = previousNet + currentNet;
 
-  if (paidNow === 0 && previousDue > 0) return 'Unpaid';
-  else if (finalNet === 0) return 'Paid';
-  else if (finalNet < 0) return 'Partial';
-  else return 'Advance';
+  if (paidNow === 0) return 'Unpaid';
+  else if (currentNet < 0) return 'Due';
+  else if (currentNet > 0) return 'Advance';
+  else return 'Paid';
 });
 
 // Show modal first, then submit all
@@ -322,40 +317,16 @@ const openPaymentModal = () => {
 const finalBalance = computed(() => {
   if (!customerData.value) return null;
 
-  const previousAdvance = parseFloat(customerData.value.advance_amount) || 0;
-  const previousDue = parseFloat(customerData.value.due_amount) || 0;
   const paidNow = parseFloat(form.value.paid) || 0;
-
-  // supplier ka pehle ka net balance (advance - due)
-  const previousNet = previousAdvance - previousDue;
-
-  // is baar ka balance (paid - grandTotal)
   const currentNet = paidNow - grandTotal.value;
 
-  // dono mila ke final
-  const finalNet = previousNet + currentNet;
-
-  if (finalNet > 0) {
-    return { type: 'advance', amount: finalNet };
-  } else if (finalNet < 0) {
-    return { type: 'due', amount: Math.abs(finalNet) };
+  if (currentNet > 0) {
+    return { type: 'advance', amount: currentNet };
+  } else if (currentNet < 0) {
+    return { type: 'due', amount: Math.abs(currentNet) };
   } else {
     return { type: 'none', amount: 0 };
   }
-});
-
-const advanceApplied = computed(() => {
-  if (!customerData.value) return 0;
-  const previousAdvance = parseFloat(customerData.value.advance_amount) || 0;
-  const paidNow = parseFloat(form.value.paid) || 0;
-  return Math.min(previousAdvance, Math.max(0, grandTotal.value - paidNow));
-});
-
-const dueReduced = computed(() => {
-  if (!customerData.value) return 0;
-  const previousDue = parseFloat(customerData.value.due_amount) || 0;
-  const paidNow = parseFloat(form.value.paid) || 0;
-  return Math.min(previousDue, Math.max(0, paidNow - grandTotal.value));
 });
 
 //end
@@ -663,45 +634,21 @@ const submitForm = async () => {
                         placeholder="Amount" min="0" />
                 </div>
 
-                <!-- Previous Balances -->
-                <div v-if="customerData?.advance_amount && customerData.advance_amount !== '0.00' && customerData.advance_amount !== 0 && customerData.advance_amount !== '0'"
-                    class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Previous Advance</span>
-                    <span class="text-green-600 font-bold">₹ {{ customerData.advance_amount }}</span>
-                </div>
-
-                <div v-if="customerData?.due_amount && customerData.due_amount !== '0.00' && customerData.due_amount !== 0 && customerData.due_amount !== '0'"
-                    class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Previous Due</span>
-                    <span class="text-red-600 font-bold">₹ {{ customerData.due_amount }}</span>
-                </div>
-
-                <!-- Wallet / Due Adjustments -->
-                <div v-if="advanceApplied > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Advance Applied from Wallet</span>
-                    <span class="font-medium text-blue-600">- ₹ {{ advanceApplied.toFixed(2) }}</span>
-                </div>
-
-                <div v-if="dueReduced > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Applied to Previous Due</span>
-                    <span class="font-medium text-green-600">- ₹ {{ dueReduced.toFixed(2) }}</span>
-                </div>
-
                 <!-- Final Balance after this payment -->
                 <div v-if="finalBalance?.type === 'advance'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Advance</span>
-                    <span class="text-green-600 font-bold">₹ {{ finalBalance.amount }}</span>
+                    <span class="text-gray-700 font-semibold">Advance Amount</span>
+                    <span class="text-green-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
 
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Due</span>
-                    <span class="text-red-600 font-bold">₹ {{ finalBalance.amount }}</span>
+                    <span class="text-gray-700 font-semibold">Due Amount</span>
+                    <span class="text-red-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
 
-                <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center">
+                <!-- <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Final Balance</span>
                     <span class="text-gray-600 font-bold">₹ 0.00 (Clear)</span>
-                </div>
+                </div> -->
 
                 <!-- Payment Status -->
                 <div class="flex justify-between items-center pb-4 border-b border-gray-100">

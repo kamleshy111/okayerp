@@ -579,11 +579,9 @@
           </ol>
         </div>
       </td>
-      <td style="width: 50%; position: relative; height: 90px;">
-        <div style="width: 100%;">
-          <div class="text-center" style="font-size: 10px; margin-bottom: 30px;">Receiver's Signature</div>
-        </div>
-        <div style="position: absolute; bottom: 8px; right: 8px; width: 100%; text-align: right;">
+      <td style="width: 50%; vertical-align: top; padding: 8px;">
+        <div class="text-center" style="font-size: 10px; margin-bottom: 40px;">Receiver's Signature</div>
+        <div style="text-align: right; width: 100%;">
           <div style="font-size: 9px; margin-bottom: 2px;">for <span class="bold">{{ $store ? $store->name : 'Your Company' }}</span></div>
           <div class="bold" style="font-size: 10px; margin-top: 25px; padding-right: 5px;">Authorized Signatory</div>
         </div>
