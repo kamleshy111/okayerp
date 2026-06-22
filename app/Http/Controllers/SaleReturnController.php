@@ -105,11 +105,13 @@ class SaleReturnController extends Controller
             ];
         });
 
+        $previousDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+        
         return response()->json([
             'sale_id' => $sale->id,
             'customer_name' => $sale->customer->name ?? '',
             'accepted' => $sale->accepted,
-            'due_amount' => max(0, (float)$sale->grand_total - (float)$sale->paid),
+            'due_amount' => max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions),
             'items' => $items,
         ]);
     }

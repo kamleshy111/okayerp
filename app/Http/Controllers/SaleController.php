@@ -28,17 +28,20 @@ class SaleController extends Controller
             $q->where('user_id', $userId);
         })
         ->where('accepted', 1)
-        ->with('customer')
+        ->with(['customer', 'saleReturns'])
         ->get()
         ->map(function ($item) {
+            $dueDeductions = $item->saleReturns ? $item->saleReturns->sum('due_deduction') : 0;
+            $effectiveGrandTotal = max(0, $item->grand_total - $dueDeductions);
+            
             return [
                 'id' => $item->id,
                 'customerName' => $item->customer->name ?? '',
                 'email' => $item->customer->email ?? '',
                 'phone' => $item->customer->phone ?? '',
-                'grand_total' => $item->grand_total,
+                'grand_total' => $effectiveGrandTotal,
                 'sale_date' => $item->created_at->format('d-m-Y'),
-                'payment_status' => $item->paid >= $item->grand_total ? 'Paid' : $item->payment_status,
+                'payment_status' => $item->paid >= $effectiveGrandTotal ? 'Paid' : $item->payment_status,
             ];
         });
 
@@ -64,8 +67,8 @@ class SaleController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required',
             'sale_items.*.product_id' => 'required',
-            
-     
+
+
         ], [
             'customer_id.required' => 'Customer name is required.',
             'sale_items.*.product_id.required' => 'Product is required.',
@@ -180,7 +183,8 @@ class SaleController extends Controller
             if (app()->environment('testing')) {
                 throw $e;
             }
-            return response()->json(['message' => 'An error occurred while saving the sale. Please try again.'], 500);
+            \Log::error($e->getMessage() . "\n" . $e->getTraceAsString());
+            return response()->json(['message' => 'An error occurred while saving the sale: ' . $e->getMessage()], 500);
         }
     }
 
@@ -195,13 +199,17 @@ class SaleController extends Controller
         $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
                     ->where('accepted', 1)
                     ->where('customer_id', $id)
+                    ->with('saleReturns')
                     ->get();
 
         $dueAmount = 0;
         $advanceAmount = 0;
 
         foreach ($sale as $s) {
-            $saleBalance = $s->paid - $s->grand_total;
+            $totalDueDeductions = $s->saleReturns ? $s->saleReturns->sum('due_deduction') : 0;
+            $effectiveGrandTotal = $s->grand_total - $totalDueDeductions;
+            $saleBalance = $s->paid - $effectiveGrandTotal;
+            
             if ($saleBalance < 0) {
                 $dueAmount += abs($saleBalance);
             } elseif ($saleBalance > 0) {
@@ -216,9 +224,9 @@ class SaleController extends Controller
             $paymentQuery->where('accepted', 1);
         }
         $totalDirectPaid = $paymentQuery->sum('amount');
-        
+
         $advanceAmount += $totalDirectPaid;
-        
+
         $netBalance = $advanceAmount - $dueAmount;
 
         return response()->json([
@@ -307,7 +315,7 @@ class SaleController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'required',
-     
+
         ], [
             'customer_id.required' => 'Customer name is required.',
         ]);
@@ -343,7 +351,7 @@ class SaleController extends Controller
                 return response()->json(['message' => 'One or more selected products are invalid or unauthorized.'], 403);
             }
         }
-        
+
         try {
 
             DB::transaction(function () use ($request, $id, $userId) {
@@ -532,9 +540,9 @@ class SaleController extends Controller
         if (!$sale) {
             return response()->json(['message' => 'Sale not found.'], 404);
         }
-    
+
         DB::beginTransaction();
-    
+
         try {
 
             $accountingService = new AccountingService(Auth::id());
@@ -549,15 +557,15 @@ class SaleController extends Controller
             }
 
             $sale->delete();
-    
+
             $accountingService->clearEntries('Sale', $id);
 
             DB::commit();
-    
+
             return response()->json(['message' => 'Sale deleted successfully.'], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-    
+
             return response()->json(['message' => 'Failed to delete purchase.', 'error' => $e->getMessage()], 500);
         }
     }
@@ -577,7 +585,33 @@ class SaleController extends Controller
 
         $allocatedPayment = 0.0;
         $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
-        $payments = \App\Models\SalePayment::where('sale_id', $sale->id)->orderBy('payment_date', 'asc')->get();
+        
+        $rawPayments = \App\Models\SalePayment::where('sale_id', $sale->id)->get()->map(function($p) {
+            return [
+                'id' => 'p_' . $p->id,
+                'payment_date' => $p->payment_date,
+                'created_at' => $p->created_at,
+                'payment_method' => $p->payment_method,
+                'note' => $p->note,
+                'amount' => $p->amount,
+            ];
+        });
+
+        $returnDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)
+            ->where('due_deduction', '>', 0)
+            ->get()
+            ->map(function($r) {
+                return [
+                    'id' => 'r_' . $r->id,
+                    'payment_date' => $r->return_date,
+                    'created_at' => $r->created_at,
+                    'payment_method' => 'Return Credit',
+                    'note' => 'Applied from Return #' . $r->return_no,
+                    'amount' => $r->due_deduction,
+                ];
+            });
+
+        $payments = $rawPayments->concat($returnDeductions)->sortBy('payment_date')->values();
 
         return Inertia::render('Sale/Show', [
             'sale' => $sale,

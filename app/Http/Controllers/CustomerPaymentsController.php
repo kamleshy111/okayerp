@@ -68,11 +68,12 @@ class CustomerPaymentsController extends Controller
             'customers.phone',
             'sale_returns.refund_amount',
             'sale_returns.gst_refund_amount',
+            'sale_returns.due_deduction',
             'sale_returns.return_date as payment_date',
             'sale_returns.refund_method',
             'sale_returns.return_no'
         )->get()->map(function ($item) {
-            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
+            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount + (float)$item->due_deduction;
             return [
                 'transaction_id' => $item->transaction_id,
                 'created_at' => $item->created_at,
@@ -88,9 +89,9 @@ class CustomerPaymentsController extends Controller
             ];
         });
 
-        // Merge both arrays and sort by ID descending (transaction_id)
+        // Merge both arrays and sort by created_at descending
         $detailedHistory = $payments->concat($returns)
-            ->sortByDesc('transaction_id')
+            ->sortByDesc('created_at')
             ->values()
             ->all();
 
@@ -137,7 +138,7 @@ class CustomerPaymentsController extends Controller
             ];
         });
 
-        $history = $payments->concat($returns)->sortByDesc('payment_date')->values()->all();
+        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
 
         return Inertia::render('CustomerPayment/History', [
             'customer' => $customer,
@@ -214,7 +215,7 @@ class CustomerPaymentsController extends Controller
 
     public function paymentInfo($id) {
         $userId = Auth::id();
-        $customer = Customer::where('user_id', $userId)->with('sales')->find($id);
+        $customer = Customer::where('user_id', $userId)->with(['sales.saleReturns'])->find($id);
         
         if (!$customer) {
             return response()->json(['error' => 'Not found'], 404);
@@ -224,7 +225,9 @@ class CustomerPaymentsController extends Controller
         $advanceAmount = 0;
 
         foreach ($customer->sales as $sale) {
-            $saleBalance = $sale->paid - $sale->grand_total;
+            $totalDueDeductions = $sale->saleReturns ? $sale->saleReturns->sum('due_deduction') : 0;
+            $effectiveGrandTotal = $sale->grand_total - $totalDueDeductions;
+            $saleBalance = $sale->paid - $effectiveGrandTotal;
             if ($saleBalance < 0) {
                 $dueInvoices[] = [
                     'id' => $sale->id,

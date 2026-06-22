@@ -228,11 +228,7 @@ const formatDate = (dateStr) => {
                 <span class="text-gray-500 font-medium">Paid</span>
                 <span class="text-emerald-600 font-semibold">₹{{ parseFloat(sale.paid).toFixed(2) }}</span>
               </div>
-              <div v-if="parseFloat(returnDueDeduction) > 0" class="flex justify-between py-3">
-                <span class="text-gray-500 font-medium">Return Credit Applied</span>
-                <span class="text-emerald-600 font-semibold">₹{{ parseFloat(returnDueDeduction).toFixed(2) }}</span>
-              </div>
-              
+
               <div v-if="(parseFloat(sale.paid) + parseFloat(returnDueDeduction)) < parseFloat(sale.grand_total)" class="flex justify-between py-3 text-base font-bold bg-[#f8fafc] px-4 rounded-lg mt-2 border border-gray-100">
                 <span class="text-gray-700">Balance Due</span>
                 <span class="text-rose-600">₹{{ (parseFloat(sale.grand_total) - (parseFloat(sale.paid) + parseFloat(returnDueDeduction))).toFixed(2) }}</span>

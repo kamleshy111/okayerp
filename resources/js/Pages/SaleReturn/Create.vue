@@ -341,7 +341,7 @@ const submitReturn = async () => {
                   <span class="font-mono text-indigo-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
                 </div>
                 
-                <div class="border-t pt-3 space-y-2">
+                <div v-if="(parseFloat(selectedSaleDetails.due_amount) || 0) > 0" class="border-t pt-3 space-y-2">
                   <label class="block text-sm font-semibold text-gray-700">Deduct from Invoice Due (Max: ₹ {{ Math.min(grandRefundTotal, parseFloat(selectedSaleDetails.due_amount) || 0).toFixed(2) }})</label>
                   <input
                     type="number"
