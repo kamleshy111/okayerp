@@ -33,7 +33,7 @@ class SaleController extends Controller
         ->map(function ($item) {
             $dueDeductions = $item->saleReturns ? $item->saleReturns->sum('due_deduction') : 0;
             $effectiveGrandTotal = max(0, $item->grand_total - $dueDeductions);
-            
+
             return [
                 'id' => $item->id,
                 'customerName' => $item->customer->name ?? '',
@@ -180,11 +180,11 @@ class SaleController extends Controller
 
         } catch (\Exception $e) {
             DB::rollBack();
+            \Illuminate\Support\Facades\Log::error('Sale Error: ' . $e->getMessage() . ' - ' . $e->getTraceAsString());
             if (app()->environment('testing')) {
                 throw $e;
             }
-            \Log::error($e->getMessage() . "\n" . $e->getTraceAsString());
-            return response()->json(['message' => 'An error occurred while saving the sale: ' . $e->getMessage()], 500);
+            return response()->json(['message' => 'An error occurred while saving the sale. Please try again.', 'error' => $e->getMessage()], 500);
         }
     }
 
@@ -206,10 +206,12 @@ class SaleController extends Controller
         $advanceAmount = 0;
 
         foreach ($sale as $s) {
-            $totalDueDeductions = $s->saleReturns ? $s->saleReturns->sum('due_deduction') : 0;
-            $effectiveGrandTotal = $s->grand_total - $totalDueDeductions;
-            $saleBalance = $s->paid - $effectiveGrandTotal;
-            
+            $paymentsSum = SalePayment::where('sale_id', $s->id);
+            if (session('private_ledger_unlocked') !== true) {
+                $paymentsSum->where('accepted', 1);
+            }
+            $actualPaid = $paymentsSum->sum('amount');
+            $saleBalance = $actualPaid - $s->grand_total;
             if ($saleBalance < 0) {
                 $dueAmount += abs($saleBalance);
             } elseif ($saleBalance > 0) {
@@ -436,7 +438,7 @@ class SaleController extends Controller
                 $accountingService->postSale($sale);
 
                 // Update or create/delete associated SalePayment
-                $payment = SalePayment::where('sale_id', $sale->id)->first();
+                $payment = SalePayment::where('sale_id', $sale->id)->orderBy('id', 'asc')->first();
                 if ($sale->paid > 0) {
                     if ($payment) {
                         $payment->update([
@@ -487,6 +489,36 @@ class SaleController extends Controller
             abort(403, 'Sale not found or unauthorized access');
         }
 
+        // Subtract returned items and update totals in memory
+        $totalAmount = 0;
+        $gstAmount = 0;
+
+        $saleReturnItems = \App\Models\SaleReturnItem::whereHas('saleReturn', function ($q) use ($sale) {
+            $q->where('sale_id', $sale->id);
+        })->get()->groupBy('product_id');
+
+        foreach ($sale->saleItems as $item) {
+            $returnedQty = isset($saleReturnItems[$item->product_id])
+                ? $saleReturnItems[$item->product_id]->sum('quantity')
+                : 0;
+
+            $item->quantity = max(0, $item->quantity - $returnedQty);
+
+            // base_price = price * quantity
+            $item->base_price = $item->price * $item->quantity;
+
+            $totalAmount += $item->base_price;
+            $gstAmount += $item->base_price * ($item->sgst + $item->cgst) / 100;
+        }
+
+        // Recalculate grand_total
+        $grandTotal = max(0, $totalAmount + $gstAmount - $sale->discount);
+
+        // Update the model properties in memory
+        $sale->total_amount = $totalAmount;
+        $sale->gst_amount = $gstAmount;
+        $sale->grand_total = $grandTotal;
+
         $allocatedPayment = 0.0;
         if ($sale->customer) {
             $totalPayments = \App\Models\SalePayment::where('customer_id', $sale->customer_id)
@@ -526,6 +558,7 @@ class SaleController extends Controller
         $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
 
         $pdf = Pdf::loadView('invoice', compact('sale', 'allocatedPayment', 'returnDueDeduction'))->setPaper('a4');
+
         return $pdf->stream("invoice_{$sale->id}.pdf");
     }
 
@@ -583,35 +616,41 @@ class SaleController extends Controller
             abort(403, 'Sale not found or unauthorized access');
         }
 
+        // Subtract returned items and update totals in memory
+        $totalAmount = 0;
+        $gstAmount = 0;
+
+        $saleReturnItems = \App\Models\SaleReturnItem::whereHas('saleReturn', function ($q) use ($sale) {
+            $q->where('sale_id', $sale->id);
+        })->get()->groupBy('product_id');
+
+        foreach ($sale->saleItems as $item) {
+            $returnedQty = isset($saleReturnItems[$item->product_id])
+                ? $saleReturnItems[$item->product_id]->sum('quantity')
+                : 0;
+
+            $item->quantity = max(0, $item->quantity - $returnedQty);
+
+            // base_price = price * quantity
+            $item->base_price = $item->price * $item->quantity;
+
+            $totalAmount += $item->base_price;
+            $gstAmount += $item->base_price * ($item->sgst + $item->cgst) / 100;
+        }
+
+        // Recalculate grand_total
+        $grandTotal = max(0, $totalAmount + $gstAmount - $sale->discount);
+
+        // Update the model properties in memory
+        $sale->total_amount = $totalAmount;
+        $sale->gst_amount = $gstAmount;
+        $sale->grand_total = $grandTotal;
+
         $allocatedPayment = 0.0;
         $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
-        
-        $rawPayments = \App\Models\SalePayment::where('sale_id', $sale->id)->get()->map(function($p) {
-            return [
-                'id' => 'p_' . $p->id,
-                'payment_date' => $p->payment_date,
-                'created_at' => $p->created_at,
-                'payment_method' => $p->payment_method,
-                'note' => $p->note,
-                'amount' => $p->amount,
-            ];
-        });
+        $payments = \App\Models\SalePayment::where('sale_id', $sale->id)->whereNotIn('payment_method', ['Wallet', 'Advance Deduction'])->orderBy('payment_date', 'asc')->get();
 
-        $returnDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)
-            ->where('due_deduction', '>', 0)
-            ->get()
-            ->map(function($r) {
-                return [
-                    'id' => 'r_' . $r->id,
-                    'payment_date' => $r->return_date,
-                    'created_at' => $r->created_at,
-                    'payment_method' => 'Return Credit',
-                    'note' => 'Applied from Return #' . $r->return_no,
-                    'amount' => $r->due_deduction,
-                ];
-            });
-
-        $payments = $rawPayments->concat($returnDeductions)->sortBy('payment_date')->values();
+        // Keep the original down payment amount on the invoice details page as requested.
 
         return Inertia::render('Sale/Show', [
             'sale' => $sale,

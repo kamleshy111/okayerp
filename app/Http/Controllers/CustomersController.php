@@ -32,10 +32,19 @@ class CustomersController extends Controller
             $advanceAmount = 0;
 
             foreach ($customer->sales as $sale) {
+<<<<<<< HEAD
+                $paymentsSum = \App\Models\SalePayment::where('sale_id', $sale->id);
+                if (session('private_ledger_unlocked') !== true) {
+                    $paymentsSum->where('accepted', 1);
+                }
+                $actualPaid = $paymentsSum->sum('amount');
+                $saleBalance = $actualPaid - $sale->grand_total;
+=======
                 $totalDueDeductions = $sale->saleReturns ? $sale->saleReturns->sum('due_deduction') : 0;
                 $effectiveGrandTotal = $sale->grand_total - $totalDueDeductions;
                 $saleBalance = $sale->paid - $effectiveGrandTotal;
                 
+>>>>>>> main
                 if ($saleBalance < 0) {
                     $dueAmount += abs($saleBalance);
                 } elseif ($saleBalance > 0) {

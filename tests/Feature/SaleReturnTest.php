@@ -423,7 +423,7 @@ class SaleReturnTest extends TestCase
             ->has('customers.0', fn ($page) => $page
                 ->where('amount', 30)
                 ->where('payment_date', '2026-06-16')
-                ->where('source', 'Sale')
+                ->where('source', 'Due Clearance')
                 ->etc()
             )
             ->has('customers.1', fn ($page) => $page
@@ -450,7 +450,7 @@ class SaleReturnTest extends TestCase
             ->has('history.0', fn ($page) => $page
                 ->where('amount', 30)
                 ->where('payment_date', '2026-06-16')
-                ->where('source', 'Sale (Invoice #' . $sale->id . ')')
+                ->where('source', 'Due Clearance (Invoice #' . $sale->id . ')')
                 ->etc()
             )
             ->has('history.1', fn ($page) => $page
@@ -466,5 +466,67 @@ class SaleReturnTest extends TestCase
                 ->etc()
             )
         );
+    }
+
+    public function test_get_customer_purchased_items_returns_only_available_quantities(): void
+    {
+        $storeUser = User::factory()->create(['role' => 'store']);
+
+        $customer = Customer::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Jane Client',
+            'email' => 'jane@client.com',
+            'phone' => '1234567890',
+        ]);
+
+        $product = Product::create([
+            'user_id' => $storeUser->id,
+            'name' => 'Item X',
+            'sku' => 'ITM-X',
+            'price' => 50.00,
+            'stock_quantity' => 10,
+        ]);
+
+        $sale = Sale::create([
+            'customer_id' => $customer->id,
+            'total_amount' => 100.00,
+            'grand_total' => 100.00,
+            'accepted' => 1,
+        ]);
+
+        $saleItem = SaleItem::create([
+            'sale_id' => $sale->id,
+            'product_id' => $product->id,
+            'quantity' => 5,
+            'price' => 50.00,
+            'unit_type' => 'Pcs',
+        ]);
+
+        // Create a return of 2 items
+        $return = SaleReturn::create([
+            'user_id' => $storeUser->id,
+            'sale_id' => $sale->id,
+            'return_no' => 'RET-00002',
+            'return_date' => '2026-06-11',
+            'refund_amount' => 100.00,
+            'refund_method' => 'Cash',
+        ]);
+
+        SaleReturnItem::create([
+            'sale_return_id' => $return->id,
+            'product_id' => $product->id,
+            'quantity' => 2,
+            'price' => 50.00,
+        ]);
+
+        $this->actingAs($storeUser);
+
+        $response = $this->get("/sale-return/customer/{$customer->id}/purchased-items");
+        $response->assertOk();
+
+        // Should return 1 item with available_qty = 3 (5 sold - 2 returned)
+        $response->assertJsonCount(1);
+        $response->assertJsonPath('0.product_id', $product->id);
+        $response->assertJsonPath('0.available_qty', 3);
     }
 }
