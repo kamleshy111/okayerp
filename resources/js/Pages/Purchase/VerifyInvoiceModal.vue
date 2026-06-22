@@ -22,12 +22,31 @@ const props = defineProps({
 
 const emit = defineEmits(['close', 'save']);
 
+const normalizeString = (str) => {
+    return str ? str.toLowerCase().replace(/[^a-z0-9]/g, '') : '';
+};
+
+const parseOCRNumber = (str) => {
+    let clean = str.replace(/\s+/g, '');
+    const lastSeparatorMatch = clean.match(/[\.,](\d{1,2})$/);
+    if (lastSeparatorMatch) {
+        const decimalPart = lastSeparatorMatch[1];
+        const separatorIndex = lastSeparatorMatch.index;
+        const integerPartRaw = clean.substring(0, separatorIndex);
+        const integerPart = integerPartRaw.replace(/\D/g, '');
+        return parseFloat(integerPart + '.' + decimalPart);
+    } else {
+        const integerPart = clean.replace(/\D/g, '');
+        return parseFloat(integerPart);
+    }
+};
+
 const form = ref({
     supplier_id: "",
     invoice_no: "",
     purchase_date: "",
     paid: 0,
-    payment_method: "Cash",
+    payment_method: "Null",
     accepted: 0,
     transport: 0,
     purchase_items: []
@@ -79,103 +98,157 @@ onMounted(() => {
             form.value.supplier_id = matchedSupplier.id;
         }
 
-        // Match items
-        const matchedItems = [];
+        // Match items globally (pairing products and math tuples in order of appearance)
+        const matchedProducts = [];
+        const mathTuples = [];
         const lines = props.ocrData.rawText.split('\n');
-        for (const line of lines) {
-            const lowerLine = line.toLowerCase();
-            const matchedProduct = props.products.find(p => p.name && lowerLine.includes(p.name.toLowerCase()));
-            
-            if (matchedProduct) {
-                const lineWithoutName = lowerLine.replace(matchedProduct.name.toLowerCase(), '');
-                const numbers = lineWithoutName.match(/[\d,\.]+/g) || [];
-                const cleanNumbers = numbers.map(n => {
-                    // Fix: OCR often misreads '.' as ',' (e.g. 110.00 becomes 110,00)
-                    if (n.includes(',') && !n.includes('.') && /,\d{2}$/.test(n)) {
-                        n = n.replace(/,(?=\d{2}$)/, '.');
+
+        for (let i = 0; i < lines.length; i++) {
+            const line = lines[i];
+            const normalizedLine = normalizeString(line);
+            if (!normalizedLine) continue;
+
+            // 1. Check for product match
+            let matchedProduct = null;
+            let maxLen = 0;
+            for (const p of props.products) {
+                if (!p.name) continue;
+                const normalizedName = normalizeString(p.name);
+                if (normalizedName && normalizedLine.includes(normalizedName)) {
+                    if (normalizedName.length > maxLen) {
+                        maxLen = normalizedName.length;
+                        matchedProduct = p;
                     }
-                    const cleaned = n.replace(/[^\d.]/g, '');
-                    return parseFloat(cleaned);
-                }).filter(n => !isNaN(n));
+                }
+            }
+            if (matchedProduct) {
+                matchedProducts.push(matchedProduct);
+            }
 
-                let qty = 1;
-                let price = matchedProduct.purchase_price || matchedProduct.price || 0;
+            // 2. Check for math tuple match on this line
+            let lineForNumbers = line.toLowerCase();
+            if (matchedProduct) {
+                lineForNumbers = lineForNumbers.replace(matchedProduct.name.toLowerCase(), '');
+            }
+            const numbers = lineForNumbers.match(/[\d,\.]+/g) || [];
+            const cleanNumbers = numbers.map(parseOCRNumber).filter(n => !isNaN(n));
+            
+            let tuple = null;
+            for (let iNum = 0; iNum < cleanNumbers.length - 1; iNum++) {
+                for (let jNum = iNum + 1; jNum < cleanNumbers.length; jNum++) {
+                    let a = cleanNumbers[iNum];
+                    let b = cleanNumbers[jNum];
+                    let cCandidates = cleanNumbers.slice(jNum + 1);
+                    for (let c of cCandidates) {
+                        // Avoid trivial matches where both a and b are 1 or small
+                        if (Math.abs(a * b - c) < 1.0 && a > 0 && b > 0 && (a > 1.01 || b > 1.01)) {
+                            tuple = { qty: Math.min(a, b), price: Math.max(a, b) };
+                            break;
+                        }
+                    }
+                    if (tuple) break;
+                }
+                if (tuple) break;
+            }
+            if (tuple) {
+                mathTuples.push(tuple);
+            }
+        }
 
-                let found = false;
-                
-                // 1. Try to find A * B = C (Qty * Price = Total)
-                for (let i = 0; i < cleanNumbers.length - 1; i++) {
-                    for (let j = i + 1; j < cleanNumbers.length; j++) {
-                        let a = parseFloat(cleanNumbers[i]);
-                        let b = parseFloat(cleanNumbers[j]);
-                        let cCandidates = cleanNumbers.slice(j + 1).map(parseFloat);
+        // If we did not find enough math tuples line-by-line, fall back to global math scanning
+        if (mathTuples.length < matchedProducts.length) {
+            mathTuples.length = 0; // Clear to avoid partial mixups
+            const allNumbersRaw = props.ocrData.rawText.match(/[\d,\.]+/g) || [];
+            const allNumbers = allNumbersRaw.map(parseOCRNumber).filter(n => !isNaN(n));
+            
+            const candidates = [];
+            for (let i = 0; i < allNumbers.length; i++) {
+                for (let j = 0; j < allNumbers.length; j++) {
+                    if (i === j) continue;
+                    for (let k = 0; k < allNumbers.length; k++) {
+                        if (i === k || j === k) continue;
                         
-                        for (let c of cCandidates) {
-                            if (Math.abs(a * b - c) < 1.0) {
-                                qty = Math.min(a, b);
-                                price = Math.max(a, b);
-                                found = true;
-                                break;
+                        const a = allNumbers[i];
+                        const b = allNumbers[j];
+                        const c = allNumbers[k];
+                        
+                        if (Math.abs(a * b - c) < 1.0 && a > 0 && b > 0) {
+                            const qty = Math.min(a, b);
+                            const price = Math.max(a, b);
+                            
+                            // Filter out unrealistic quantities/prices (e.g. phone numbers, zip codes, GSTIN parts)
+                            if (qty < 10000 && price < 500000) {
+                                const isTrivial = (a <= 1.01 || b <= 1.01);
+                                const spread = Math.max(i, j, k) - Math.min(i, j, k);
+                                candidates.push({
+                                    qty,
+                                    price,
+                                    isTrivial,
+                                    spread,
+                                    indices: [i, j, k]
+                                });
                             }
                         }
-                        if (found) break;
-                    }
-                    if (found) break;
-                }
-
-                // 2. If Qty was missed by OCR, try to match known price and total
-                if (!found && price > 0) {
-                    const exactPrice = cleanNumbers.map(parseFloat).find(n => Math.abs(n - price) < 1.0);
-                    if (exactPrice) {
-                        const total = cleanNumbers.map(parseFloat).find(n => n > exactPrice && Math.abs(n % exactPrice) < 1.0);
-                        if (total) {
-                            qty = Math.round(total / exactPrice);
-                            found = true;
-                        }
                     }
                 }
-
-                // 3. Fallback to basic guessing if math fails
-                if (!found && cleanNumbers.length >= 2) {
-                    let num1 = parseFloat(cleanNumbers[0]);
-                    let num2 = parseFloat(cleanNumbers[1]);
-                    
-                    if (Number.isInteger(num1) && num1 < num2 && num2 < 50000) {
-                        qty = num1;
-                        price = num2;
-                    } else if (Number.isInteger(num2) && num2 < num1 && num1 < 50000) {
-                        qty = num2;
-                        price = num1;
-                    } else if (num1 === price || num2 === price) {
-                        qty = (num1 === price) ? num2 : num1;
-                    } else {
-                        qty = 1;
-                        price = Math.max(num1, num2);
-                    }
-                }
-
-                // Fix for OCR missing the decimal point (e.g. reading 120.00 as 12000)
-                const dbPrice = parseFloat(matchedProduct.purchase_price || matchedProduct.price || 0);
-                if (price > 0 && dbPrice > 0) {
-                    if (Math.abs(price / 100 - dbPrice) < 1.0) {
-                        price = price / 100;
-                    } else if (Math.abs(price / 10 - dbPrice) < 1.0) {
-                        price = price / 10;
-                    }
-                } else if (dbPrice === 0 && price >= 1000 && price % 100 === 0) {
-                    price = price / 100;
-                }
-
-                matchedItems.push({
-                    product_id: matchedProduct.id,
-                    unit_type: matchedProduct.unit_type || "",
-                    sgst: parseFloat(matchedProduct.sgst || 0).toFixed(2),
-                    cgst: parseFloat(matchedProduct.cgst || 0).toFixed(2),
-                    quantity: qty,
-                    price: parseFloat(price).toFixed(2),
-                    baseAmount: parseFloat(qty * price).toFixed(2)
-                });
             }
+
+            // Sort candidates: non-trivial first, then by index spread (consecutive / closer numbers first)
+            candidates.sort((x, y) => {
+                if (x.isTrivial !== y.isTrivial) {
+                    return x.isTrivial ? 1 : -1;
+                }
+                return x.spread - y.spread;
+            });
+
+            const usedIndices = new Set();
+            for (const cand of candidates) {
+                const hasUsedIndex = cand.indices.some(idx => usedIndices.has(idx));
+                if (!hasUsedIndex) {
+                    mathTuples.push({ qty: cand.qty, price: cand.price });
+                    cand.indices.forEach(idx => usedIndices.add(idx));
+                }
+            }
+        }
+
+        // Pair matched products with math tuples by order of index
+        const matchedItems = [];
+        for (let i = 0; i < matchedProducts.length; i++) {
+            const p = matchedProducts[i];
+            const t = mathTuples[i] || { qty: 1, price: p.purchase_price || p.price || 0 };
+            
+            let finalPrice = t.price;
+            let finalQty = t.qty;
+            const dbPrice = parseFloat(p.purchase_price || p.price || 0);
+
+            // If we have a non-zero database price, guide the selection of qty and price
+            if (dbPrice > 0 && t.price > 0 && t.qty > 0) {
+                const ratioPrice = Math.max(t.price / dbPrice, dbPrice / t.price);
+                const ratioQty = Math.max(t.qty / dbPrice, dbPrice / t.qty);
+                if (ratioQty < ratioPrice && ratioQty < 2.0) {
+                    finalPrice = t.qty;
+                    finalQty = t.price;
+                }
+            }
+            
+            // Fix for OCR missing the decimal point (e.g. reading 120.00 as 12000)
+            if (finalPrice > 0 && dbPrice > 0) {
+                if (Math.abs(finalPrice / 100 - dbPrice) < 1.0) {
+                    finalPrice = finalPrice / 100;
+                } else if (Math.abs(finalPrice / 10 - dbPrice) < 1.0) {
+                    finalPrice = finalPrice / 10;
+                }
+            }
+
+            matchedItems.push({
+                product_id: p.id,
+                unit_type: p.unit_type || "",
+                sgst: parseFloat(p.sgst || 0).toFixed(2),
+                cgst: parseFloat(p.cgst || 0).toFixed(2),
+                quantity: finalQty,
+                price: parseFloat(finalPrice).toFixed(2),
+                baseAmount: parseFloat(finalQty * finalPrice).toFixed(2)
+            });
         }
 
         // Deduplicate
@@ -231,12 +304,7 @@ const grandTotal = computed(() => {
     return totalAmount.value + totalGST.value + (parseFloat(form.value.transport) || 0);
 });
 
-// Automatically pre-fill the Amount Paid with the Grand Total so it's fully paid by default!
-watch(grandTotal, (newTotal) => {
-    if (newTotal > 0) {
-        form.value.paid = newTotal.toFixed(2);
-    }
-}, { immediate: true });
+// Watcher removed to prevent auto-selecting/pre-filling Amount Paid
 
 const paymentStatus = computed(() => {
     if (!supplierData.value) {
