@@ -458,6 +458,7 @@ const handleSave = async () => {
                             <th class="px-4 py-3 text-left font-medium">Item Product</th>
                             <th class="px-4 py-3 text-left font-medium w-32">HSN/SAC</th>
                             <th class="px-4 py-3 text-left font-medium w-24">Qty</th>
+                            <th class="px-4 py-3 text-left font-medium w-24">Unit</th>
                             <th class="px-4 py-3 text-left font-medium w-32">Price (₹)</th>
                             <th class="px-4 py-3 text-left font-medium w-20">Tax %</th>
                             <th class="px-4 py-3 text-left font-medium w-32">Net (₹)</th>
@@ -483,6 +484,9 @@ const handleSave = async () => {
                             <td class="px-4 py-3">
                                 <input type="text" v-model="item.quantity" class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none" />
                             </td>
+                            <td class="px-4 py-3 text-sm text-gray-700">
+                                {{ item.unit_type || 'N/A' }}
+                            </td>
                             <td class="px-4 py-3">
                                 <input type="text" v-model="item.price" @blur="item.price = parseFloat(item.price || 0).toFixed(2)" class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none" />
                             </td>
@@ -499,7 +503,7 @@ const handleSave = async () => {
                             </td>
                         </tr>
                         <tr>
-                            <td colspan="7" class="px-4 py-3 border-t border-gray-100">
+                            <td colspan="8" class="px-4 py-3 border-t border-gray-100">
                                 <button @click="addRow" class="text-[#292688] hover:text-[#1d1b6a] font-medium text-sm transition flex items-center gap-1">
                                     <i class="fa fa-plus"></i> Add Item
                                 </button>
