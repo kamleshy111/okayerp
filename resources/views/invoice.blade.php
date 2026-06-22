@@ -243,6 +243,31 @@
       }
   }
 
+  // Fallback 1: check customer's state column directly
+  if ($posState === 'N/A' && $sale->customer && $sale->customer->state) {
+      $stateName = trim($sale->customer->state);
+      foreach ($stateCodes as $code => $name) {
+          if (strcasecmp($name, $stateName) === 0) {
+              $posState = $name . " ({$code})";
+              break;
+          }
+      }
+      if ($posState === 'N/A') {
+          $posState = $stateName;
+      }
+  }
+
+  // Fallback 2: search customer's address for state names
+  if ($posState === 'N/A' && $sale->customer && $sale->customer->address) {
+      $addressLower = strtolower($sale->customer->address);
+      foreach ($stateCodes as $code => $stateName) {
+          if (str_contains($addressLower, strtolower($stateName))) {
+              $posState = $stateName . " ({$code})";
+              break;
+          }
+      }
+  }
+
   // Group items by GST rate for calculation
   $taxGroups = [];
   $totalQty = 0;

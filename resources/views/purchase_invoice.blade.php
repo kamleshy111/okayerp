@@ -245,6 +245,17 @@
       }
   }
 
+  // Fallback: search store address for state names
+  if ($posState === 'N/A' && $store && $store->address) {
+      $addressLower = strtolower($store->address);
+      foreach ($stateCodes as $code => $stateName) {
+          if (str_contains($addressLower, strtolower($stateName))) {
+              $posState = $stateName . " ({$code})";
+              break;
+          }
+      }
+  }
+
   // Group items by GST rate for calculation
   $taxGroups = [];
   $totalQty = 0;
