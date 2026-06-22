@@ -84,6 +84,11 @@ watch(() => form.value.purchase_items, (newItems) => {
     });
 }, { deep: true });
 
+const getProductHsn = (productId) => {
+    const p = props.products.find(p => p.id === productId);
+    return p ? p.hsn_code || 'N/A' : 'N/A';
+};
+
 // Initialization based on OCR Data
 onMounted(() => {
     form.value.invoice_no = props.ocrData.invoice_no || "";
@@ -451,6 +456,7 @@ const handleSave = async () => {
                     <thead class="bg-gray-100 text-gray-600 text-sm">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium">Item Product</th>
+                            <th class="px-4 py-3 text-left font-medium w-32">HSN/SAC</th>
                             <th class="px-4 py-3 text-left font-medium w-24">Qty</th>
                             <th class="px-4 py-3 text-left font-medium w-32">Price (₹)</th>
                             <th class="px-4 py-3 text-left font-medium w-20">Tax %</th>
@@ -471,6 +477,9 @@ const handleSave = async () => {
                                     append-to-body
                                 />
                             </td>
+                            <td class="px-4 py-3 text-sm text-gray-700">
+                                {{ getProductHsn(item.product_id) }}
+                            </td>
                             <td class="px-4 py-3">
                                 <input type="text" v-model="item.quantity" class="w-full px-2 py-1 border border-gray-300 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none" />
                             </td>
@@ -490,7 +499,7 @@ const handleSave = async () => {
                             </td>
                         </tr>
                         <tr>
-                            <td colspan="6" class="px-4 py-3 border-t border-gray-100">
+                            <td colspan="7" class="px-4 py-3 border-t border-gray-100">
                                 <button @click="addRow" class="text-[#292688] hover:text-[#1d1b6a] font-medium text-sm transition flex items-center gap-1">
                                     <i class="fa fa-plus"></i> Add Item
                                 </button>
@@ -537,3 +546,9 @@ const handleSave = async () => {
         </div>
     </div>
 </template>
+
+<style>
+.vs__dropdown-menu {
+    z-index: 100000 !important;
+}
+</style>
