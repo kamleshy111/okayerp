@@ -57,7 +57,7 @@ const filteredPurchasedItems = computed(() => {
   if (!query) {
     return [];
   }
-  return purchasedItems.value.filter(item => 
+  return purchasedItems.value.filter(item =>
     item.product_name.toLowerCase().includes(query)
   );
 });
@@ -277,7 +277,7 @@ const submitReturn = async () => {
         </div>
 
         <div v-if="selectedCustomerId" class="mt-8 space-y-6">
-          
+
           <div v-if="form.items.length > 0" class="space-y-6">
             <h3 class="text-xl font-bold text-[#292688]">Items to Return</h3>
             <!-- Desktop view: Table layout -->
@@ -343,7 +343,7 @@ const submitReturn = async () => {
                     <i class="bi bi-trash-fill text-lg"></i>
                   </button>
                 </div>
-                
+
                 <div class="grid grid-cols-3 gap-2 text-center bg-white p-3 rounded-lg border border-gray-100 text-xs font-semibold text-gray-600">
                   <div>
                     <span class="block text-gray-400 font-medium">Original</span>
@@ -371,7 +371,7 @@ const submitReturn = async () => {
                       v-model.number="item.quantity"
                       min="1"
                       :max="item.available_qty"
-                      class="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm font-semibold text-center text-black font-bold"
+                      class="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm text-center text-black font-bold"
                       placeholder="1"
                     />
                   </div>
