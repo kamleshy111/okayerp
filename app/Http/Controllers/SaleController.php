@@ -28,17 +28,20 @@ class SaleController extends Controller
             $q->where('user_id', $userId);
         })
         ->where('accepted', 1)
-        ->with('customer')
+        ->with(['customer', 'saleReturns'])
         ->get()
         ->map(function ($item) {
+            $dueDeductions = $item->saleReturns ? $item->saleReturns->sum('due_deduction') : 0;
+            $effectiveGrandTotal = max(0, $item->grand_total - $dueDeductions);
+
             return [
                 'id' => $item->id,
                 'customerName' => $item->customer->name ?? '',
                 'email' => $item->customer->email ?? '',
                 'phone' => $item->customer->phone ?? '',
-                'grand_total' => $item->grand_total,
+                'grand_total' => $effectiveGrandTotal,
                 'sale_date' => $item->created_at->format('d-m-Y'),
-                'payment_status' => $item->paid >= $item->grand_total ? 'Paid' : $item->payment_status,
+                'payment_status' => $item->paid >= $effectiveGrandTotal ? 'Paid' : $item->payment_status,
             ];
         });
 
@@ -196,6 +199,7 @@ class SaleController extends Controller
         $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
                     ->where('accepted', 1)
                     ->where('customer_id', $id)
+                    ->with('saleReturns')
                     ->get();
 
         $dueAmount = 0;

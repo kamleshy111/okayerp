@@ -91,11 +91,12 @@ class CustomerPaymentsController extends Controller
             'customers.phone',
             'sale_returns.refund_amount',
             'sale_returns.gst_refund_amount',
+            'sale_returns.due_deduction',
             'sale_returns.return_date as payment_date',
             'sale_returns.refund_method',
             'sale_returns.return_no'
         )->get()->map(function ($item) {
-            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
+            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount + (float)$item->due_deduction;
             return [
                 'transaction_id' => $item->transaction_id,
                 'created_at' => $item->created_at,
@@ -111,7 +112,7 @@ class CustomerPaymentsController extends Controller
             ];
         });
 
-        // Merge both arrays and sort by payment_date descending
+        //Merge both arrays and sort by payment_date descending
         $detailedHistory = $payments->concat($returns)
             ->sortByDesc('created_at')
             ->values()
@@ -181,7 +182,7 @@ class CustomerPaymentsController extends Controller
             ];
         });
 
-        $history = $payments->concat($returns)->sortByDesc('payment_date')->values()->all();
+        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
 
         return Inertia::render('CustomerPayment/History', [
             'customer' => $customer,
