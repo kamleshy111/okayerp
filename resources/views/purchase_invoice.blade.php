@@ -338,7 +338,20 @@
           <tr>
             <td class="bold" style="width: 35%;">Invoice No.</td>
             <td style="width: 5%;">:</td>
-            <td>{{ $purchase->invoice_no ?? $purchase->id }}</td>
+            <td>
+              @php
+                $displayInvoiceNo = $purchase->invoice_no ?? $purchase->id;
+                if ($displayInvoiceNo && preg_match('/^\d+$/', $displayInvoiceNo)) {
+                    $date = \Carbon\Carbon::parse($purchase->purchase_date ?? $purchase->created_at);
+                    $year = $date->year;
+                    $month = $date->month;
+                    $startYear = ($month >= 4) ? $year : $year - 1;
+                    $endYear = $startYear + 1;
+                    $displayInvoiceNo = $displayInvoiceNo . '/' . $startYear . '-' . substr($endYear, 2);
+                }
+              @endphp
+              {{ $displayInvoiceNo }}
+            </td>
           </tr>
           <tr>
             <td class="bold">Dated</td>

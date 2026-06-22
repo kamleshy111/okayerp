@@ -361,6 +361,7 @@ const columns = [
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
     },
+    { data: 'invoice_no', title: 'Invoice No' },
     { data: 'supplier_name' },
     { data: 'supplier_phone' },
     { data: 'supplier_email' },
@@ -466,6 +467,7 @@ function deleteSupplier(purchaseId) {
           <thead class="bg-[#2e2c92] text-white main-head-table">
               <tr>
                   <th scope="col">S No</th>
+                  <th scope="col">Invoice No</th>
                   <th scope="col">Name</th>
                   <th scope="col">Phone</th>
                   <th scope="col">Email</th>

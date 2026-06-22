@@ -31,13 +31,23 @@ class PurchasesController extends Controller
         ->with('supplier')
         ->get()
         ->map(function ($item) {
+            $invoiceNo = $item->invoice_no ?? $item->id;
+            if ($invoiceNo && preg_match('/^\d+$/', $invoiceNo)) {
+                $date = \Carbon\Carbon::parse($item->purchase_date ?? $item->created_at);
+                $year = $date->year;
+                $month = $date->month;
+                $startYear = ($month >= 4) ? $year : $year - 1;
+                $endYear = $startYear + 1;
+                $invoiceNo = $invoiceNo . '/' . $startYear . '-' . substr($endYear, 2);
+            }
             return [
                 'id' => $item->id,
+                'invoice_no' => $invoiceNo,
                 'supplier_name' => $item->supplier->name ?? '--',
                 'supplier_phone' => $item->supplier->phone ?? '--',
                 'supplier_email' => $item->supplier->email ?? '--',
                 'grand_total' => $item->grand_total ?? '--',
-                'purchase_Date' => $item->created_at->format('d-m-Y'),
+                'purchase_Date' => $item->purchase_date ? \Carbon\Carbon::parse($item->purchase_date)->format('d-m-Y') : $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->payment_status,
             ];
         });
@@ -81,6 +91,19 @@ class PurchasesController extends Controller
             return response()->json(["message" => $validated]);
         }
 
+        $invoiceNo = $request->input('invoice_no');
+        $purchaseDate = $request->input('purchase_date');
+        
+        // If invoice_no is a simple integer, format it as [Invoice No]/[Financial Year]
+        if ($invoiceNo && preg_match('/^\d+$/', $invoiceNo) && $purchaseDate) {
+            $date = \Carbon\Carbon::parse($purchaseDate);
+            $year = $date->year;
+            $month = $date->month;
+            $startYear = ($month >= 4) ? $year : $year - 1;
+            $endYear = $startYear + 1;
+            $invoiceNo = $invoiceNo . '/' . $startYear . '-' . substr($endYear, 2);
+        }
+
         // Begin a database transaction
         DB::beginTransaction();
 
@@ -89,7 +112,7 @@ class PurchasesController extends Controller
             // 1. Insert into `purchases` table
             $purchase = Purchase::create([
                 'supplier_id' => $request->input('supplier_id'),
-                'invoice_no' => $request->input('invoice_no'),
+                'invoice_no' => $invoiceNo,
                 'purchase_date' => $request->input('purchase_date'),
                 'transport_amount' => $request->input('transport') ?? 0,
                 'grand_total' => $request->input('grand_total') ?? 0.00,
@@ -205,6 +228,23 @@ class PurchasesController extends Controller
             abort(403, 'Purchase not found or unauthorized access');
         }
 
+        // Format invoice_no for display if it is a simple integer
+        if ($purchases->invoice_no && preg_match('/^\d+$/', $purchases->invoice_no)) {
+            $date = \Carbon\Carbon::parse($purchases->purchase_date ?? $purchases->created_at);
+            $year = $date->year;
+            $month = $date->month;
+            $startYear = ($month >= 4) ? $year : $year - 1;
+            $endYear = $startYear + 1;
+            $purchases->invoice_no = $purchases->invoice_no . '/' . $startYear . '-' . substr($endYear, 2);
+        } else if (!$purchases->invoice_no) {
+            $date = \Carbon\Carbon::parse($purchases->purchase_date ?? $purchases->created_at);
+            $year = $date->year;
+            $month = $date->month;
+            $startYear = ($month >= 4) ? $year : $year - 1;
+            $endYear = $startYear + 1;
+            $purchases->invoice_no = $purchases->id . '/' . $startYear . '-' . substr($endYear, 2);
+        }
+
         // Example: map each item to include product name and calculated total
         $productItems  = $purchases->items->map(function ($item) {
             return [
@@ -305,10 +345,23 @@ class PurchasesController extends Controller
                 }
                 $purchases = $query->where('id', $id)->first();
 
+                $invoiceNo = $request->input('invoice_no');
+                $purchaseDate = $request->input('purchase_date');
+                
+                // If invoice_no is a simple integer, format it as [Invoice No]/[Financial Year]
+                if ($invoiceNo && preg_match('/^\d+$/', $invoiceNo) && $purchaseDate) {
+                    $date = \Carbon\Carbon::parse($purchaseDate);
+                    $year = $date->year;
+                    $month = $date->month;
+                    $startYear = ($month >= 4) ? $year : $year - 1;
+                    $endYear = $startYear + 1;
+                    $invoiceNo = $invoiceNo . '/' . $startYear . '-' . substr($endYear, 2);
+                }
+
                 // Update purchase data
                 $purchases->update([
                     'supplier_id' => $request->input('supplier_id'),
-                    'invoice_no' => $request->input('invoice_no'),
+                    'invoice_no' => $invoiceNo,
                     'purchase_date' => $request->input('purchase_date'),
                     'transport_amount' => $request->input('transport'),
                     'gst_amount' => $request->input('GstAmount'),
@@ -474,6 +527,23 @@ class PurchasesController extends Controller
 
         if (!$purchase) {
             abort(403, 'Purchase not found or unauthorized access');
+        }
+
+        // Format invoice_no for display if it is a simple integer
+        if ($purchase->invoice_no && preg_match('/^\d+$/', $purchase->invoice_no)) {
+            $date = \Carbon\Carbon::parse($purchase->purchase_date ?? $purchase->created_at);
+            $year = $date->year;
+            $month = $date->month;
+            $startYear = ($month >= 4) ? $year : $year - 1;
+            $endYear = $startYear + 1;
+            $purchase->invoice_no = $purchase->invoice_no . '/' . $startYear . '-' . substr($endYear, 2);
+        } else if (!$purchase->invoice_no) {
+            $date = \Carbon\Carbon::parse($purchase->purchase_date ?? $purchase->created_at);
+            $year = $date->year;
+            $month = $date->month;
+            $startYear = ($month >= 4) ? $year : $year - 1;
+            $endYear = $startYear + 1;
+            $purchase->invoice_no = $purchase->id . '/' . $startYear . '-' . substr($endYear, 2);
         }
 
         $allocatedPayment = 0.0;
