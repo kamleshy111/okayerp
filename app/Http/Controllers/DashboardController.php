@@ -333,9 +333,8 @@ class DashboardController extends Controller
         
         $totalCustomerDue = $customers->sum(function ($customer) {
             $totalSaleAmount = $customer->sales->sum('grand_total');
-            $totalSalePaid = $customer->sales->sum('paid');
-            $totalDirectPaid = $customer->payments->where('sale_id', null)->sum('amount');
-            $balance = $totalSalePaid + $totalDirectPaid - $totalSaleAmount;
+            $totalPaid = $customer->payments->sum('amount');
+            $balance = $totalPaid - $totalSaleAmount;
             return $balance < 0 ? abs($balance) : 0;
         });
 

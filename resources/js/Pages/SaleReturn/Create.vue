@@ -9,14 +9,13 @@ import vSelect from "vue3-select";
 import "vue3-select/dist/vue3-select.css";
 
 const props = defineProps({
-  sales: {
+  customers: {
     type: Array,
     required: true,
   },
 });
 
 const form = ref({
-  sale_id: "",
   return_date: new Date().toISOString().substring(0, 10),
   refund_method: "Cash",
   reason: "",
@@ -24,44 +23,109 @@ const form = ref({
   items: [],
 });
 
-const selectedSaleDetails = ref(null);
-const isLoadingSale = ref(false);
+const selectedCustomerId = ref(null);
+const customerSearchQuery = ref("");
 
-// Watch sale selection
-watch(() => form.value.sale_id, async (newVal) => {
+const filteredCustomers = computed(() => {
+  const query = customerSearchQuery.value.trim().toLowerCase();
+  const selectedCustomer = props.customers.find(c => c.id === selectedCustomerId.value);
+
+  if (!query) {
+    return selectedCustomer ? [selectedCustomer] : [];
+  }
+
+  const filtered = props.customers.filter(customer =>
+    customer.name.toLowerCase().includes(query) ||
+    (customer.phone && customer.phone.includes(query))
+  );
+
+  if (selectedCustomer && !filtered.some(c => c.id === selectedCustomer.id)) {
+    filtered.unshift(selectedCustomer);
+  }
+
+  return filtered;
+});
+
+const purchasedItems = ref([]);
+const isLoadingItems = ref(false);
+const selectedItemToAdd = ref(null);
+const itemSearchQuery = ref("");
+
+// Filter purchased items only when search query is typed
+const filteredPurchasedItems = computed(() => {
+  const query = itemSearchQuery.value.trim().toLowerCase();
+  if (!query) {
+    return [];
+  }
+  return purchasedItems.value.filter(item => 
+    item.product_name.toLowerCase().includes(query)
+  );
+});
+
+// Watch customer selection to load purchased items
+watch(selectedCustomerId, async (newVal) => {
+  purchasedItems.value = [];
+  selectedItemToAdd.value = null;
+  form.value.items = [];
+
   if (!newVal) {
-    selectedSaleDetails.value = null;
-    form.value.items = [];
-    form.value.due_deduction = 0;
     return;
   }
 
-  isLoadingSale.value = true;
+  isLoadingItems.value = true;
   try {
-    const response = await axios.get(`/sale-return/sale/${newVal}/details`);
-    selectedSaleDetails.value = response.data;
-    
-    // Initialize returned quantities to 0
-    form.value.items = response.data.items.map(item => ({
-      product_id: item.product_id,
-      product_name: item.product_name,
-      price: parseFloat(item.price),
-      cgst: parseFloat(item.cgst) || 0,
-      sgst: parseFloat(item.sgst) || 0,
-      sold_qty: item.sold_qty,
-      returned_qty: item.returned_qty,
-      available_qty: item.available_qty,
-      quantity: 0, // returned qty input
+    const response = await axios.get(`/sale-return/customer/${newVal}/purchased-items`);
+    purchasedItems.value = response.data.map(item => ({
+      ...item,
+      display_label: `${item.product_name} [Available: ${item.available_qty}]`,
     }));
-
-    form.value.due_deduction = 0;
   } catch (error) {
-    console.error("Error fetching sale details:", error);
-    toast.error("Failed to load sale details.");
+    console.error("Error fetching purchased items:", error);
+    toast.error("Failed to load customer purchased items.");
   } finally {
-    isLoadingSale.value = false;
+    isLoadingItems.value = false;
   }
 });
+
+// Auto-add selected item to list when chosen from dropdown
+watch(selectedItemToAdd, (newVal) => {
+  if (newVal) {
+    addItemToList();
+  }
+});
+
+const addItemToList = () => {
+  if (!selectedItemToAdd.value) {
+    return;
+  }
+
+  const item = selectedItemToAdd.value;
+
+  // Check if already added
+  const exists = form.value.items.some(
+    existing => existing.sale_id === item.sale_id && existing.product_id === item.product_id
+  );
+
+  if (exists) {
+    toast.error("This item is already in the return list.");
+    selectedItemToAdd.value = null;
+    return;
+  }
+
+  // Add item with default quantity 1 (or available_qty if smaller)
+  form.value.items.push({
+    ...item,
+    quantity: Math.min(1, item.available_qty),
+  });
+
+  // Reset selection
+  selectedItemToAdd.value = null;
+  toast.success(`Added ${item.product_name} to return list.`);
+};
+
+const removeItemFromList = (index) => {
+  form.value.items.splice(index, 1);
+};
 
 // Computed values for refunds
 const baseRefundTotal = computed(() => {
@@ -72,11 +136,10 @@ const baseRefundTotal = computed(() => {
 });
 
 const gstRefundTotal = computed(() => {
-  if (!selectedSaleDetails.value || selectedSaleDetails.value.accepted != 1) {
-    return 0;
-  }
-
   return form.value.items.reduce((sum, item) => {
+    if (item.accepted != 1) {
+      return sum;
+    }
     const qty = parseInt(item.quantity) || 0;
     const gstRate = (item.sgst + item.cgst) / 100;
     return sum + (qty * item.price * gstRate);
@@ -87,31 +150,11 @@ const grandRefundTotal = computed(() => {
   return baseRefundTotal.value + gstRefundTotal.value;
 });
 
-// Watch grandRefundTotal to auto-suggest maximum due deduction
-watch(grandRefundTotal, (newVal) => {
-  if (selectedSaleDetails.value) {
-    const dueAmount = parseFloat(selectedSaleDetails.value.due_amount) || 0;
-    const maxDeduct = Math.min(newVal, dueAmount);
-    form.value.due_deduction = parseFloat(maxDeduct.toFixed(2));
-  } else {
-    form.value.due_deduction = 0;
-  }
-});
-
-const netRefundCashToPay = computed(() => {
-  return Math.max(0, grandRefundTotal.value - (parseFloat(form.value.due_deduction) || 0));
-});
-
 const submitReturn = async () => {
   const payloadItems = form.value.items.filter(item => item.quantity > 0);
 
-  if (!form.value.sale_id) {
-    toast.error("Please select a sale invoice.");
-    return;
-  }
-
   if (payloadItems.length === 0) {
-    toast.error("Please specify a returned quantity of at least 1 for one or more products.");
+    toast.error("Please add at least one item with a return quantity of 1 or more.");
     return;
   }
 
@@ -123,32 +166,43 @@ const submitReturn = async () => {
     }
   }
 
-  // Validate due deduction amount
-  const dueAmount = parseFloat(selectedSaleDetails.value.due_amount) || 0;
-  const maxDeduct = Math.min(grandRefundTotal.value, dueAmount);
-  if (form.value.due_deduction < 0 || form.value.due_deduction > maxDeduct) {
-    toast.error(`Due deduction amount must be between 0 and ₹ ${maxDeduct.toFixed(2)}.`);
-    return;
-  }
+  // Group items by sale_id since returns are created per invoice
+  const itemsBySale = {};
+  payloadItems.forEach(item => {
+    if (!itemsBySale[item.sale_id]) {
+      itemsBySale[item.sale_id] = [];
+    }
+    itemsBySale[item.sale_id].push(item);
+  });
 
   try {
-    const payload = {
-      sale_id: form.value.sale_id,
-      return_date: form.value.return_date,
-      refund_method: form.value.refund_method,
-      reason: form.value.reason,
-      due_deduction: form.value.due_deduction,
-      items: payloadItems.map(item => ({
-        product_id: item.product_id,
-        quantity: item.quantity,
-      })),
-    };
+    const invoiceUrls = [];
 
-    const response = await axios.post('/sale-return/store', payload);
-    toast.success(response.data.message);
-    if (response.data.invoice_url) {
-      window.open(response.data.invoice_url, '_blank');
+    for (const [saleId, saleItems] of Object.entries(itemsBySale)) {
+      const payload = {
+        sale_id: saleId,
+        return_date: form.value.return_date,
+        refund_method: form.value.refund_method,
+        reason: form.value.reason,
+        due_deduction: 0,
+        items: saleItems.map(item => ({
+          product_id: item.product_id,
+          quantity: item.quantity,
+        })),
+      };
+
+      const response = await axios.post('/sale-return/store', payload);
+      if (response.data.invoice_url) {
+        invoiceUrls.push(response.data.invoice_url);
+      }
     }
+
+    toast.success("Sales return processed successfully!");
+
+    invoiceUrls.forEach(url => {
+      window.open(url, '_blank');
+    });
+
     router.visit(route('sale-return.index'));
   } catch (error) {
     const msg = error.response?.data?.message || "An error occurred while saving the return.";
@@ -170,120 +224,169 @@ const submitReturn = async () => {
           <span style="margin-left: 5px;">Sales Returns</span>
         </a>
       </div>
-      
+
       <h2 class="text-2xl font-bold mb-4 text-[#292688]">Record Sale Return</h2>
 
       <div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label class="block text-black font-medium mb-2">Original Sale Invoice</label>
+            <label class="block text-black font-medium mb-2">Select Customer <span class="text-red-500">*</span></label>
             <vSelect
-              v-model="form.sale_id"
-              :options="sales"
-              label="invoice_label"
-              :reduce="sale => sale.id"
-              placeholder="Search or select sale invoice"
+              v-model="selectedCustomerId"
+              :options="filteredCustomers"
+              label="name"
+              :reduce="customer => customer.id"
+              placeholder="Type to search customer..."
               class="w-full text-black bg-white"
-            />
+              @search="(query) => customerSearchQuery = query"
+            >
+              <template #no-options>
+                search customer then select
+              </template>
+            </vSelect>
+          </div>
+
+          <div v-if="selectedCustomerId" class="flex flex-col">
+            <label class="block text-black font-medium mb-2">Search Purchased Item <span class="text-red-500">*</span></label>
+            <div class="flex items-center gap-2">
+              <vSelect
+                v-model="selectedItemToAdd"
+                :options="filteredPurchasedItems"
+                label="product_name"
+                placeholder="Type to search purchased items..."
+                class="w-full text-black bg-white"
+                :disabled="isLoadingItems"
+                @search="(query) => itemSearchQuery = query"
+                :close-on-select="false"
+                :clear-search-on-select="false"
+              >
+                <template #option="option">
+                  <div class="flex justify-between items-center w-full">
+                    <span>{{ option.product_name }} [Available: {{ option.available_qty }}]</span>
+                    <span class="text-[#2E2C92] font-bold flex items-center justify-center bg-indigo-50 hover:bg-indigo-100 rounded-full w-6 h-6 shadow-sm"><i class="bi bi-plus-lg"></i></span>
+                  </div>
+                </template>
+                <template #no-options>
+                  search item then select
+                </template>
+              </vSelect>
+            </div>
+            <p v-if="isLoadingItems" class="text-xs text-gray-500 mt-1">Loading purchased items...</p>
+            <p v-else-if="purchasedItems.length === 0" class="text-xs text-amber-600 mt-1">No returnable purchased items found for this customer.</p>
           </div>
         </div>
 
-        <div v-if="isLoadingSale" class="py-6 text-center text-gray-500 font-semibold">
-          Loading sale details...
-        </div>
+        <div v-if="selectedCustomerId" class="mt-8 space-y-6">
+          
+          <div v-if="form.items.length > 0" class="space-y-6">
+            <h3 class="text-xl font-bold text-[#292688]">Items to Return</h3>
+            <!-- Desktop view: Table layout -->
+            <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
+              <thead class="bg-[#292688] text-white">
+                <tr>
+                  <th class="px-4 py-2 text-left">Product</th>
+                  <th class="px-4 py-2 text-left">Original Qty</th>
+                  <th class="px-4 py-2 text-left">Already Returned</th>
+                  <th class="px-4 py-2 text-left">Available to Return</th>
+                  <th class="px-4 py-2 text-left">Price (Excl. GST)</th>
+                  <th class="px-4 py-2 text-left w-32">Return Qty</th>
+                  <th class="px-4 py-2 text-left">Refund Amount</th>
+                  <th class="px-4 py-2 text-center w-20">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr v-for="(item, index) in form.items" :key="index">
+                  <td class="border-t px-4 py-3 font-semibold text-gray-800">{{ item.product_name }}</td>
+                  <td class="border-t px-4 py-3 text-gray-600">{{ item.sold_qty }}</td>
+                  <td class="border-t px-4 py-3 text-gray-500">{{ item.returned_qty }}</td>
+                  <td class="border-t px-4 py-3 font-bold text-indigo-600">{{ item.available_qty }}</td>
+                  <td class="border-t px-4 py-3 text-gray-600">₹ {{ item.price.toFixed(2) }}</td>
+                  <td class="border-t px-4 py-3">
+                    <input
+                      type="number"
+                      v-model.number="item.quantity"
+                      min="1"
+                      :max="item.available_qty"
+                      class="w-full px-2 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-center font-bold text-black"
+                      placeholder="1"
+                    />
+                  </td>
+                  <td class="border-t px-4 py-3 font-bold text-gray-700">
+                    ₹ {{ ((item.quantity || 0) * item.price).toFixed(2) }}
+                  </td>
+                  <td class="border-t px-4 py-3 text-center">
+                    <button
+                      type="button"
+                      @click="removeItemFromList(index)"
+                      class="text-red-600 hover:text-red-800 transition"
+                      title="Remove Item"
+                    >
+                      <i class="bi bi-trash-fill text-lg"></i>
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
 
-        <div v-if="selectedSaleDetails" class="mt-8 space-y-6">
-          <div class="p-4 bg-slate-50 border rounded-lg text-black grid grid-cols-1 md:grid-cols-3 gap-4">
-            <p><strong>Customer Name:</strong> {{ selectedSaleDetails.customer_name }}</p>
-            <p><strong>Tax Scheme:</strong> {{ selectedSaleDetails.accepted == 1 ? 'GST Invoice' : 'Non-GST / Private Invoice' }}</p>
-            <p class="text-rose-600 font-semibold"><strong>Original Due:</strong> ₹ {{ parseFloat(selectedSaleDetails.due_amount).toFixed(2) }}</p>
-          </div>
+            <!-- Mobile view: Card list of items -->
+            <div class="md:hidden space-y-4">
+              <div v-for="(item, index) in form.items" :key="'mobile-' + index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
+                <div class="flex justify-between items-start font-bold text-[#292688] text-base pb-2 border-b border-gray-100">
+                  <div>
+                    <div>{{ item.product_name }}</div>
+                  </div>
+                  <button
+                    type="button"
+                    @click="removeItemFromList(index)"
+                    class="text-red-500 hover:text-red-700 transition"
+                  >
+                    <i class="bi bi-trash-fill text-lg"></i>
+                  </button>
+                </div>
+                
+                <div class="grid grid-cols-3 gap-2 text-center bg-white p-3 rounded-lg border border-gray-100 text-xs font-semibold text-gray-600">
+                  <div>
+                    <span class="block text-gray-400 font-medium">Original</span>
+                    <span>{{ item.sold_qty }}</span>
+                  </div>
+                  <div>
+                    <span class="block text-gray-400 font-medium">Returned</span>
+                    <span>{{ item.returned_qty }}</span>
+                  </div>
+                  <div>
+                    <span class="block text-gray-400 font-medium">Available</span>
+                    <span class="text-indigo-600 font-bold">{{ item.available_qty }}</span>
+                  </div>
+                </div>
 
-          <h3 class="text-xl font-bold text-[#292688]">Items Sold</h3>
-          <!-- Desktop view: Table layout -->
-          <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
-            <thead class="bg-[#292688] text-white">
-              <tr>
-                <th class="px-4 py-2 text-left">Product</th>
-                <th class="px-4 py-2 text-left">Original Qty</th>
-                <th class="px-4 py-2 text-left">Already Returned</th>
-                <th class="px-4 py-2 text-left">Available to Return</th>
-                <th class="px-4 py-2 text-left">Price (Excl. GST)</th>
-                <th class="px-4 py-2 text-left w-32">Return Qty</th>
-                <th class="px-4 py-2 text-left">Refund Amount</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="(item, index) in form.items" :key="index">
-                <td class="border-t px-4 py-3 font-semibold text-gray-800">{{ item.product_name }}</td>
-                <td class="border-t px-4 py-3 text-gray-600">{{ item.sold_qty }}</td>
-                <td class="border-t px-4 py-3 text-gray-500">{{ item.returned_qty }}</td>
-                <td class="border-t px-4 py-3 font-bold text-indigo-600">{{ item.available_qty }}</td>
-                <td class="border-t px-4 py-3 text-gray-600">₹ {{ item.price.toFixed(2) }}</td>
-                <td class="border-t px-4 py-3">
-                  <input
-                    type="number"
-                    v-model.number="item.quantity"
-                    min="0"
-                    :max="item.available_qty"
-                    :disabled="item.available_qty === 0"
-                    class="w-full px-2 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition disabled:bg-gray-100 disabled:text-gray-400"
-                    placeholder="0"
-                  />
-                </td>
-                <td class="border-t px-4 py-3 font-bold text-gray-700">
-                  ₹ {{ ((item.quantity || 0) * item.price).toFixed(2) }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
+                <div class="flex items-center justify-between gap-4 pt-2">
+                  <div class="w-1/2">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Price (Excl. GST)</label>
+                    <span class="font-bold text-gray-800 text-sm">₹ {{ item.price.toFixed(2) }}</span>
+                  </div>
+                  <div class="w-1/2">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Return Qty</label>
+                    <input
+                      type="number"
+                      v-model.number="item.quantity"
+                      min="1"
+                      :max="item.available_qty"
+                      class="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm font-semibold text-center text-black font-bold"
+                      placeholder="1"
+                    />
+                  </div>
+                </div>
 
-          <!-- Mobile view: Card list of items -->
-          <div class="md:hidden space-y-4">
-            <div v-for="(item, index) in form.items" :key="'mobile-' + index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-3">
-              <div class="font-bold text-[#292688] text-base pb-2 border-b border-gray-100">
-                {{ item.product_name }}
-              </div>
-              
-              <div class="grid grid-cols-3 gap-2 text-center bg-white p-3 rounded-lg border border-gray-100 text-xs font-semibold text-gray-600">
-                <div>
-                  <span class="block text-gray-400 font-medium">Original</span>
-                  <span>{{ item.sold_qty }}</span>
+                <div class="flex justify-between items-center bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100/50 text-xs font-bold">
+                  <span class="text-gray-600">Refund Amount:</span>
+                  <span class="text-[#292688] font-mono text-sm">₹ {{ ((item.quantity || 0) * item.price).toFixed(2) }}</span>
                 </div>
-                <div>
-                  <span class="block text-gray-400 font-medium">Returned</span>
-                  <span>{{ item.returned_qty }}</span>
-                </div>
-                <div>
-                  <span class="block text-gray-400 font-medium">Available</span>
-                  <span class="text-indigo-600 font-bold">{{ item.available_qty }}</span>
-                </div>
-              </div>
-
-              <div class="flex items-center justify-between gap-4 pt-2">
-                <div class="w-1/2">
-                  <label class="block text-xs font-semibold text-gray-500 mb-1">Price (Excl. GST)</label>
-                  <span class="font-bold text-gray-800 text-sm">₹ {{ item.price.toFixed(2) }}</span>
-                </div>
-                <div class="w-1/2">
-                  <label class="block text-xs font-semibold text-gray-500 mb-1">Return Qty</label>
-                  <input
-                    type="number"
-                    v-model.number="item.quantity"
-                    min="0"
-                    :max="item.available_qty"
-                    :disabled="item.available_qty === 0"
-                    class="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition disabled:bg-gray-100 disabled:text-gray-400 text-sm font-semibold text-center"
-                    placeholder="0"
-                  />
-                </div>
-              </div>
-
-              <div class="flex justify-between items-center bg-indigo-50/50 p-2.5 rounded-lg border border-indigo-100/50 text-xs font-bold">
-                <span class="text-gray-600">Refund Amount:</span>
-                <span class="text-[#292688] font-mono text-sm">₹ {{ ((item.quantity || 0) * item.price).toFixed(2) }}</span>
               </div>
             </div>
+          </div>
+          <div v-else class="p-6 bg-slate-50 border border-dashed border-gray-300 rounded-xl text-center text-gray-500">
+            <i class="bi bi-cart-x text-3xl mb-2 block"></i>
+            No items added to the return list yet. Search and add items above.
           </div>
 
           <!-- Return Metadata -->
@@ -332,30 +435,13 @@ const submitReturn = async () => {
                   <span class="text-gray-600">Base Refund Total:</span>
                   <span class="font-mono font-bold text-gray-800">₹ {{ baseRefundTotal.toFixed(2) }}</span>
                 </div>
-                <div v-if="selectedSaleDetails.accepted == 1" class="flex justify-between">
+                <div v-if="gstRefundTotal > 0" class="flex justify-between">
                   <span class="text-gray-600">GST Refund Total:</span>
                   <span class="font-mono font-bold text-gray-800">₹ {{ gstRefundTotal.toFixed(2) }}</span>
                 </div>
-                <div class="flex justify-between border-t pt-3 font-semibold">
-                  <span class="text-gray-800">Total Refund Value:</span>
-                  <span class="font-mono text-indigo-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
-                </div>
-                
-                <div class="border-t pt-3 space-y-2">
-                  <label class="block text-sm font-semibold text-gray-700">Deduct from Invoice Due (Max: ₹ {{ Math.min(grandRefundTotal, parseFloat(selectedSaleDetails.due_amount) || 0).toFixed(2) }})</label>
-                  <input
-                    type="number"
-                    step="0.01"
-                    v-model.number="form.due_deduction"
-                    :min="0"
-                    :max="Math.min(grandRefundTotal, parseFloat(selectedSaleDetails.due_amount) || 0)"
-                    class="w-full border px-3 py-1.5 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold"
-                  />
-                </div>
-
                 <div class="flex justify-between border-t pt-3 font-semibold text-lg">
-                  <span class="text-gray-800">Net Refund (Cash/UPI/Card):</span>
-                  <span class="font-mono text-emerald-700">₹ {{ netRefundCashToPay.toFixed(2) }}</span>
+                  <span class="text-gray-800">Total Refund:</span>
+                  <span class="font-mono text-emerald-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
                 </div>
               </div>
 

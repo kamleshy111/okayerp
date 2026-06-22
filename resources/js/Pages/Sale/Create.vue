@@ -277,7 +277,7 @@ const paymentStatus = computed(() => {
   const currentNet = paidNow - grandTotal.value;
 
   if (paidNow === 0) return 'Unpaid';
-  else if (currentNet < 0) return 'Due';
+  else if (currentNet < 0) return 'Partial';
   else if (currentNet > 0) return 'Advance';
   else return 'Paid';
 });

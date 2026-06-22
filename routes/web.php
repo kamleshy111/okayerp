@@ -180,6 +180,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         // Sales Returns
         Route::get('/sale-return', [SaleReturnController::class, 'index'])->name('sale-return.index');
         Route::get('/sale-return/create', [SaleReturnController::class, 'create'])->name('sale-return.create');
+        Route::get('/sale-return/customer/{customerId}/sales', [SaleReturnController::class, 'getCustomerSales'])->name('sale-return.customer-sales');
+        Route::get('/sale-return/customer/{customerId}/purchased-items', [SaleReturnController::class, 'getCustomerPurchasedItems'])->name('sale-return.customer-purchased-items');
         Route::get('/sale-return/sale/{id}/details', [SaleReturnController::class, 'getSaleDetails'])->name('sale-return.sale-details');
         Route::post('/sale-return/store', [SaleReturnController::class, 'store'])->name('sale-return.store');
         Route::get('/sale-return/{id}/download-pdf', [SaleReturnController::class, 'downloadReturnPdf'])->name('sale-return.pdf');
@@ -224,6 +226,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/paymentsCustomer/store', [CustomerPaymentsController::class, 'store'])->name('paymentsCustomer.store');
         Route::get('/paymentsCustomer/{id}/history', [CustomerPaymentsController::class, 'history'])->name('paymentsCustomer.history');
         Route::get('/paymentsCustomer/{id}/history/download-pdf', [CustomerPaymentsController::class, 'downloadHistoryPdf'])->name('paymentsCustomer.history.pdf');
+        Route::get('/paymentsCustomer/receipt/{source}/{id}', [CustomerPaymentsController::class, 'showReceipt'])->name('paymentsCustomer.receipt.show');
+        Route::get('/paymentsCustomer/receipt/{source}/{id}/pdf', [CustomerPaymentsController::class, 'downloadReceiptPdf'])->name('paymentsCustomer.receipt.pdf');
         
         Route::get('/customer/{id}/payment-info', [CustomerPaymentsController::class, 'paymentInfo'])->name('customer.payment.info');
     });

@@ -89,6 +89,11 @@ const submitForm = async () => {
     const response = await axios.post(`/paymentsCustomer/store`, form.value);
     toast.success(response.data.message);
 
+    if (response.data.receipt_url) {
+      window.location.href = response.data.receipt_url;
+      return;
+    }
+
     // Refresh payment info for selected customer
     if(form.value.customer_id) {
         const res = await axios.get(`/customer/${form.value.customer_id}/payment-info`);
@@ -154,21 +159,7 @@ const submitForm = async () => {
                 </div>
             </div>
 
-            <!-- Advance Usage Section -->
-            <div v-if="form.sale_id && customerInfo.advance_amount > 0" class="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl">
-                <div class="flex items-center gap-3 mb-4">
-                    <input type="checkbox" id="use_advance" v-model="form.use_advance" class="w-5 h-5 text-[#292688] rounded focus:ring-[#292688]">
-                    <label for="use_advance" class="text-black font-medium">Use Advance Balance (Available: ₹{{ (parseFloat(customerInfo.advance_amount) - (form.use_advance ? parseFloat(form.advance_amount_used || 0) : 0)).toFixed(2) }})</label>
-                </div>
-                <div v-if="form.use_advance" class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-black font-medium mb-2">Advance Amount to Apply</label>
-                        <input type="number" v-model="form.advance_amount_used"
-                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                            placeholder="Enter amount to apply" />
-                    </div>
-                </div>
-            </div>
+
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
@@ -196,6 +187,7 @@ const submitForm = async () => {
                         <option value="Card">Card</option>
                         <option value="UPI">UPI</option>
                         <option value="Bank Transfer">Bank Transfer</option>
+
                     </select>
                 </div>
             </div>
