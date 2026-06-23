@@ -24,43 +24,18 @@ const form = ref({
 });
 
 const selectedCustomerId = ref(null);
-const customerSearchQuery = ref("");
 
-const filteredCustomers = computed(() => {
-  const query = customerSearchQuery.value.trim().toLowerCase();
-  const selectedCustomer = props.customers.find(c => c.id === selectedCustomerId.value);
-
-  if (!query) {
-    return selectedCustomer ? [selectedCustomer] : [];
-  }
-
-  const filtered = props.customers.filter(customer =>
-    customer.name.toLowerCase().includes(query) ||
-    (customer.phone && customer.phone.includes(query))
+const filterCustomer = (option, label, search) => {
+  const query = (search || "").trim().toLowerCase();
+  return (
+    (label || "").toLowerCase().includes(query) ||
+    (option.phone && option.phone.includes(query))
   );
-
-  if (selectedCustomer && !filtered.some(c => c.id === selectedCustomer.id)) {
-    filtered.unshift(selectedCustomer);
-  }
-
-  return filtered;
-});
+};
 
 const purchasedItems = ref([]);
 const isLoadingItems = ref(false);
 const selectedItemToAdd = ref(null);
-const itemSearchQuery = ref("");
-
-// Filter purchased items only when search query is typed
-const filteredPurchasedItems = computed(() => {
-  const query = itemSearchQuery.value.trim().toLowerCase();
-  if (!query) {
-    return [];
-  }
-  return purchasedItems.value.filter(item =>
-    item.product_name.toLowerCase().includes(query)
-  );
-});
 
 // Watch customer selection to load purchased items
 watch(selectedCustomerId, async (newVal) => {
@@ -233,30 +208,29 @@ const submitReturn = async () => {
             <label class="block text-black font-medium mb-2">Select Customer <span class="text-red-500">*</span></label>
             <vSelect
               v-model="selectedCustomerId"
-              :options="filteredCustomers"
+              :options="props.customers"
               label="name"
               :reduce="customer => customer.id"
-              placeholder="Type to search customer..."
+              placeholder="Select or search customer..."
               class="w-full text-black bg-white"
-              @search="(query) => customerSearchQuery = query"
+              :filter-by="filterCustomer"
             >
               <template #no-options>
-                search customer then select
+                No matching customers found
               </template>
             </vSelect>
           </div>
 
           <div v-if="selectedCustomerId" class="flex flex-col">
-            <label class="block text-black font-medium mb-2">Search Purchased Item <span class="text-red-500">*</span></label>
+            <label class="block text-black font-medium mb-2">Select Purchased Item <span class="text-red-500">*</span></label>
             <div class="flex items-center gap-2">
               <vSelect
                 v-model="selectedItemToAdd"
-                :options="filteredPurchasedItems"
+                :options="purchasedItems"
                 label="product_name"
-                placeholder="Type to search purchased items..."
+                placeholder="Select or search purchased items..."
                 class="w-full text-black bg-white"
                 :disabled="isLoadingItems"
-                @search="(query) => itemSearchQuery = query"
                 :close-on-select="false"
                 :clear-search-on-select="false"
               >
@@ -267,7 +241,7 @@ const submitReturn = async () => {
                   </div>
                 </template>
                 <template #no-options>
-                  search item then select
+                  No matching items found
                 </template>
               </vSelect>
             </div>
