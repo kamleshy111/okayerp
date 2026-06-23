@@ -20,6 +20,7 @@ class CustomersController extends Controller
                 if (session('private_ledger_unlocked') !== true) {
                     $q->where('accepted', 1);
                 }
+                $q->with('saleReturns');
             }, 'payments' => function ($q) {
                 if (session('private_ledger_unlocked') !== true) {
                     $q->where('accepted', 1);
@@ -28,11 +29,18 @@ class CustomersController extends Controller
             ->get();
 
         $customers = $customers->map(function ($customer) {
-            $dueAmount = 0;
-            $advanceAmount = 0;
+            $dueAmount = 0.0;
+            $advanceAmount = 0.0;
 
             foreach ($customer->sales as $sale) {
-                $saleBalance = $sale->paid - $sale->grand_total;
+                // Sum of all payments for this specific sale from the payments collection
+                $actualPaid = (float)$customer->payments->where('sale_id', $sale->id)->sum('amount');
+                
+                // Return deductions on this sale
+                $dueDeductions = $sale->saleReturns ? (float)$sale->saleReturns->sum('due_deduction') : 0.0;
+                $effectiveGrandTotal = max(0.0, (float)$sale->grand_total - $dueDeductions);
+
+                $saleBalance = $actualPaid - $effectiveGrandTotal;
                 if ($saleBalance < 0) {
                     $dueAmount += abs($saleBalance);
                 } elseif ($saleBalance > 0) {
@@ -40,10 +48,10 @@ class CustomersController extends Controller
                 }
             }
 
-            $totalDirectPaid = $customer->payments->where('sale_id', null)->sum('amount');
+            $totalDirectPaid = (float)$customer->payments->where('sale_id', null)->sum('amount');
             $advanceAmount += $totalDirectPaid;
 
-            // Optional: calculate a status (not strictly used anymore since we have separate columns)
+            // Calculate a status
             $netBalance = $advanceAmount - $dueAmount;
             $status = $netBalance === 0 ? 'clear' : ($netBalance < 0 ? 'due' : 'advance');
 
