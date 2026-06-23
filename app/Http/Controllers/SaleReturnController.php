@@ -8,6 +8,7 @@ use App\Models\Sale;
 use App\Models\SaleItem;
 use App\Models\Product;
 use App\Models\StockMovement;
+use App\Models\Customer;
 use App\Services\AccountingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -48,23 +49,105 @@ class SaleReturnController extends Controller
     {
         $userId = Auth::id();
 
-        // Get only sales belonging to customers of the logged-in user
-        $sales = Sale::whereHas('customer', function ($q) use ($userId) {
-            $q->where('user_id', $userId);
-        })
-        ->with('customer')
-        ->orderBy('created_at', 'desc')
-        ->get()
-        ->map(function ($item) {
+        // Get customers who have sales records
+        $customers = Customer::where('user_id', $userId)
+            ->whereHas('sales', function ($q) {
+                if (session('private_ledger_unlocked') !== true) {
+                    $q->where('accepted', 1);
+                }
+            })
+            ->orderBy('name', 'asc')
+            ->select('id', 'name', 'phone')
+            ->get();
+
+        return Inertia::render('SaleReturn/Create', [
+            'customers' => $customers,
+        ]);
+    }
+
+    public function getCustomerSales($customerId)
+    {
+        $userId = Auth::id();
+
+        // Fetch sales belonging to this customer and user
+        $salesQuery = Sale::where('customer_id', $customerId)
+            ->whereHas('customer', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            });
+        if (session('private_ledger_unlocked') !== true) {
+            $salesQuery->where('accepted', 1);
+        }
+
+        $sales = $salesQuery->orderBy('id', 'desc')->get()->map(function ($item) {
             return [
                 'id' => $item->id,
-                'invoice_label' => "Invoice #{$item->id} - " . ($item->customer->name ?? '') . " (Total: ₹" . number_format($item->grand_total, 2) . ")",
+                'invoice_label' => "Invoice #{$item->id} - Date: " . $item->created_at->format('d-M-Y') . " (Total: ₹" . number_format($item->grand_total, 2) . ")",
             ];
         });
 
-        return Inertia::render('SaleReturn/Create', [
-            'sales' => $sales,
-        ]);
+        return response()->json($sales);
+    }
+
+    public function getCustomerPurchasedItems($customerId)
+    {
+        $userId = Auth::id();
+
+        // Get sales belonging to this customer and user
+        $salesQuery = Sale::where('customer_id', $customerId)
+            ->whereHas('customer', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            });
+        if (session('private_ledger_unlocked') !== true) {
+            $salesQuery->where('accepted', 1);
+        }
+
+        $sales = $salesQuery->with(['saleItems.product'])->get();
+
+        // For each sale item, calculate previously returned quantities
+        $saleIds = $sales->pluck('id')->toArray();
+        
+        $previousReturns = DB::table('sale_return_items')
+            ->join('sale_returns', 'sale_return_items.sale_return_id', '=', 'sale_returns.id')
+            ->whereIn('sale_returns.sale_id', $saleIds)
+            ->groupBy('sale_returns.sale_id', 'sale_return_items.product_id')
+            ->select('sale_returns.sale_id', 'sale_return_items.product_id', DB::raw('SUM(sale_return_items.quantity) as total_returned'))
+            ->get()
+            ->keyBy(function ($item) {
+                return $item->sale_id . '-' . $item->product_id;
+            })
+            ->toArray();
+
+        $items = [];
+        foreach ($sales as $sale) {
+            foreach ($sale->saleItems as $saleItem) {
+                if (!$saleItem->product) {
+                    continue;
+                }
+                
+                $key = $sale->id . '-' . $saleItem->product_id;
+                $prevReturned = isset($previousReturns[$key]) ? (int)$previousReturns[$key]->total_returned : 0;
+                $availableQty = max(0, $saleItem->quantity - $prevReturned);
+
+                if ($availableQty > 0) {
+                    $items[] = [
+                        'sale_item_id' => $saleItem->id,
+                        'sale_id' => $sale->id,
+                        'product_id' => $saleItem->product_id,
+                        'product_name' => $saleItem->product->name,
+                        'price' => (float)$saleItem->price,
+                        'cgst' => (float)$saleItem->cgst,
+                        'sgst' => (float)$saleItem->sgst,
+                        'sold_qty' => $saleItem->quantity,
+                        'returned_qty' => $prevReturned,
+                        'available_qty' => $availableQty,
+                        'invoice_label' => "Invoice #{$sale->id} - Date: " . $sale->created_at->format('d-M-Y'),
+                        'accepted' => $sale->accepted,
+                    ];
+                }
+            }
+        }
+
+        return response()->json($items);
     }
 
     public function getSaleDetails($id)
@@ -105,11 +188,13 @@ class SaleReturnController extends Controller
             ];
         });
 
+        $previousDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+        
         return response()->json([
             'sale_id' => $sale->id,
             'customer_name' => $sale->customer->name ?? '',
             'accepted' => $sale->accepted,
-            'due_amount' => max(0, (float)$sale->grand_total - (float)$sale->paid),
+            'due_amount' => max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions),
             'items' => $items,
         ]);
     }

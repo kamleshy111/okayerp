@@ -23,22 +23,7 @@ const columns = [
     { data: 'name' },
     { data: 'email'},
     { data: 'phone'},
-    {
-      data: null,
-      title: 'Due',
-      render: function (data) {
-        const amount = parseFloat(data.due_amount) || 0;
-        return amount > 0 ? `<span style="color:red">₹${amount}</span>` : '₹0';
-      }
-    },
-    {
-      data: null,
-      title: 'Advance',
-      render: function (data) {
-        const amount = parseFloat(data.advance_amount) || 0;
-        return amount > 0 ? `<span style="color:green">₹${amount}</span>` : '₹0';
-      }
-    },
+
     {
       data: null,
       title: 'Net Balance',
@@ -136,8 +121,7 @@ function deleteCustomer(customerId) {
                   <th scope="col">Name</th>
                   <th scope="col">Email</th>
                   <th scope="col">Phone</th>
-                  <th scope="col">Due</th>
-                  <th scope="col">Advance</th>
+
                   <th scope="col">Net Balance</th>
                   <th scope="col">Action</th>
               </tr>

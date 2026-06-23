@@ -20,7 +20,7 @@ const formatDate = (dateStr) => {
 
 // Column definitions for DataTable
 const columns = [
-    { 
+    {
       data: null,
       title: 'S No',
       render: (data, type, row, meta) => meta.row + 1,
@@ -28,7 +28,7 @@ const columns = [
     { data: 'name', title: 'Name' },
     { data: 'email', title: 'Email' },
     { data: 'phone', title: 'Phone' },
-    { 
+    {
       data: 'source',
       title: 'Source',
       render: function(data) {
@@ -43,7 +43,7 @@ const columns = [
         }
       }
     },
-    { 
+    {
       data: 'amount',
       title: 'Amount',
       render: function(data) {
@@ -55,14 +55,28 @@ const columns = [
         }
       }
     },
-    {  
+    {
       data: 'payment_date',
       title: 'Payment Date',
       render: function(data) {
           return formatDate(data);
       }
     },
-    { data: 'payment_method', title: 'Payment Method' }
+    { data: 'payment_method', title: 'Payment Method' },
+    {
+        title: 'Action',
+        data: null,
+        orderable: false,
+        searchable: false,
+        render: (data, type, row) => {
+            let sourceParam = data.source === 'Return' ? 'return' : 'payment';
+            return `
+            <div class="icon-all-dflex">
+              <a href="/paymentsCustomer/receipt/${sourceParam}/${data.transaction_id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 2px 8px;" title="View Invoice"><i class="fa fa-eye"></i> View</a>
+            </div>
+            `;
+        }
+    }
 ];
 </script>
 
@@ -96,6 +110,7 @@ const columns = [
                   <th scope="col">Amount</th>
                   <th scope="col">Payment Date</th>
                   <th scope="col">Payment Method</th>
+                  <th scope="col">Action</th>
               </tr>
           </thead>
           <!-- The table rows would be dynamically inserted here -->

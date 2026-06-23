@@ -25,20 +25,6 @@ const columns = [
     { data: 'grand_total' },
     { data: 'sale_date'},
     {
-      data: 'payment_status',
-      render: function (data) {
-        if (data === 'Due' || data === 'Partial') {
-          return `<span style="color:red; font-weight:bold;">${data}</span>`;
-        } else if (data === 'Advance') {
-          return `<span style="color:green; font-weight:bold;">${data}</span>`;
-        } else if (data === 'Paid') {
-          return `<span style="color:green; font-weight:bold;">${data}</span>`;
-        } else {
-          return `<span>${data || 'Unpaid'}</span>`;
-        }
-      }
-    },
-    {
         title: 'Actions',
         data: null,
         orderable: false,
@@ -47,7 +33,6 @@ const columns = [
             return `
             <div class="icon-all-dflex">
               <a href="sale/${data.id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 2px 8px;" title="View Sale"><i class="fa fa-eye"></i></a>
-              <a  href="sale/${data.id}/edit" class="btn btn-light action-btn"><i class="fa fa-edit"></i></a>
               <a href="sale/${data.id}/download-pdf" class="btn btn-primary action-btn"><i class="fa fa-file-pdf-o"></i></a>
               <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
@@ -123,7 +108,6 @@ function deleteSale(saleId) {
                       <th scope="col">Email</th>
                       <th scope="col">Amount</th>
                       <th scope="col">Sale Date</th>
-                      <th scope="col">Payment Status</th>
                       <th scope="col">Action</th>
                   </tr>
               </thead>

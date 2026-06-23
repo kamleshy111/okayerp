@@ -59,6 +59,7 @@ class PrivateSaleController extends Controller
             $q->where('user_id', $userId);
         })
         ->where('accepted', 0)
+        ->whereNotIn('payment_method', ['Wallet', 'Advance Deduction'])
         ->with('customer')
         ->orderBy('payment_date', 'desc')
         ->get()
