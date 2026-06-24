@@ -181,6 +181,29 @@ onMounted(() => {
           </a>
         </li>
 
+        <!-- Section: Incomes (Inflows) -->
+        <li v-if="role === 'store' && (hasPermission('income manage') || hasPermission('income category manage'))" class="pt-4 pb-1 pl-4 text-[10px] font-bold text-indigo-200 uppercase tracking-widest pointer-events-none select-none opacity-80">
+          Incomes
+        </li>
+
+        <li v-if="role === 'store' && hasPermission('income manage')" :class="{ 'active': route().current('income*') && !route().current('income-category*') }">
+          <a
+            :href="route('income')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-cash text-xl"></i> <span>Incomes</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store' && hasPermission('income category manage')" :class="{ 'active': route().current('income-category*') }">
+          <a
+            :href="route('income-category')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-collection text-xl"></i> <span>Income Categories</span>
+          </a>
+        </li>
+
         <!-- Section: Expenses (Outflows) -->
         <li v-if="role === 'store' && (hasPermission('expense manage') || hasPermission('expense category manage'))" class="pt-4 pb-1 pl-4 text-[10px] font-bold text-indigo-200 uppercase tracking-widest pointer-events-none select-none opacity-80">
           Expenses

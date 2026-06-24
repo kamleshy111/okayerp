@@ -3,14 +3,13 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-
 use App\Traits\Auditable;
 
-class Expense extends Model
+class Income extends Model
 {
     use Auditable;
 
-    protected $fillable = ['user_id', 'expense_category_id', 'paid_to', 'amount', 'date', 'description', 'reference_no'];
+    protected $fillable = ['user_id', 'income_category_id', 'received_from', 'amount', 'date', 'description', 'reference_no'];
 
     public function user()
     {
@@ -19,6 +18,6 @@ class Expense extends Model
 
     public function category()
     {
-        return $this->belongsTo(ExpenseCategory::class, 'expense_category_id');
+        return $this->belongsTo(IncomeCategory::class, 'income_category_id');
     }
 }

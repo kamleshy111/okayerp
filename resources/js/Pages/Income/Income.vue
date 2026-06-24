@@ -8,7 +8,7 @@ import "vue3-toastify/dist/index.css";
 import axios from 'axios';
 
 const props = defineProps({
-  expenses: {
+  incomes: {
     type: Array
   },
   categories: {
@@ -24,7 +24,7 @@ const isViewModalOpen = ref(false);
 
 const viewData = ref({
   category_name: "",
-  paid_to: "",
+  received_from: "",
   amount: "",
   date: "",
   reference_no: "",
@@ -35,8 +35,8 @@ const today = new Date().toISOString().split('T')[0];
 
 // Forms State
 const form = ref({
-  expense_category_id: "",
-  paid_to: "",
+  income_category_id: "",
+  received_from: "",
   amount: "",
   date: today,
   reference_no: "",
@@ -45,8 +45,8 @@ const form = ref({
 
 const editForm = ref({
   id: null,
-  expense_category_id: "",
-  paid_to: "",
+  income_category_id: "",
+  received_from: "",
   amount: "",
   date: "",
   reference_no: "",
@@ -61,7 +61,7 @@ const columns = [
     render: (data, type, row, meta) => meta.row + 1,
   },
   { data: 'category_name', title: 'Category' },
-  { data: 'paid_to', title: 'Paid To' },
+  { data: 'received_from', title: 'Received From' },
   { data: 'amount', title: 'Amount', render: (data) => `₹${parseFloat(data).toFixed(2)}` },
   { data: 'date', title: 'Date' },
   {
@@ -73,7 +73,7 @@ const columns = [
         <button class="text-white bg-blue-600 hover:bg-blue-800 px-3 py-1 rounded action-btn view-btn mr-1" 
                 data-id="${data.id}" 
                 data-category_name="${data.category_name}" 
-                data-paid_to="${data.paid_to}" 
+                data-received_from="${data.received_from}" 
                 data-amount="${data.amount}" 
                 data-date="${data.date}" 
                 data-reference_no="${data.reference_no}" 
@@ -82,8 +82,8 @@ const columns = [
         </button>
         <button class="btn btn-light action-btn edit-btn" 
                 data-id="${data.id}" 
-                data-category_id="${data.expense_category_id}" 
-                data-paid_to="${data.paid_to !== '---' ? data.paid_to : ''}" 
+                data-category_id="${data.income_category_id}" 
+                data-received_from="${data.received_from !== '---' ? data.received_from : ''}" 
                 data-amount="${data.amount}" 
                 data-date="${data.date}"
                 data-reference_no="${data.reference_no !== '---' ? data.reference_no : ''}"
@@ -109,20 +109,20 @@ function setupViewButton() {
     const button = event.target.closest('.view-btn');
     if (button) {
       const category_name = button.dataset.category_name;
-      const paid_to = button.dataset.paid_to;
+      const received_from = button.dataset.received_from;
       const amount = button.dataset.amount;
       const date = button.dataset.date;
       const reference_no = button.dataset.reference_no;
       const description = button.dataset.description;
-      openViewModal(category_name, paid_to, amount, date, reference_no, description);
+      openViewModal(category_name, received_from, amount, date, reference_no, description);
     }
   });
 }
 
-function openViewModal(category_name, paid_to, amount, date, reference_no, description) {
+function openViewModal(category_name, received_from, amount, date, reference_no, description) {
   viewData.value = {
     category_name: category_name,
-    paid_to: paid_to,
+    received_from: received_from,
     amount: amount,
     date: date,
     reference_no: reference_no,
@@ -137,21 +137,21 @@ function setupEditButton() {
     if (button) {
       const id = button.dataset.id;
       const category_id = button.dataset.category_id;
-      const paid_to = button.dataset.paid_to;
+      const received_from = button.dataset.received_from;
       const amount = button.dataset.amount;
       const date = button.dataset.date;
       const reference_no = button.dataset.reference_no;
       const description = button.dataset.description;
-      openEditModal(id, category_id, paid_to, amount, date, reference_no, description);
+      openEditModal(id, category_id, received_from, amount, date, reference_no, description);
     }
   });
 }
 
-function openEditModal(id, category_id, paid_to, amount, date, reference_no, description) {
+function openEditModal(id, category_id, received_from, amount, date, reference_no, description) {
   editForm.value = {
     id: id,
-    expense_category_id: category_id,
-    paid_to: paid_to,
+    income_category_id: category_id,
+    received_from: received_from,
     amount: amount,
     date: date,
     reference_no: reference_no,
@@ -164,16 +164,16 @@ function setupDeleteButton() {
   document.addEventListener('click', function (event) {
     const button = event.target.closest('.delete-btn');
     if (button) {
-      const expenseId = button.dataset.id;
-      deleteExpense(expenseId);
+      const incomeId = button.dataset.id;
+      deleteIncome(incomeId);
     }
   });
 }
 
-function deleteExpense(expenseId) {
+function deleteIncome(incomeId) {
   Swal.fire({
     title: 'Are you sure?',
-    text: 'Do you want to delete this expense?',
+    text: 'Do you want to delete this income?',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#3085d6',
@@ -181,22 +181,22 @@ function deleteExpense(expenseId) {
     confirmButtonText: 'Yes, delete it!'
   }).then((result) => {
     if (result.isConfirmed) {
-      axios.delete(`/expense/destroy/${expenseId}`)
+      axios.delete(`/income/destroy/${incomeId}`)
         .then(() => {
-          Swal.fire('Deleted!', 'Your expense has been deleted.', 'success');
+          Swal.fire('Deleted!', 'Your income has been deleted.', 'success');
           location.reload();
         })
         .catch(() => {
-          Swal.fire('Error!', 'Failed to delete the expense. Please try again.', 'error');
+          Swal.fire('Error!', 'Failed to delete the income. Please try again.', 'error');
         });
     }
   });
 }
 
-// Form Submit: Add Expense
+// Form Submit: Add Income
 const submitAddForm = async () => {
-  if (!form.value.expense_category_id) {
-    toast.error("Expense Category is required.");
+  if (!form.value.income_category_id) {
+    toast.error("Income Category is required.");
     return;
   }
   if (!form.value.amount || form.value.amount <= 0) {
@@ -209,14 +209,14 @@ const submitAddForm = async () => {
   }
 
   try {
-    const response = await axios.post(`/expense/store`, form.value);
+    const response = await axios.post(`/income/store`, form.value);
     toast.success(response.data.message);
     isAddModalOpen.value = false;
     
     // Reset Form
     form.value = {
-      expense_category_id: "",
-      paid_to: "",
+      income_category_id: "",
+      received_from: "",
       amount: "",
       date: today,
       reference_no: "",
@@ -232,10 +232,10 @@ const submitAddForm = async () => {
   }
 };
 
-// Form Submit: Edit Expense
+// Form Submit: Edit Income
 const submitEditForm = async () => {
-  if (!editForm.value.expense_category_id) {
-    toast.error("Expense Category is required.");
+  if (!editForm.value.income_category_id) {
+    toast.error("Income Category is required.");
     return;
   }
   if (!editForm.value.amount || editForm.value.amount <= 0) {
@@ -248,7 +248,7 @@ const submitEditForm = async () => {
   }
 
   try {
-    const response = await axios.post(`/expense/update/${editForm.value.id}`, editForm.value);
+    const response = await axios.post(`/income/update/${editForm.value.id}`, editForm.value);
     toast.success(response.data.message);
     isEditModalOpen.value = false;
 
@@ -263,29 +263,29 @@ const submitEditForm = async () => {
 </script>
 
 <template>
-  <Head title="Expenses">
+  <Head title="Incomes">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   </Head>
 
   <AuthenticatedLayout>
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold">Expenses</h1>
+        <h1 class="text-3xl font-bold">Incomes</h1>
         <div class="flex items-center gap-4">
           <button @click="isAddModalOpen = true"
                   class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium transition cursor-pointer">
-             <span>+ Add Expense</span>
+             <span>+ Add Income</span>
           </button>
         </div>
       </div>
       <div class="overflow-x-auto mt-10">
         <!-- DataTable Component -->
-        <DataTable :data="expenses" :columns="columns" id="expense">
+        <DataTable :data="incomes" :columns="columns" id="income">
           <thead class="bg-[#2e2c92] text-white main-head-table">
             <tr>
               <th scope="col">S No</th>
               <th scope="col">Category</th>
-              <th scope="col">Paid To</th>
+              <th scope="col">Received From</th>
               <th scope="col">Amount</th>
               <th scope="col">Date</th>
               <th scope="col">Action</th>
@@ -295,14 +295,14 @@ const submitEditForm = async () => {
       </div>
     </div> 
 
-    <!-- Add Expense Modal Popup -->
+    <!-- Add Income Modal Popup -->
     <div v-if="isAddModalOpen" 
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
          style="z-index: 9999;"
          @click.self="isAddModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
         <div class="flex justify-between items-center pb-3 border-b border-gray-100">
-          <h2 class="text-2xl font-bold text-[#292688]">Add Expense</h2>
+          <h2 class="text-2xl font-bold text-[#292688]">Add Income</h2>
           <button @click="isAddModalOpen = false" class="text-gray-400 hover:text-gray-600 transition">
             <i class="fa fa-close text-xl"></i>
           </button>
@@ -312,7 +312,7 @@ const submitEditForm = async () => {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-black font-semibold mb-2 text-sm">Category <span class="text-red-500">*</span></label>
-              <select v-model="form.expense_category_id" required
+              <select v-model="form.income_category_id" required
                       class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm">
                 <option value="" disabled selected>Select Category</option>
                 <option v-for="category in categories" :key="category.id" :value="category.id">
@@ -322,10 +322,10 @@ const submitEditForm = async () => {
             </div>
 
             <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Paid To</label>
-              <input type="text" v-model="form.paid_to"
+              <label class="block text-black font-semibold mb-2 text-sm">Received From</label>
+              <input type="text" v-model="form.received_from"
                      class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
-                     placeholder="Recipient Name" />
+                     placeholder="Payer Name" />
             </div>
 
             <div>
@@ -352,7 +352,7 @@ const submitEditForm = async () => {
               <label class="block text-black font-semibold mb-2 text-sm">Description</label>
               <textarea v-model="form.description" rows="3"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-400 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
-                        placeholder="Enter details about this expense..."></textarea>
+                        placeholder="Enter details about this income..."></textarea>
             </div>
           </div>
 
@@ -370,14 +370,14 @@ const submitEditForm = async () => {
       </div>
     </div>
 
-    <!-- Edit Expense Modal Popup -->
+    <!-- Edit Income Modal Popup -->
     <div v-if="isEditModalOpen" 
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
          style="z-index: 9999;"
          @click.self="isEditModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
         <div class="flex justify-between items-center pb-3 border-b border-gray-100">
-          <h2 class="text-2xl font-bold text-[#292688]">Edit Expense</h2>
+          <h2 class="text-2xl font-bold text-[#292688]">Edit Income</h2>
           <button @click="isEditModalOpen = false" class="text-gray-400 hover:text-gray-600 transition">
             <i class="fa fa-close text-xl"></i>
           </button>
@@ -387,7 +387,7 @@ const submitEditForm = async () => {
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label class="block text-black font-semibold mb-2 text-sm">Category <span class="text-red-500">*</span></label>
-              <select v-model="editForm.expense_category_id" required
+              <select v-model="editForm.income_category_id" required
                       class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm">
                 <option value="" disabled>Select Category</option>
                 <option v-for="category in categories" :key="category.id" :value="category.id">
@@ -397,10 +397,10 @@ const submitEditForm = async () => {
             </div>
 
             <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Paid To</label>
-              <input type="text" v-model="editForm.paid_to"
+              <label class="block text-black font-semibold mb-2 text-sm">Received From</label>
+              <input type="text" v-model="editForm.received_from"
                      class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
-                     placeholder="Recipient Name" />
+                     placeholder="Payer Name" />
             </div>
 
             <div>
@@ -427,7 +427,7 @@ const submitEditForm = async () => {
               <label class="block text-black font-semibold mb-2 text-sm">Description</label>
               <textarea v-model="editForm.description" rows="3"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-400 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
-                        placeholder="Enter details about this expense..."></textarea>
+                        placeholder="Enter details about this income..."></textarea>
             </div>
           </div>
 
@@ -445,14 +445,14 @@ const submitEditForm = async () => {
       </div>
     </div>
 
-    <!-- View Expense Modal Popup -->
+    <!-- View Income Modal Popup -->
     <div v-if="isViewModalOpen" 
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
          style="z-index: 9999;"
          @click.self="isViewModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
         <div class="flex justify-between items-center pb-3 border-b border-gray-100">
-          <h2 class="text-2xl font-bold text-[#292688]">Expense Details</h2>
+          <h2 class="text-2xl font-bold text-[#292688]">Income Details</h2>
           <button @click="isViewModalOpen = false" class="text-gray-400 hover:text-gray-600 transition">
             <i class="fa fa-close text-xl"></i>
           </button>
@@ -465,12 +465,12 @@ const submitEditForm = async () => {
               <span class="text-base font-medium">{{ viewData.category_name }}</span>
             </div>
             <div>
-              <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Paid To</span>
-              <span class="text-base font-medium">{{ viewData.paid_to }}</span>
+              <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Received From</span>
+              <span class="text-base font-medium">{{ viewData.received_from }}</span>
             </div>
             <div>
               <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Amount</span>
-              <span class="text-lg font-bold text-red-600">₹{{ parseFloat(viewData.amount).toFixed(2) }}</span>
+              <span class="text-lg font-bold text-green-600">₹{{ parseFloat(viewData.amount).toFixed(2) }}</span>
             </div>
             <div>
               <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Date</span>

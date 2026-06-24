@@ -103,7 +103,7 @@ function setupDeleteButton() {
 function deleteCategory(categoryId) {
   Swal.fire({
     title: 'Are you sure?',
-    text: 'Do you want to delete this expense category?',
+    text: 'Do you want to delete this income category?',
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#3085d6',
@@ -111,13 +111,13 @@ function deleteCategory(categoryId) {
     confirmButtonText: 'Yes, delete it!'
   }).then((result) => {
     if (result.isConfirmed) {
-      axios.delete(`/expense-category/destroy/${categoryId}`)
+      axios.delete(`/income-category/destroy/${categoryId}`)
         .then(() => {
-          Swal.fire('Deleted!', 'Your expense category has been deleted.', 'success');
+          Swal.fire('Deleted!', 'Your income category has been deleted.', 'success');
           location.reload();
         })
         .catch(() => {
-          Swal.fire('Error!', 'Failed to delete the expense category. Please try again.', 'error');
+          Swal.fire('Error!', 'Failed to delete the income category. Please try again.', 'error');
         });
     }
   });
@@ -131,7 +131,7 @@ const submitAddForm = async () => {
   }
 
   try {
-    const response = await axios.post(`/expense-category/store`, form.value);
+    const response = await axios.post(`/income-category/store`, form.value);
     toast.success(response.data.message);
     isAddModalOpen.value = false;
     
@@ -159,7 +159,7 @@ const submitEditForm = async () => {
   }
 
   try {
-    const response = await axios.post(`/expense-category/update/${editForm.value.id}`, editForm.value);
+    const response = await axios.post(`/income-category/update/${editForm.value.id}`, editForm.value);
     toast.success(response.data.message);
     isEditModalOpen.value = false;
 
@@ -174,24 +174,24 @@ const submitEditForm = async () => {
 </script>
 
 <template>
-  <Head title="Expense Categories">
+  <Head title="Income Categories">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   </Head>
 
   <AuthenticatedLayout>
     <div class="p-6">
       <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold">Expense Categories</h1>
+        <h1 class="text-3xl font-bold">Income Categories</h1>
         <div class="flex items-center gap-4">
           <button @click="isAddModalOpen = true"
                   class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium transition cursor-pointer">
-             <span>+ Add Expense Category</span>
+             <span>+ Add Income Category</span>
           </button>
         </div>
       </div>
       <div class="overflow-x-auto mt-10">
         <!-- DataTable Component -->
-        <DataTable :data="categories" :columns="columns" id="expense-category">
+        <DataTable :data="categories" :columns="columns" id="income-category">
           <thead class="bg-[#2e2c92] text-white main-head-table">
             <tr>
               <th scope="col">S No</th>
@@ -212,7 +212,7 @@ const submitEditForm = async () => {
          @click.self="isAddModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
         <div class="flex justify-between items-center pb-3 border-b border-gray-100">
-          <h2 class="text-2xl font-bold text-[#292688]">Add Expense Category</h2>
+          <h2 class="text-2xl font-bold text-[#292688]">Add Income Category</h2>
           <button @click="isAddModalOpen = false" class="text-gray-400 hover:text-gray-600 transition">
             <i class="fa fa-close text-xl"></i>
           </button>
@@ -263,7 +263,7 @@ const submitEditForm = async () => {
          @click.self="isEditModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
         <div class="flex justify-between items-center pb-3 border-b border-gray-100">
-          <h2 class="text-2xl font-bold text-[#292688]">Edit Expense Category</h2>
+          <h2 class="text-2xl font-bold text-[#292688]">Edit Income Category</h2>
           <button @click="isEditModalOpen = false" class="text-gray-400 hover:text-gray-600 transition">
             <i class="fa fa-close text-xl"></i>
           </button>

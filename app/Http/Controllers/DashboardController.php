@@ -15,6 +15,7 @@ use App\Models\PurchaseItem;
 use App\Models\Sale;
 use App\Models\Purchase;
 use App\Models\Expense;
+use App\Models\Income;
 use App\Models\SaleReturn;
 use App\Models\PurchaseReturn;
 use DB;
@@ -306,13 +307,19 @@ class DashboardController extends Controller
                 ->whereYear('date', $year)
                 ->sum('amount');
 
-            $profit = $netSales - $netPurchases - $expensesSum;
+            $incomeSum = Income::where('user_id', $userId)
+                ->whereMonth('date', $month)
+                ->whereYear('date', $year)
+                ->sum('amount');
+
+            $profit = $netSales + $incomeSum - $netPurchases - $expensesSum;
 
             $profitLossData[] = [
                 'month' => $monthName,
                 'sales' => round($netSales, 2),
                 'purchases' => round($netPurchases, 2),
                 'expenses' => round($expensesSum, 2),
+                'incomes' => round($incomeSum, 2),
                 'profit' => round($profit, 2),
             ];
         }

@@ -21,10 +21,11 @@ class ExpenseController extends Controller
                 return [
                     'id' => $expense->id,
                     'expense_category_id' => $expense->expense_category_id,
-                    'category_name' => $expense->category->name ?? 'N/A',
+                    'category_name' => $expense->category->name ?? '---',
+                    'paid_to' => $expense->paid_to ?? '---',
                     'amount' => $expense->amount,
                     'date' => $expense->date,
-                    'reference_no' => $expense->reference_no ?? 'N/A',
+                    'reference_no' => $expense->reference_no ?? '---',
                     'description' => $expense->description ?? ''
                 ];
             });
@@ -44,6 +45,7 @@ class ExpenseController extends Controller
     {
         $request->validate([
             'expense_category_id' => 'required|exists:expense_categories,id',
+            'paid_to' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0',
             'date' => 'required|date',
             'description' => 'nullable|string',
@@ -56,6 +58,7 @@ class ExpenseController extends Controller
         $expense = Expense::create([
             'user_id' => Auth::id(),
             'expense_category_id' => $request->expense_category_id,
+            'paid_to' => $request->paid_to,
             'amount' => $request->amount,
             'date' => $request->date,
             'description' => $request->description,
@@ -75,6 +78,7 @@ class ExpenseController extends Controller
 
         $request->validate([
             'expense_category_id' => 'required|exists:expense_categories,id',
+            'paid_to' => 'nullable|string|max:255',
             'amount' => 'required|numeric|min:0',
             'date' => 'required|date',
             'description' => 'nullable|string',
@@ -86,6 +90,7 @@ class ExpenseController extends Controller
 
         $expense->update([
             'expense_category_id' => $request->expense_category_id,
+            'paid_to' => $request->paid_to,
             'amount' => $request->amount,
             'date' => $request->date,
             'description' => $request->description,

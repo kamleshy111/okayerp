@@ -22,6 +22,8 @@ use App\Http\Controllers\Admin\RolesController;
 
 use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
+use App\Http\Controllers\IncomeCategoryController;
+use App\Http\Controllers\IncomeController;
 use App\Http\Controllers\EstimateController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\AgingReportController;
@@ -136,6 +138,22 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/expense/store', [ExpenseController::class, 'store'])->name('expense.store');
         Route::post('/expense/update/{id}', [ExpenseController::class, 'update'])->name('expense.update');
         Route::delete('/expense/destroy/{id}', [ExpenseController::class, 'destroy'])->name('expense.destroy');
+    });
+
+    // Income Categories
+    Route::middleware('permission:income category manage')->group(function () {
+        Route::get('/income-category', [IncomeCategoryController::class, 'index'])->name('income-category');
+        Route::post('/income-category/store', [IncomeCategoryController::class, 'store'])->name('income-category.store');
+        Route::post('/income-category/update/{id}', [IncomeCategoryController::class, 'update'])->name('income-category.update');
+        Route::delete('/income-category/destroy/{id}', [IncomeCategoryController::class, 'destroy'])->name('income-category.destroy');
+    });
+
+    // Incomes
+    Route::middleware('permission:income manage')->group(function () {
+        Route::get('/income', [IncomeController::class, 'index'])->name('income');
+        Route::post('/income/store', [IncomeController::class, 'store'])->name('income.store');
+        Route::post('/income/update/{id}', [IncomeController::class, 'update'])->name('income.update');
+        Route::delete('/income/destroy/{id}', [IncomeController::class, 'destroy'])->name('income.destroy');
     });
 
     // Products
