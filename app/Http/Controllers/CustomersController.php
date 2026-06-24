@@ -157,6 +157,14 @@ class CustomersController extends Controller
         return $pdf->download("invoice_customer_{$customer->id}.pdf");
     }
 
+    public function show($id){
+        $customer = Customer::where('user_id', Auth::id())->find($id);
+        if (!$customer) {
+            return response()->json(['message' => 'Customer not found.'], 404);
+        }
+        return response()->json($customer);
+    }
+
     public function edit($id){
 
         $data = Customer::where('user_id', Auth::id())->find($id);

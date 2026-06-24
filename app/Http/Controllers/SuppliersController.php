@@ -112,6 +112,14 @@ class SuppliersController extends Controller
        // return response()->json(['message' => 'Supplier added successfully!']);
     }
 
+    public function show($id){
+        $supplier = Supplier::where('user_id', Auth::id())->find($id);
+        if (!$supplier) {
+            return response()->json(['message' => 'Supplier not found.'], 404);
+        }
+        return response()->json($supplier);
+    }
+
     public function edit($id){
 
         $data = Supplier::where('user_id', Auth::id())->find($id);
