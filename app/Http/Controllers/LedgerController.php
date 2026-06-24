@@ -9,6 +9,7 @@ use App\Models\Purchase;
 use App\Models\SalePayment;
 use App\Models\PurchasePayment;
 use App\Models\Expense;
+use App\Models\Income;
 use App\Services\AccountingService;
 use App\Models\SaleReturn;
 use App\Models\PurchaseReturn;
@@ -323,6 +324,10 @@ class LedgerController extends Controller
         $expenses = Expense::where('user_id', $userId)->with('category')->get();
         foreach ($expenses as $expense) { $svc->postExpense($expense); }
 
+        // Incomes
+        $incomes = Income::where('user_id', $userId)->with('category')->get();
+        foreach ($incomes as $income) { $svc->postIncome($income); }
+
         // Sales Returns
         $saleReturns = SaleReturn::where('user_id', $userId)->get();
         foreach ($saleReturns as $sr) { $svc->postSaleReturn($sr); }
@@ -332,6 +337,6 @@ class LedgerController extends Controller
         foreach ($purchaseReturns as $pr) { $svc->postPurchaseReturn($pr); }
 
         return redirect()->route('reports.ledger')
-            ->with('success', 'Ledger re-synced: ' . $sales->count() . ' sales, ' . $purchases->count() . ' purchases, ' . ($salePayments->count() + $purchasePayments->count()) . ' payments, ' . ($saleReturns->count() + $purchaseReturns->count()) . ' returns posted.');
+            ->with('success', 'Ledger re-synced: ' . $sales->count() . ' sales, ' . $purchases->count() . ' purchases, ' . ($salePayments->count() + $purchasePayments->count()) . ' payments, ' . $expenses->count() . ' expenses, ' . $incomes->count() . ' incomes, ' . ($saleReturns->count() + $purchaseReturns->count()) . ' returns posted.');
     }
 }

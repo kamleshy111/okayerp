@@ -29,7 +29,9 @@ class DatabaseSeeder extends Seeder
             'payment supplier manage',
             'payments customer manage',
             'expense category manage',
-            'expense manage'
+            'expense manage',
+            'income category manage',
+            'income manage'
         ];
 
         foreach ($permissions as $permissionName) {

@@ -45,6 +45,7 @@ class AccountingService
             'Sales' => $this->getAccount('Sales Revenue', 'Revenue', '4000', $accepted),
             'Purchases' => $this->getAccount('Purchase Expenses', 'Expense', '5000', $accepted),
             'OperatingExpenses' => $this->getAccount('Operating Expenses', 'Expense', '6000', $accepted),
+            'OtherIncome' => $this->getAccount('Other Income', 'Revenue', '4500', $accepted),
         ];
     }
 
@@ -177,11 +178,33 @@ class AccountingService
 
         $date = $expense->date ?? now()->toDateString();
         $note = $expense->note ?? $expense->description ?? 'N/A';
-        $desc = "Expense #{$expense->id} - {$note}";
+        $recipient = $expense->paid_to ? " (to {$expense->paid_to})" : "";
+        $desc = "Expense #{$expense->id}{$recipient} - {$note}";
 
         // Debit Expense, Credit Cash
         $this->postEntry($expenseAccount->id, 'Expense', $expense->id, 'debit', $expense->amount, $date, $desc, $expense->accepted ?? 1);
         $this->postEntry($accounts['Cash']->id, 'Expense', $expense->id, 'credit', $expense->amount, $date, $desc, $expense->accepted ?? 1);
+    }
+
+    public function postIncome($income)
+    {
+        $this->clearEntries('Income', $income->id);
+
+        $accounts = $this->getDefaultAccounts($income->accepted ?? 1);
+        
+        $incomeAccount = $accounts['OtherIncome'];
+        if ($income->category) {
+            $incomeAccount = $this->getAccount($income->category->name, 'Revenue', '4600', $income->accepted ?? 1);
+        }
+
+        $date = $income->date ?? now()->toDateString();
+        $note = $income->description ?? 'N/A';
+        $payer = $income->received_from ? " (from {$income->received_from})" : "";
+        $desc = "Income #{$income->id}{$payer} - {$note}";
+
+        // Debit Cash, Credit Income
+        $this->postEntry($accounts['Cash']->id, 'Income', $income->id, 'debit', $income->amount, $date, $desc, $income->accepted ?? 1);
+        $this->postEntry($incomeAccount->id, 'Income', $income->id, 'credit', $income->amount, $date, $desc, $income->accepted ?? 1);
     }
 
     public function postSaleReturn($return)

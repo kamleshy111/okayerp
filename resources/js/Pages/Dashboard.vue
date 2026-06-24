@@ -53,7 +53,7 @@ const scaleData = computed(() => {
     
     const allValues = [];
     profitLossData.value.forEach(d => {
-        allValues.push(d.sales, d.purchases, d.expenses, d.profit);
+        allValues.push(d.sales, d.purchases, d.expenses, d.incomes || 0, d.profit);
     });
     
     let max = Math.max(...allValues, 100);
@@ -122,10 +122,10 @@ const profitDots = computed(() => {
 const bars = computed(() => {
     const { scaleY, zeroY, stepX } = scaleData.value;
     return profitLossData.value.map((d, i) => {
-        const groupX = padding.left + i * stepX + (stepX * 0.15);
-        const availWidth = stepX * 0.7;
-        const barWidth = availWidth / 3.5;
-        const gap = availWidth * 0.1;
+        const groupX = padding.left + i * stepX + (stepX * 0.1);
+        const availWidth = stepX * 0.8;
+        const barWidth = availWidth / 4.45;
+        const gap = barWidth * 0.15;
         
         // Sales bar
         const salesHeight = Math.abs(zeroY - scaleY(d.sales));
@@ -138,6 +138,10 @@ const bars = computed(() => {
         // Expenses bar
         const expensesHeight = Math.abs(zeroY - scaleY(d.expenses));
         const expensesY = d.expenses >= 0 ? scaleY(d.expenses) : zeroY;
+
+        // Incomes bar
+        const incomesHeight = Math.abs(zeroY - scaleY(d.incomes || 0));
+        const incomesY = (d.incomes || 0) >= 0 ? scaleY(d.incomes || 0) : zeroY;
         
         return {
             month: d.month,
@@ -161,6 +165,13 @@ const bars = computed(() => {
                 height: expensesHeight,
                 width: barWidth,
                 value: d.expenses
+            },
+            incomes: {
+                x: groupX + 3 * (barWidth + gap),
+                y: incomesY,
+                height: incomesHeight,
+                width: barWidth,
+                value: d.incomes || 0
             },
             centerX: padding.left + i * stepX + (stepX / 2),
             index: i
@@ -373,6 +384,10 @@ const bars = computed(() => {
                             <span class="text-gray-600">Expenses</span>
                         </div>
                         <div class="flex items-center gap-1.5">
+                            <span class="w-3.5 h-3.5 rounded bg-purple-500 inline-block"></span>
+                            <span class="text-gray-600">Incomes</span>
+                        </div>
+                        <div class="flex items-center gap-1.5">
                             <span class="w-4 h-1 bg-blue-500 inline-block rounded"></span>
                             <span class="text-gray-600">Net Profit</span>
                         </div>
@@ -400,6 +415,10 @@ const bars = computed(() => {
                                 <linearGradient id="expensesGrad" x1="0" y1="0" x2="0" y2="1">
                                     <stop offset="0%" stop-color="#fbbf24" />
                                     <stop offset="100%" stop-color="#d97706" />
+                                </linearGradient>
+                                <linearGradient id="incomesGrad" x1="0" y1="0" x2="0" y2="1">
+                                    <stop offset="0%" stop-color="#a855f7" />
+                                    <stop offset="100%" stop-color="#7e22ce" />
                                 </linearGradient>
                                 <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
                                     <feGaussianBlur stdDeviation="3" result="blur" />
@@ -435,6 +454,9 @@ const bars = computed(() => {
                                 <!-- Expenses bar -->
                                 <rect :x="bar.expenses.x" :y="bar.expenses.y" :width="bar.expenses.width" :height="bar.expenses.height || 1" 
                                       fill="url(#expensesGrad)" rx="2" class="transition-all duration-300 hover:opacity-90" />
+                                <!-- Incomes bar -->
+                                <rect :x="bar.incomes.x" :y="bar.incomes.y" :width="bar.incomes.width" :height="bar.incomes.height || 1" 
+                                      fill="url(#incomesGrad)" rx="2" class="transition-all duration-300 hover:opacity-90" />
                             </g>
 
                             <!-- Profit Line -->
@@ -484,12 +506,20 @@ const bars = computed(() => {
                                     ₹{{ parseFloat(profitLossData[hoveredIndex].purchases).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                                 </span>
                             </div>
-                            <div class="flex items-center justify-between gap-4 mb-1.5">
+                            <div class="flex items-center justify-between gap-4 mb-1">
                                 <span class="flex items-center gap-1 text-gray-400">
                                     <span class="w-2 h-2 rounded-full bg-amber-500"></span> Expenses:
                                 </span>
                                 <span class="font-mono font-bold text-amber-400 text-right">
                                     ₹{{ parseFloat(profitLossData[hoveredIndex].expenses).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
+                                </span>
+                            </div>
+                            <div class="flex items-center justify-between gap-4 mb-1.5">
+                                <span class="flex items-center gap-1 text-gray-400">
+                                    <span class="w-2 h-2 rounded-full bg-purple-500"></span> Incomes:
+                                </span>
+                                <span class="font-mono font-bold text-purple-400 text-right">
+                                    ₹{{ parseFloat(profitLossData[hoveredIndex].incomes || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 }) }}
                                 </span>
                             </div>
                             <div class="flex items-center justify-between gap-4 border-t border-slate-700 pt-1.5 font-semibold">
