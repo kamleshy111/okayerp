@@ -47,8 +47,8 @@ const submitForm = async () => {
         <form @submit.prevent="submitForm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                  <label class="block text-black font-medium mb-2">Name</label>
-                  <input type="text" v-model="form.name" name="name"
+                  <label class="block text-black font-medium mb-2">Name <span class="text-red-500">*</span></label>
+                  <input type="text" v-model="form.name" name="name" required
                       class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                       placeholder="Name" />
               </div>
