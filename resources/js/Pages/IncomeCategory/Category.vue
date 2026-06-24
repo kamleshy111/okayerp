@@ -220,7 +220,7 @@ const submitEditForm = async () => {
         
         <form @submit.prevent="submitAddForm" class="space-y-4">
           <div>
-            <label class="block text-black font-semibold mb-2 text-sm">Name</label>
+            <label class="block text-black font-semibold mb-2 text-sm">Name <span class="text-red-500">*</span></label>
             <input type="text" v-model="form.name" required
                    class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
                    placeholder="Category Name" />
@@ -271,7 +271,7 @@ const submitEditForm = async () => {
         
         <form @submit.prevent="submitEditForm" class="space-y-4">
           <div>
-            <label class="block text-black font-semibold mb-2 text-sm">Name</label>
+            <label class="block text-black font-semibold mb-2 text-sm">Name <span class="text-red-500">*</span></label>
             <input type="text" v-model="editForm.name" required
                    class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
                    placeholder="Category Name" />

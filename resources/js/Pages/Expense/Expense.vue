@@ -267,7 +267,7 @@ const submitEditForm = async () => {
         <form @submit.prevent="submitAddForm" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Category</label>
+              <label class="block text-black font-semibold mb-2 text-sm">Category <span class="text-red-500">*</span></label>
               <select v-model="form.expense_category_id" required
                       class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm">
                 <option value="" disabled selected>Select Category</option>
@@ -285,14 +285,14 @@ const submitEditForm = async () => {
             </div>
 
             <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Amount</label>
+              <label class="block text-black font-semibold mb-2 text-sm">Amount <span class="text-red-500">*</span></label>
               <input type="number" step="0.01" min="0" v-model="form.amount" required
                      class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
                      placeholder="0.00" />
             </div>
 
             <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Date</label>
+              <label class="block text-black font-semibold mb-2 text-sm">Date <span class="text-red-500">*</span></label>
               <input type="date" v-model="form.date" required
                      class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm" />
             </div>
@@ -342,7 +342,7 @@ const submitEditForm = async () => {
         <form @submit.prevent="submitEditForm" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Category</label>
+              <label class="block text-black font-semibold mb-2 text-sm">Category <span class="text-red-500">*</span></label>
               <select v-model="editForm.expense_category_id" required
                       class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm">
                 <option value="" disabled>Select Category</option>
@@ -360,14 +360,14 @@ const submitEditForm = async () => {
             </div>
 
             <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Amount</label>
+              <label class="block text-black font-semibold mb-2 text-sm">Amount <span class="text-red-500">*</span></label>
               <input type="number" step="0.01" min="0" v-model="editForm.amount" required
                      class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
                      placeholder="0.00" />
             </div>
 
             <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Date</label>
+              <label class="block text-black font-semibold mb-2 text-sm">Date <span class="text-red-500">*</span></label>
               <input type="date" v-model="editForm.date" required
                      class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm" />
             </div>
