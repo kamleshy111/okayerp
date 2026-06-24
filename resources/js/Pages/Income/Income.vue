@@ -85,7 +85,9 @@ const columns = [
                 data-category_id="${data.income_category_id}" 
                 data-received_from="${data.received_from !== '---' ? data.received_from : ''}" 
                 data-amount="${data.amount}" 
-                data-date="${data.date}">
+                data-date="${data.date}"
+                data-reference_no="${data.reference_no !== '---' ? data.reference_no : ''}"
+                data-description="${data.description || ''}">
           <i class="fa fa-edit"></i>
         </button>
         <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
@@ -138,18 +140,22 @@ function setupEditButton() {
       const received_from = button.dataset.received_from;
       const amount = button.dataset.amount;
       const date = button.dataset.date;
-      openEditModal(id, category_id, received_from, amount, date);
+      const reference_no = button.dataset.reference_no;
+      const description = button.dataset.description;
+      openEditModal(id, category_id, received_from, amount, date, reference_no, description);
     }
   });
 }
 
-function openEditModal(id, category_id, received_from, amount, date) {
+function openEditModal(id, category_id, received_from, amount, date, reference_no, description) {
   editForm.value = {
     id: id,
     income_category_id: category_id,
     received_from: received_from,
     amount: amount,
-    date: date
+    date: date,
+    reference_no: reference_no,
+    description: description
   };
   isEditModalOpen.value = true;
 }
@@ -334,6 +340,20 @@ const submitEditForm = async () => {
               <input type="date" v-model="form.date" required
                      class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm" />
             </div>
+
+            <div>
+              <label class="block text-black font-semibold mb-2 text-sm">Reference No</label>
+              <input type="text" v-model="form.reference_no"
+                     class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
+                     placeholder="Receipt code, invoice no" />
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-black font-semibold mb-2 text-sm">Description</label>
+              <textarea v-model="form.description" rows="3"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-400 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
+                        placeholder="Enter details about this income..."></textarea>
+            </div>
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -394,6 +414,20 @@ const submitEditForm = async () => {
               <label class="block text-black font-semibold mb-2 text-sm">Date <span class="text-red-500">*</span></label>
               <input type="date" v-model="editForm.date" required
                      class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm" />
+            </div>
+
+            <div>
+              <label class="block text-black font-semibold mb-2 text-sm">Reference No</label>
+              <input type="text" v-model="editForm.reference_no"
+                     class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
+                     placeholder="Receipt code, invoice no" />
+            </div>
+
+            <div class="sm:col-span-2">
+              <label class="block text-black font-semibold mb-2 text-sm">Description</label>
+              <textarea v-model="editForm.description" rows="3"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-400 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
+                        placeholder="Enter details about this income..."></textarea>
             </div>
           </div>
 
