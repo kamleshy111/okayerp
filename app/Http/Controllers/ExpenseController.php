@@ -21,11 +21,11 @@ class ExpenseController extends Controller
                 return [
                     'id' => $expense->id,
                     'expense_category_id' => $expense->expense_category_id,
-                    'category_name' => $expense->category->name ?? 'N/A',
-                    'paid_to' => $expense->paid_to ?? 'N/A',
+                    'category_name' => $expense->category->name ?? '---',
+                    'paid_to' => $expense->paid_to ?? '---',
                     'amount' => $expense->amount,
                     'date' => $expense->date,
-                    'reference_no' => $expense->reference_no ?? 'N/A',
+                    'reference_no' => $expense->reference_no ?? '---',
                     'description' => $expense->description ?? ''
                 ];
             });

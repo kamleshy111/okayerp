@@ -21,11 +21,11 @@ class IncomeController extends Controller
                 return [
                     'id' => $income->id,
                     'income_category_id' => $income->income_category_id,
-                    'category_name' => $income->category->name ?? 'N/A',
-                    'received_from' => $income->received_from ?? 'N/A',
+                    'category_name' => $income->category->name ?? '---',
+                    'received_from' => $income->received_from ?? '---',
                     'amount' => $income->amount,
                     'date' => $income->date,
-                    'reference_no' => $income->reference_no ?? 'N/A',
+                    'reference_no' => $income->reference_no ?? '---',
                     'description' => $income->description ?? ''
                 ];
             });

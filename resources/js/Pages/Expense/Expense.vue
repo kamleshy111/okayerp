@@ -20,6 +20,16 @@ const props = defineProps({
 // Modal State
 const isAddModalOpen = ref(false);
 const isEditModalOpen = ref(false);
+const isViewModalOpen = ref(false);
+
+const viewData = ref({
+  category_name: "",
+  paid_to: "",
+  amount: "",
+  date: "",
+  reference_no: "",
+  description: ""
+});
 
 const today = new Date().toISOString().split('T')[0];
 
@@ -54,22 +64,28 @@ const columns = [
   { data: 'paid_to', title: 'Paid To' },
   { data: 'amount', title: 'Amount', render: (data) => `₹${parseFloat(data).toFixed(2)}` },
   { data: 'date', title: 'Date' },
-  { data: 'reference_no', title: 'Reference No' },
-  { data: 'description', title: 'Description' },
   {
     title: 'Actions',
     data: null,
     render: (data, type, row) => {
       return `
       <div class="icon-all-dflex">
+        <button class="text-white bg-blue-600 hover:bg-blue-800 px-3 py-1 rounded action-btn view-btn mr-1" 
+                data-id="${data.id}" 
+                data-category_name="${data.category_name}" 
+                data-paid_to="${data.paid_to}" 
+                data-amount="${data.amount}" 
+                data-date="${data.date}" 
+                data-reference_no="${data.reference_no}" 
+                data-description="${data.description || ''}">
+          <i class="fa fa-eye"></i>
+        </button>
         <button class="btn btn-light action-btn edit-btn" 
                 data-id="${data.id}" 
                 data-category_id="${data.expense_category_id}" 
-                data-paid_to="${data.paid_to !== 'N/A' ? data.paid_to : ''}" 
+                data-paid_to="${data.paid_to !== '---' ? data.paid_to : ''}" 
                 data-amount="${data.amount}" 
-                data-date="${data.date}" 
-                data-reference_no="${data.reference_no !== 'N/A' ? data.reference_no : ''}" 
-                data-description="${data.description || ''}">
+                data-date="${data.date}">
           <i class="fa fa-edit"></i>
         </button>
         <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
@@ -81,9 +97,37 @@ const columns = [
 
 // Attach event when component is mounted
 onMounted(() => {
+  setupViewButton();
   setupEditButton();
   setupDeleteButton();
 });
+
+function setupViewButton() {
+  document.addEventListener('click', function (event) {
+    const button = event.target.closest('.view-btn');
+    if (button) {
+      const category_name = button.dataset.category_name;
+      const paid_to = button.dataset.paid_to;
+      const amount = button.dataset.amount;
+      const date = button.dataset.date;
+      const reference_no = button.dataset.reference_no;
+      const description = button.dataset.description;
+      openViewModal(category_name, paid_to, amount, date, reference_no, description);
+    }
+  });
+}
+
+function openViewModal(category_name, paid_to, amount, date, reference_no, description) {
+  viewData.value = {
+    category_name: category_name,
+    paid_to: paid_to,
+    amount: amount,
+    date: date,
+    reference_no: reference_no,
+    description: description
+  };
+  isViewModalOpen.value = true;
+}
 
 function setupEditButton() {
   document.addEventListener('click', function (event) {
@@ -94,22 +138,18 @@ function setupEditButton() {
       const paid_to = button.dataset.paid_to;
       const amount = button.dataset.amount;
       const date = button.dataset.date;
-      const reference_no = button.dataset.reference_no;
-      const description = button.dataset.description;
-      openEditModal(id, category_id, paid_to, amount, date, reference_no, description);
+      openEditModal(id, category_id, paid_to, amount, date);
     }
   });
 }
 
-function openEditModal(id, category_id, paid_to, amount, date, reference_no, description) {
+function openEditModal(id, category_id, paid_to, amount, date) {
   editForm.value = {
     id: id,
     expense_category_id: category_id,
     paid_to: paid_to,
     amount: amount,
-    date: date,
-    reference_no: reference_no,
-    description: description
+    date: date
   };
   isEditModalOpen.value = true;
 }
@@ -242,8 +282,6 @@ const submitEditForm = async () => {
               <th scope="col">Paid To</th>
               <th scope="col">Amount</th>
               <th scope="col">Date</th>
-              <th scope="col">Reference No</th>
-              <th scope="col">Description</th>
               <th scope="col">Action</th>
             </tr>
           </thead>
@@ -295,20 +333,6 @@ const submitEditForm = async () => {
               <label class="block text-black font-semibold mb-2 text-sm">Date <span class="text-red-500">*</span></label>
               <input type="date" v-model="form.date" required
                      class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm" />
-            </div>
-
-            <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Reference No</label>
-              <input type="text" v-model="form.reference_no"
-                     class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
-                     placeholder="Receipt code, invoice no" />
-            </div>
-
-            <div class="sm:col-span-2">
-              <label class="block text-black font-semibold mb-2 text-sm">Description</label>
-              <textarea v-model="form.description" rows="3"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-400 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
-                        placeholder="Enter details about this expense..."></textarea>
             </div>
           </div>
 
@@ -371,20 +395,6 @@ const submitEditForm = async () => {
               <input type="date" v-model="editForm.date" required
                      class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm" />
             </div>
-
-            <div>
-              <label class="block text-black font-semibold mb-2 text-sm">Reference No</label>
-              <input type="text" v-model="editForm.reference_no"
-                     class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
-                     placeholder="Receipt code, invoice no" />
-            </div>
-
-            <div class="sm:col-span-2">
-              <label class="block text-black font-semibold mb-2 text-sm">Description</label>
-              <textarea v-model="editForm.description" rows="3"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-400 border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition shadow-sm"
-                        placeholder="Enter details about this expense..."></textarea>
-            </div>
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
@@ -398,6 +408,57 @@ const submitEditForm = async () => {
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- View Expense Modal Popup -->
+    <div v-if="isViewModalOpen" 
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+         style="z-index: 9999;"
+         @click.self="isViewModalOpen = false">
+      <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
+        <div class="flex justify-between items-center pb-3 border-b border-gray-100">
+          <h2 class="text-2xl font-bold text-[#292688]">Expense Details</h2>
+          <button @click="isViewModalOpen = false" class="text-gray-400 hover:text-gray-600 transition">
+            <i class="fa fa-close text-xl"></i>
+          </button>
+        </div>
+        
+        <div class="space-y-4 text-black text-left">
+          <div class="grid grid-cols-2 gap-4">
+            <div>
+              <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Category</span>
+              <span class="text-base font-medium">{{ viewData.category_name }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Paid To</span>
+              <span class="text-base font-medium">{{ viewData.paid_to }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Amount</span>
+              <span class="text-lg font-bold text-red-600">₹{{ parseFloat(viewData.amount).toFixed(2) }}</span>
+            </div>
+            <div>
+              <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Date</span>
+              <span class="text-base font-medium">{{ viewData.date }}</span>
+            </div>
+            <div class="col-span-2">
+              <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Reference No</span>
+              <span class="text-base font-medium">{{ viewData.reference_no && viewData.reference_no !== '---' ? viewData.reference_no : '---' }}</span>
+            </div>
+            <div class="col-span-2">
+              <span class="block text-gray-500 text-xs font-semibold uppercase tracking-wider">Description</span>
+              <p class="text-base whitespace-pre-line text-gray-700 bg-gray-50 p-3 rounded-lg border border-gray-100 min-h-[60px]">{{ viewData.description || 'No description provided.' }}</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="flex justify-end pt-4 border-t border-gray-100">
+          <button type="button" @click="isViewModalOpen = false" 
+                  class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">
+            Close
+          </button>
+        </div>
       </div>
     </div>
   </AuthenticatedLayout>
