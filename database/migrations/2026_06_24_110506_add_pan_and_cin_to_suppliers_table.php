@@ -1,0 +1,35 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::table('suppliers', function (Blueprint $table) {
+            if (!Schema::hasColumn('suppliers', 'pan_number')) {
+                $table->string('pan_number')->nullable()->after('gstin');
+            }
+            if (!Schema::hasColumn('suppliers', 'cin_number')) {
+                $table->string('cin_number')->nullable()->after('pan_number');
+            }
+        });
+
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::table('suppliers', function (Blueprint $table) {
+            $table->dropColumn(['pan_number', 'cin_number']);
+        });
+
+    }
+};

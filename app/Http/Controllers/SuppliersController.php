@@ -71,12 +71,16 @@ class SuppliersController extends Controller
                 Rule::unique('suppliers', 'email')->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
             'phone' => 'required',
-            'gstin' => 'nullable|string|max:255',
+            'gstin' => 'required_without:pan_number|nullable|string|max:255',
+            'pan_number' => 'required_without:gstin|nullable|string|max:255',
+            'cin_number' => 'nullable|string|max:255',
         ], [
          
             'name.required' => 'Name is required.',
             'email.unique' => 'The supplier email ID must be unique. Please choose a different email ID.',
             'phone.required' => 'Phone Number is required.',
+            'gstin.required_without' => 'Either GSTIN or PAN Number is required.',
+            'pan_number.required_without' => 'Either GSTIN or PAN Number is required.',
         ]);
 
         if (!$validated) {
@@ -91,6 +95,8 @@ class SuppliersController extends Controller
             'email' => $request->input('email'),
             'phone' => $request->input('phone'),
             'gstin' => $request->input('gstin'),
+            'pan_number' => $request->input('pan_number'),
+            'cin_number' => $request->input('cin_number'),
             'address' => $request->input('address'),
             'city' => $request->input('city'),
             'district' => $request->input('district'),
@@ -119,6 +125,8 @@ class SuppliersController extends Controller
             'email' => $data->email ?? '',
             'phone' => $data->phone ?? '',
             'gstin' => $data->gstin ?? '',
+            'pan_number' => $data->pan_number ?? '',
+            'cin_number' => $data->cin_number ?? '',
             'address' => $data->address ?? '',
             'city' => $data->city ?? '',
             'district' => $data->district ?? '',
@@ -145,12 +153,16 @@ class SuppliersController extends Controller
                     ->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
             'phone' => 'required',
-            'gstin' => 'nullable|string|max:255',
+            'gstin' => 'required_without:pan_number|nullable|string|max:255',
+            'pan_number' => 'required_without:gstin|nullable|string|max:255',
+            'cin_number' => 'nullable|string|max:255',
         ], [
          
             'name.required' => 'Name is required.',
             'email.unique' => 'The supplier email ID must be unique. Please choose a different email ID.',
             'phone.required' => 'Phone Number is required.',
+            'gstin.required_without' => 'Either GSTIN or PAN Number is required.',
+            'pan_number.required_without' => 'Either GSTIN or PAN Number is required.',
         ]);
 
         if (!$validated) {
@@ -164,6 +176,8 @@ class SuppliersController extends Controller
             $supplier->email = $request->input("email");
             $supplier->phone = $request->input("phone");
             $supplier->gstin = $request->input("gstin");
+            $supplier->pan_number = $request->input("pan_number");
+            $supplier->cin_number = $request->input("cin_number");
             $supplier->address = $request->input("address");
             $supplier->city = $request->input("city");
             $supplier->district = $request->input("district");

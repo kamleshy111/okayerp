@@ -84,11 +84,16 @@ class CustomersController extends Controller
                 Rule::unique('customers', 'email')->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
             'phone' => 'required',
+            'gst_number' => 'required_without:pan_number|nullable|string|max:255',
+            'pan_number' => 'required_without:gst_number|nullable|string|max:255',
+            'cin_number' => 'nullable|string|max:255',
         ], [
 
             'name.required' => 'Name is required.',
             'email.unique' => 'The customer email ID must be unique. Please choose a different email ID.',
             'phone.required' => 'Phone Number is required.',
+            'gst_number.required_without' => 'Either GST Number or PAN Number is required.',
+            'pan_number.required_without' => 'Either GST Number or PAN Number is required.',
         ]);
 
         if (!$validated) {
@@ -103,6 +108,8 @@ class CustomersController extends Controller
             'email' => $request->input('email'),
             'phone' => $request->input('phone'),
             'gst_number' => $request->input('gst_number'),
+            'pan_number' => $request->input('pan_number'),
+            'cin_number' => $request->input('cin_number'),
             'address' => $request->input('address'),
             'city' => $request->input('city'),
             'district' => $request->input('district'),
@@ -163,6 +170,8 @@ class CustomersController extends Controller
             'email' => $data->email ?? '',
             'phone' => $data->phone ?? '',
             'gst_number' => $data->gst_number ?? '',
+            'pan_number' => $data->pan_number ?? '',
+            'cin_number' => $data->cin_number ?? '',
             'address' => $data->address ?? '',
             'city' => $data->city ?? '',
             'district' => $data->district ?? '',
@@ -189,11 +198,16 @@ class CustomersController extends Controller
                     ->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
             'phone' => 'required',
+            'gst_number' => 'required_without:pan_number|nullable|string|max:255',
+            'pan_number' => 'required_without:gst_number|nullable|string|max:255',
+            'cin_number' => 'nullable|string|max:255',
         ], [
 
             'name.required' => 'Name is required.',
             'email.unique' => 'The customer email ID must be unique. Please choose a different email ID.',
             'phone.required' => 'Phone Number is required.',
+            'gst_number.required_without' => 'Either GST Number or PAN Number is required.',
+            'pan_number.required_without' => 'Either GST Number or PAN Number is required.',
         ]);
 
         if (!$validated) {
@@ -207,6 +221,8 @@ class CustomersController extends Controller
             $customer->email = $request->input("email");
             $customer->phone = $request->input("phone");
             $customer->gst_number = $request->input("gst_number");
+            $customer->pan_number = $request->input("pan_number");
+            $customer->cin_number = $request->input("cin_number");
             $customer->address = $request->input("address");
             $customer->city = $request->input("city");
             $customer->district = $request->input("district");

@@ -17,6 +17,8 @@ const form = ref({
     phone: customerDetail.phone,
     address: customerDetail.address,
     gst_number: customerDetail.gst_number || '',
+    pan_number: customerDetail.pan_number || '',
+    cin_number: customerDetail.cin_number || '',
     city: customerDetail.city || '',
     district: customerDetail.district || '',
     state: customerDetail.state || '',
@@ -53,14 +55,14 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Name</label>
-                    <input type="text" v-model="form.name" name="name" 
+                    <label class="block text-black font-medium mb-2">Name <span class="text-red-500">*</span></label>
+                    <input type="text" v-model="form.name" name="name" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Name" />
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">Email</label>
-                    <input type="email" v-model="form.email" name="email"
+                    <label class="block text-black font-medium mb-2">Email <span class="text-red-500">*</span></label>
+                    <input type="email" v-model="form.email" name="email" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="email" />
                 </div>
@@ -68,14 +70,14 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
-                    <label class="block text-black font-medium mb-2">Phone</label>
-                    <input type="number" v-model="form.phone" name="phone"
+                    <label class="block text-black font-medium mb-2">Phone <span class="text-red-500">*</span></label>
+                    <input type="number" v-model="form.phone" name="phone" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Phone" />
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">GST Number</label>
-                    <input type="text" v-model="form.gst_number" name="gst_number"
+                    <label class="block text-black font-medium mb-2">GST Number <span v-if="!form.pan_number" class="text-red-500">*</span></label>
+                    <input type="text" v-model="form.gst_number" name="gst_number" :required="!form.pan_number"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="GST Number" />
                 </div>
@@ -123,6 +125,21 @@ const submitForm = async () => {
                     <input type="text" v-model="form.pin_code" name="pin_code"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="PIN Code" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">PAN Number <span v-if="!form.gst_number" class="text-red-500">*</span></label>
+                    <input type="text" v-model="form.pan_number" name="pan_number" :required="!form.gst_number"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter PAN Number" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">CIN Number</label>
+                    <input type="text" v-model="form.cin_number" name="cin_number"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter CIN Number" />
                 </div>
             </div>
 
