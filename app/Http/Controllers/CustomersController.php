@@ -32,19 +32,12 @@ class CustomersController extends Controller
             $advanceAmount = 0;
 
             foreach ($customer->sales as $sale) {
-<<<<<<< HEAD
                 $paymentsSum = \App\Models\SalePayment::where('sale_id', $sale->id);
                 if (session('private_ledger_unlocked') !== true) {
                     $paymentsSum->where('accepted', 1);
                 }
                 $actualPaid = $paymentsSum->sum('amount');
                 $saleBalance = $actualPaid - $sale->grand_total;
-=======
-                $totalDueDeductions = $sale->saleReturns ? $sale->saleReturns->sum('due_deduction') : 0;
-                $effectiveGrandTotal = $sale->grand_total - $totalDueDeductions;
-                $saleBalance = $sale->paid - $effectiveGrandTotal;
-                
->>>>>>> main
                 if ($saleBalance < 0) {
                     $dueAmount += abs($saleBalance);
                 } elseif ($saleBalance > 0) {
@@ -76,7 +69,7 @@ class CustomersController extends Controller
     }
 
     public function create(){
-        
+
         return Inertia::render('Customer/Create');
     }
 
@@ -92,7 +85,7 @@ class CustomersController extends Controller
             ],
             'phone' => 'required',
         ], [
-         
+
             'name.required' => 'Name is required.',
             'email.unique' => 'The customer email ID must be unique. Please choose a different email ID.',
             'phone.required' => 'Phone Number is required.',
@@ -122,7 +115,7 @@ class CustomersController extends Controller
         $customer->message = 'Customer added successfully!';
         return response()->json($customer);
     }
-    
+
     public function downloadInvoice($id){
 
         $customer = Customer::where('user_id', Auth::id())
@@ -154,7 +147,7 @@ class CustomersController extends Controller
         });
 
         $pdf = Pdf::loadView('customerInvoice', compact('data','customer'))->setPaper('a4');
-        return $pdf->download("invoice_customer_{$customer->id}.pdf");       
+        return $pdf->download("invoice_customer_{$customer->id}.pdf");
     }
 
     public function edit($id){
@@ -197,7 +190,7 @@ class CustomersController extends Controller
             ],
             'phone' => 'required',
         ], [
-         
+
             'name.required' => 'Name is required.',
             'email.unique' => 'The customer email ID must be unique. Please choose a different email ID.',
             'phone.required' => 'Phone Number is required.',
@@ -234,7 +227,7 @@ class CustomersController extends Controller
         $customer = Customer::where('user_id', Auth::id())->find($id);
         if($customer) {
             $customer->delete();
-            return response()->json(['message' => 'Customer deleted successfully.'], 200); 
+            return response()->json(['message' => 'Customer deleted successfully.'], 200);
         }
         return response()->json(['message' => 'Customer not found.'], 404);
     }
