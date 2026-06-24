@@ -386,4 +386,23 @@ class SaleReturnController extends Controller
         $pdf = Pdf::loadView('return_invoice', compact('return'))->setPaper('a4');
         return $pdf->stream("return_invoice_{$return->return_no}.pdf");
     }
+
+    public function show($id)
+    {
+        $userId = Auth::id();
+
+        $return = SaleReturn::whereHas('sale.customer', function ($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })
+        ->with(['sale.customer.user', 'items.product'])
+        ->find($id);
+
+        if (!$return) {
+            abort(403, 'Return not found or unauthorized access.');
+        }
+
+        return Inertia::render('SaleReturn/Show', [
+            'return' => $return,
+        ]);
+    }
 }

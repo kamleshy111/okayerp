@@ -203,6 +203,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/sale-return/sale/{id}/details', [SaleReturnController::class, 'getSaleDetails'])->name('sale-return.sale-details');
         Route::post('/sale-return/store', [SaleReturnController::class, 'store'])->name('sale-return.store');
         Route::get('/sale-return/{id}/download-pdf', [SaleReturnController::class, 'downloadReturnPdf'])->name('sale-return.pdf');
+        Route::get('/sale-return/{id}', [SaleReturnController::class, 'show'])->name('sale-return.show');
     });
 
 

@@ -81,7 +81,7 @@ watch(selectedCustomerId, async (newVal) => {
     }));
   } catch (error) {
     console.error("Error fetching purchased items:", error);
-    toast.error("Failed to load customer purchased items.");
+    toast.error("Failed to load customer sold items.");
   } finally {
     isLoadingItems.value = false;
   }
@@ -93,6 +93,26 @@ watch(selectedItemToAdd, (newVal) => {
     addItemToList();
   }
 });
+
+// Enforce return quantity limits in real-time between 1 and available_qty
+watch(() => form.value.items, (newItems) => {
+  newItems.forEach(item => {
+    if (item.quantity === null || item.quantity === undefined || item.quantity === '') {
+      return;
+    }
+    const val = parseInt(item.quantity);
+    if (isNaN(val)) {
+      return;
+    }
+    if (val < 1) {
+      item.quantity = 1;
+    } else if (val > item.available_qty) {
+      item.quantity = item.available_qty;
+    } else {
+      item.quantity = val;
+    }
+  });
+}, { deep: true });
 
 const addItemToList = () => {
   if (!selectedItemToAdd.value) {
@@ -151,6 +171,13 @@ const grandRefundTotal = computed(() => {
 });
 
 const submitReturn = async () => {
+  // Enforce validation and default empty fields to 1
+  form.value.items.forEach(item => {
+    if (!item.quantity || isNaN(parseInt(item.quantity)) || parseInt(item.quantity) < 1) {
+      item.quantity = 1;
+    }
+  });
+
   const payloadItems = form.value.items.filter(item => item.quantity > 0);
 
   if (payloadItems.length === 0) {
@@ -247,13 +274,13 @@ const submitReturn = async () => {
           </div>
 
           <div v-if="selectedCustomerId" class="flex flex-col">
-            <label class="block text-black font-medium mb-2">Search Purchased Item <span class="text-red-500">*</span></label>
+            <label class="block text-black font-medium mb-2">Search Sold Item <span class="text-red-500">*</span></label>
             <div class="flex items-center gap-2">
               <vSelect
                 v-model="selectedItemToAdd"
                 :options="filteredPurchasedItems"
                 label="product_name"
-                placeholder="Type to search purchased items..."
+                placeholder="Type to search sold items..."
                 class="w-full text-black bg-white"
                 :disabled="isLoadingItems"
                 @search="(query) => itemSearchQuery = query"
@@ -271,8 +298,8 @@ const submitReturn = async () => {
                 </template>
               </vSelect>
             </div>
-            <p v-if="isLoadingItems" class="text-xs text-gray-500 mt-1">Loading purchased items...</p>
-            <p v-else-if="purchasedItems.length === 0" class="text-xs text-amber-600 mt-1">No returnable purchased items found for this customer.</p>
+            <p v-if="isLoadingItems" class="text-xs text-gray-500 mt-1">Loading sold items...</p>
+            <p v-else-if="purchasedItems.length === 0" class="text-xs text-amber-600 mt-1">No returnable sold items found for this customer.</p>
           </div>
         </div>
 
@@ -285,9 +312,7 @@ const submitReturn = async () => {
               <thead class="bg-[#292688] text-white">
                 <tr>
                   <th class="px-4 py-2 text-left">Product</th>
-                  <th class="px-4 py-2 text-left">Original Qty</th>
-                  <th class="px-4 py-2 text-left">Already Returned</th>
-                  <th class="px-4 py-2 text-left">Available to Return</th>
+                  <th class="px-4 py-2 text-left">QTY</th>
                   <th class="px-4 py-2 text-left">Price (Excl. GST)</th>
                   <th class="px-4 py-2 text-left w-32">Return Qty</th>
                   <th class="px-4 py-2 text-left">Refund Amount</th>
@@ -297,9 +322,7 @@ const submitReturn = async () => {
               <tbody>
                 <tr v-for="(item, index) in form.items" :key="index">
                   <td class="border-t px-4 py-3 font-semibold text-gray-800">{{ item.product_name }}</td>
-                  <td class="border-t px-4 py-3 text-gray-600">{{ item.sold_qty }}</td>
-                  <td class="border-t px-4 py-3 text-gray-500">{{ item.returned_qty }}</td>
-                  <td class="border-t px-4 py-3 font-bold text-indigo-600">{{ item.available_qty }}</td>
+                  <td class="border-t px-4 py-3 text-gray-600 font-bold text-indigo-600">{{ item.available_qty }}</td>
                   <td class="border-t px-4 py-3 text-gray-600">₹ {{ item.price.toFixed(2) }}</td>
                   <td class="border-t px-4 py-3">
                     <input
@@ -344,27 +367,16 @@ const submitReturn = async () => {
                   </button>
                 </div>
 
-                <div class="grid grid-cols-3 gap-2 text-center bg-white p-3 rounded-lg border border-gray-100 text-xs font-semibold text-gray-600">
-                  <div>
-                    <span class="block text-gray-400 font-medium">Original</span>
-                    <span>{{ item.sold_qty }}</span>
-                  </div>
-                  <div>
-                    <span class="block text-gray-400 font-medium">Returned</span>
-                    <span>{{ item.returned_qty }}</span>
-                  </div>
-                  <div>
-                    <span class="block text-gray-400 font-medium">Available</span>
-                    <span class="text-indigo-600 font-bold">{{ item.available_qty }}</span>
-                  </div>
-                </div>
-
                 <div class="flex items-center justify-between gap-4 pt-2">
-                  <div class="w-1/2">
+                  <div class="w-1/3">
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">QTY</label>
+                    <span class="font-bold text-indigo-600 text-sm">{{ item.available_qty }}</span>
+                  </div>
+                  <div class="w-1/3">
                     <label class="block text-xs font-semibold text-gray-500 mb-1">Price (Excl. GST)</label>
                     <span class="font-bold text-gray-800 text-sm">₹ {{ item.price.toFixed(2) }}</span>
                   </div>
-                  <div class="w-1/2">
+                  <div class="w-1/3">
                     <label class="block text-xs font-semibold text-gray-500 mb-1">Return Qty</label>
                     <input
                       type="number"
