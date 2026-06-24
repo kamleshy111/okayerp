@@ -98,6 +98,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/customer', [CustomersController::class, 'index'])->name('customer');
         Route::get('/customer/create', [CustomersController::class, 'create'])->name('customer.Create');
         Route::post('/customer/store', [CustomersController::class, 'store'])->name('customer.store');
+        Route::get('/customer/{id}/show', [CustomersController::class, 'show'])->name('customer.show');
         Route::get('/customer/{id}/edit', [CustomersController::class, 'edit'])->name('customer.edit');
         Route::post('/customer/update/{id}', [CustomersController::class, 'update'])->name('customer.update');
         Route::delete('/customer/destroy/{id}', [CustomersController::class, 'destroy'])->name('customer.destroy');
@@ -109,6 +110,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/supplier', [SuppliersController::class, 'index'])->name('supplier');
         Route::get('/supplier/create', [SuppliersController::class, 'create'])->name('supplier.Create');
         Route::post('/supplier/store', [SuppliersController::class, 'store'])->name('supplier.store');
+        Route::get('/supplier/{id}/show', [SuppliersController::class, 'show'])->name('supplier.show');
         Route::get('/supplier/{id}/edit', [SuppliersController::class, 'edit'])->name('supplier.edit');
         Route::post('/supplier/update/{id}', [SuppliersController::class, 'update'])->name('supplier.update');
         Route::delete('/supplier/destroy/{id}', [SuppliersController::class, 'destroy'])->name('supplier.destroy');
