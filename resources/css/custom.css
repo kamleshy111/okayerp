@@ -133,3 +133,8 @@ table.dataTable > tbody > tr > th, table.dataTable > tbody > tr > td {
   -ms-overflow-style: none;  /* IE and Edge */
   scrollbar-width: none;  /* Firefox */
 }
+
+/* Ensure toast notifications are on top of modals and backdrops */
+.Toastify__toast-container {
+  z-index: 9999999 !important;
+}

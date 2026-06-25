@@ -104,6 +104,18 @@ const removeImage = () => {
 
 // Submit the form data
 const submitForm = async () => {
+  if (!form.value.name) {
+    toast.error("Product name is required!");
+    return;
+  }
+  if (!form.value.category_id) {
+    toast.error("Category is required!");
+    return;
+  }
+  if (!form.value.unit_type) {
+    toast.error("Unit Type is required!");
+    return;
+  }
   try {
     const formData = new FormData();
     for (const [key, value] of Object.entries(form.value)) {
@@ -153,15 +165,15 @@ const submitForm = async () => {
         <form @submit.prevent="submitForm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Name</label>
-                    <input type="text" name="Name" v-model="form.name"
+                    <label class="block text-black font-medium mb-2">Name <span class="text-red-500">*</span></label>
+                    <input type="text" name="Name" v-model="form.name" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter name" />
                 </div>
 
                 <div>
-                    <label class="block text-black font-medium mb-2">Category</label>
-                        <select   name="category_id" v-model="form.category_id"
+                    <label class="block text-black font-medium mb-2">Category <span class="text-red-500">*</span></label>
+                        <select   name="category_id" v-model="form.category_id" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="" disabled>Select Category</option>
                             <option v-for="category in categories" :key="category.id"
@@ -180,7 +192,7 @@ const submitForm = async () => {
                         placeholder="Enter HSN/SAC code" />
                 </div>
                 <div class="relative">
-                    <label class="block text-black font-medium mb-2">Unit Type</label>
+                    <label class="block text-black font-medium mb-2">Unit Type <span class="text-red-500">*</span></label>
                     <div class="relative">
                         <input 
                             type="text" 

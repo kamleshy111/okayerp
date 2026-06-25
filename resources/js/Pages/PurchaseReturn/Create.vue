@@ -193,10 +193,9 @@ const submitReturn = async () => {
         </div>
 
         <div v-if="selectedPurchaseDetails" class="mt-8 space-y-6">
-          <div class="p-4 bg-slate-50 border rounded-lg text-black grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div class="p-4 bg-slate-50 border rounded-lg text-black grid grid-cols-1 md:grid-cols-2 gap-4">
             <p><strong>Supplier Name:</strong> {{ selectedPurchaseDetails.supplier_name }}</p>
             <p><strong>Tax Scheme:</strong> {{ selectedPurchaseDetails.accepted == 1 ? 'GST Invoice' : 'Non-GST / Private Invoice' }}</p>
-            <p class="text-rose-600 font-semibold"><strong>Original Due:</strong> ₹ {{ parseFloat(selectedPurchaseDetails.due_amount).toFixed(2) }}</p>
           </div>
 
           <h3 class="text-xl font-bold text-[#292688]">Items Purchased</h3>
@@ -206,9 +205,7 @@ const submitReturn = async () => {
             <thead class="bg-[#292688] text-white">
               <tr>
                 <th class="px-4 py-2 text-left">Product</th>
-                <th class="px-4 py-2 text-left">Original Qty</th>
-                <th class="px-4 py-2 text-left">Already Returned</th>
-                <th class="px-4 py-2 text-left">Available to Return</th>
+                <th class="px-4 py-2 text-left">Qty</th>
                 <th class="px-4 py-2 text-left">Cost (Excl. GST)</th>
                 <th class="px-4 py-2 text-left w-32">Return Qty</th>
                 <th class="px-4 py-2 text-left">Refund Amount</th>
@@ -217,8 +214,6 @@ const submitReturn = async () => {
             <tbody>
               <tr v-for="(item, index) in form.items" :key="index">
                 <td class="border-t px-4 py-3 font-semibold text-gray-800">{{ item.product_name }}</td>
-                <td class="border-t px-4 py-3 text-gray-600">{{ item.purchased_qty }}</td>
-                <td class="border-t px-4 py-3 text-gray-500">{{ item.returned_qty }}</td>
                 <td class="border-t px-4 py-3 font-bold text-indigo-600">{{ item.available_qty }}</td>
                 <td class="border-t px-4 py-3 text-gray-600">₹ {{ item.price.toFixed(2) }}</td>
                 <td class="border-t px-4 py-3">
@@ -249,18 +244,10 @@ const submitReturn = async () => {
                 </span>
               </div>
 
-              <div class="grid grid-cols-3 gap-2 text-center text-xs bg-white p-3 rounded-lg border border-gray-100 font-medium text-gray-500">
+              <div class="grid grid-cols-1 gap-2 text-center text-xs bg-white p-3 rounded-lg border border-gray-100 font-medium text-gray-500">
                 <div>
-                  <span class="block text-gray-400 mb-0.5">Original Qty</span>
-                  <span class="text-gray-800 font-semibold">{{ item.purchased_qty }}</span>
-                </div>
-                <div>
-                  <span class="block text-gray-400 mb-0.5">Returned</span>
-                  <span class="text-gray-800 font-semibold">{{ item.returned_qty }}</span>
-                </div>
-                <div>
-                  <span class="block text-gray-400 mb-0.5 text-indigo-600">Available</span>
-                  <span class="text-indigo-700 font-bold">{{ item.available_qty }}</span>
+                  <span class="block text-gray-400 mb-0.5 text-indigo-600 font-semibold">Available to Return</span>
+                  <span class="text-indigo-700 font-bold text-sm">{{ item.available_qty }}</span>
                 </div>
               </div>
 
