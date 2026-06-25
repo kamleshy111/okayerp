@@ -55,9 +55,7 @@ class SaleController extends Controller
         $userId = Auth::id();
 
         $products = Product::where('user_id', $userId)->get();
-        $customers = Customer::where('user_id', $userId)->get();
         return Inertia::render('Sale/Create',[
-            'customers' => $customers,
             'products' => $products,
         ]);
     }
@@ -302,7 +300,8 @@ class SaleController extends Controller
         $userId = Auth::id();
 
         $products = Product::where('user_id', $userId)->get();
-        $customers = Customer::where('user_id', $userId)->get();
+        $customer = Customer::find($sales->customer_id);
+        $customers = $customer ? [$customer] : [];
 
         return Inertia::render('Sale/Edit',[
             'products' => $products,
