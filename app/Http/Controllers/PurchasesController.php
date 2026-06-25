@@ -58,8 +58,13 @@ class PurchasesController extends Controller
         $userId = Auth::id();
 
         $products = Product::where('user_id', $userId)->get();
+        $categories = \App\Models\Category::where('user_id', $userId)->select('id', 'name')->get();
+        $unitTypes = config('units.types') ?? [];
+
         return Inertia::render('Purchase/Create',[
             'products' => $products,
+            'categories' => $categories,
+            'unitTypes' => $unitTypes,
         ]);
     }
 

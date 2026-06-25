@@ -59,9 +59,13 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required',
+            'category_id' => 'required',
+            'unit_type' => 'required',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
             'name.required' => 'Name is required.',
+            'category_id.required' => 'Category is required.',
+            'unit_type.required' => 'Unit Type is required.',
             'image.image' => 'The file must be an image.',
             'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
             'image.max' => 'The image size must not exceed 2MB.',
@@ -140,9 +144,13 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required',
+            'category_id' => 'required',
+            'unit_type' => 'required',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
             'name.required' => 'Name is required.',
+            'category_id.required' => 'Category is required.',
+            'unit_type.required' => 'Unit Type is required.',
             'image.image' => 'The file must be an image.',
             'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
             'image.max' => 'The image size must not exceed 2MB.',

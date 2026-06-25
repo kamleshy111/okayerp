@@ -149,8 +149,6 @@ const columns = [
     { data: 'categoryName' ?? '---'},
     { data: 'stockQuantity'},
     { data: 'unit_type'},
-    { data: 'cgst'},
-    { data: 'sgst'},
     {
         title: 'Actions',
         data: null,
@@ -238,8 +236,6 @@ function deleteProduct(productId) {
                       <th scope="col">Category Name</th>
                       <th scope="col">Stock Quantity</th>
                       <th scope="col">Unit Type</th>
-                      <th scope="col">SGST</th>
-                      <th scope="col">CGST</th>
                       <th scope="col">Action</th>
                   </tr>
               </thead>

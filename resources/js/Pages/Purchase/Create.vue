@@ -8,6 +8,7 @@ import axios from 'axios';
 
 import vSelect from "vue3-select";
 import "vue3-select/dist/vue3-select.css";
+import AddProductModal from '@/Components/AddProductModal.vue';
 
 
 const props = defineProps({
@@ -20,15 +21,42 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  categories: {
+    type: Array,
+    required: false,
+    default: () => [],
+  },
+  unitTypes: {
+    type: Object,
+    required: false,
+    default: () => ({}),
+  },
 });
 
 const suppliers = ref([...props.suppliers]);
-const products = props.products;
+const products = ref([...props.products]);
+
+// Add Product Modal State
+const showProductModal = ref(false);
+const activeProductRowIndex = ref(null);
+const productSearchQuery = ref('');
+
+const selectedSupplier = ref(null);
+const showPaymentModal = ref(false);
+const supplierData = ref(null);
 
 const supplierSearchQuery = ref("");
 const onSupplierSearch = async (search, loading) => {
   supplierSearchQuery.value = search;
   if (!search.trim()) {
+    const selectedId = form.value?.supplier_id;
+    if (selectedId) {
+      const selected = selectedSupplier.value || suppliers.value.find(s => s.id == selectedId);
+      if (selected) {
+        suppliers.value = [selected];
+        return;
+      }
+    }
     suppliers.value = [...props.suppliers];
     return;
   }
@@ -37,9 +65,12 @@ const onSupplierSearch = async (search, loading) => {
     suppliers.value = response.data;
 
     // Ensure selected supplier is always in options list
-    const selected = props.suppliers.find(s => s.id == form.value.supplier_id) || suppliers.value.find(s => s.id == form.value.supplier_id);
-    if (selected && !suppliers.value.some(s => s.id == selected.id)) {
-      suppliers.value.unshift(selected);
+    const selectedId = form.value?.supplier_id;
+    if (selectedId) {
+      const selected = selectedSupplier.value || suppliers.value.find(s => s.id == selectedId);
+      if (selected && !suppliers.value.some(s => s.id == selected.id)) {
+        suppliers.value.unshift(selected);
+      }
     }
   } catch (error) {
     console.error("Error fetching suppliers:", error);
@@ -73,15 +104,11 @@ const form = ref({
     }],
 });
 
-const selectedSupplier = ref(null);
-const showPaymentModal = ref(false);
-const supplierData = ref(null);
-
 const showSupplierModal = ref(false);
 
 const onEnterKey = (event) => {
   // Only trigger if no supplier matches the search
-  if (!form.supplier_id && selectedSupplier.value === null) {
+  if (!form.value.supplier_id && selectedSupplier.value === null) {
     openSupplierModalWithName(event.target.value);
   }
 };
@@ -144,7 +171,7 @@ const submitSupplier = async () => {
     suppliers.value.push(createdSupplier);
 
     // Select the new supplier automatically
-    form.supplier_id = createdSupplier.id;
+    form.value.supplier_id = createdSupplier.id;
     selectedSupplier.value = createdSupplier;
 
     // Close the modal
@@ -184,7 +211,7 @@ watch(() => form.value.supplier_id, (newVal) => {
 // Watch for product change in each row to update unit_type
 watch(() => form.value.purchase_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
-    const selectedProduct = products.find(product => product.id === item.product_id);
+    const selectedProduct = products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
       item.unit_type = selectedProduct.unit_type;
       item.sgst = selectedProduct.sgst;
@@ -410,6 +437,20 @@ const submitForm = async () => {
     toast.error(errorMessage);
   }
 };
+
+const openProductModal = (rowIndex, search) => {
+  activeProductRowIndex.value = rowIndex;
+  productSearchQuery.value = search || '';
+  showProductModal.value = true;
+};
+
+const handleProductSuccess = (createdProduct) => {
+  products.value.push(createdProduct);
+  if (activeProductRowIndex.value !== null) {
+    form.value.purchase_items[activeProductRowIndex.value].product_id = createdProduct.id;
+  }
+  showProductModal.value = false;
+};
 </script>
 <template>
 
@@ -444,7 +485,7 @@ const submitForm = async () => {
                                         <span v-if="!supplierSearchQuery">Type to search supplier...</span>
                                         <span v-else>No suppliers found.</span>
                                         <button
-                                            @click.stop="showSupplierModal = true"
+                                            @click.stop="openSupplierModalWithName(supplierSearchQuery)"
                                             class="mt-2 block text-blue-600 hover:underline text-sm"
                                         >
                                             ➕ Add New Supplier
@@ -543,7 +584,20 @@ const submitForm = async () => {
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
                                 append-to-body
-                            />
+                            >
+                                <template #no-options="{ search, searching, loading }">
+                                    <div class="px-3 py-2 text-gray-500">
+                                        <span v-if="!search">Type to search product...</span>
+                                        <span v-else>No products found.</span>
+                                        <button
+                                            @click.stop="openProductModal(index, search)"
+                                            class="mt-2 block text-blue-600 hover:underline text-sm"
+                                        >
+                                            ➕ Add New Product
+                                        </button>
+                                    </div>
+                                </template>
+                            </vSelect>
                         </td>
 
                         <td class="border-t px-4 py-3">
@@ -601,7 +655,20 @@ const submitForm = async () => {
                                 :reduce="product => product.id"
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
-                            />
+                            >
+                                <template #no-options="{ search, searching, loading }">
+                                    <div class="px-3 py-2 text-gray-500">
+                                        <span v-if="!search">Type to search product...</span>
+                                        <span v-else>No products found.</span>
+                                        <button
+                                            @click.stop="openProductModal(index, search)"
+                                            class="mt-2 block text-blue-600 hover:underline text-sm"
+                                        >
+                                            ➕ Add New Product
+                                        </button>
+                                    </div>
+                                </template>
+                            </vSelect>
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">
@@ -851,6 +918,16 @@ const submitForm = async () => {
             </div>
         </div>
     </div>
+
+    <!-- Add Product Modal -->
+    <AddProductModal
+        :show="showProductModal"
+        :initialName="productSearchQuery"
+        :categories="categories"
+        :unitTypes="unitTypes"
+        @close="showProductModal = false"
+        @success="handleProductSuccess"
+    />
     </AuthenticatedLayout>
 </template>
 <style>
