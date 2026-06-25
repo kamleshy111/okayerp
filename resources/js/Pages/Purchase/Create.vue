@@ -13,7 +13,8 @@ import "vue3-select/dist/vue3-select.css";
 const props = defineProps({
   suppliers: {
     type: Array,
-    required: true,
+    required: false,
+    default: () => [],
   },
   products: {
     type: Array,
@@ -21,8 +22,29 @@ const props = defineProps({
   },
 });
 
-const suppliers = props.suppliers;
+const suppliers = ref([...props.suppliers]);
 const products = props.products;
+
+const supplierSearchQuery = ref("");
+const onSupplierSearch = async (search, loading) => {
+  supplierSearchQuery.value = search;
+  if (!search.trim()) {
+    suppliers.value = [...props.suppliers];
+    return;
+  }
+  try {
+    const response = await axios.get(`/supplier/search?query=${encodeURIComponent(search)}`);
+    suppliers.value = response.data;
+
+    // Ensure selected supplier is always in options list
+    const selected = props.suppliers.find(s => s.id == form.value.supplier_id) || suppliers.value.find(s => s.id == form.value.supplier_id);
+    if (selected && !suppliers.value.some(s => s.id == selected.id)) {
+      suppliers.value.unshift(selected);
+    }
+  } catch (error) {
+    console.error("Error fetching suppliers:", error);
+  }
+};
 
 const form = ref({
     supplier_id: "",
@@ -119,7 +141,7 @@ const submitSupplier = async () => {
     const createdSupplier = response.data;
 
     // Add the new supplier to the options
-    suppliers.push(createdSupplier);
+    suppliers.value.push(createdSupplier);
 
     // Select the new supplier automatically
     form.supplier_id = createdSupplier.id;
@@ -152,11 +174,11 @@ const submitSupplier = async () => {
 
 // Watch for supplier change
 watch(() => form.value.supplier_id, (newVal) => {
-  if (!newVal || !Array.isArray(suppliers)) {
+  if (!newVal || !Array.isArray(suppliers.value)) {
     selectedSupplier.value = null;
     return;
   }
-  selectedSupplier.value = suppliers.find(s => s.id == newVal);
+  selectedSupplier.value = suppliers.value.find(s => s.id == newVal);
 });
 
 // Watch for product change in each row to update unit_type
@@ -414,34 +436,22 @@ const submitForm = async () => {
                                 placeholder="Search or select supplier"
                                 class="w-full"
                                 @keydown.enter="onEnterKey"
+                                @search="onSupplierSearch"
                             >
                                 <!-- Shown when there are no options at all -->
                                 <template #no-options>
                                     <div class="px-3 py-2 text-gray-500">
-                                        No suppliers found.
+                                        <span v-if="!supplierSearchQuery">Type to search supplier...</span>
+                                        <span v-else>No suppliers found.</span>
                                         <button
                                             @click.stop="showSupplierModal = true"
-                                            class="mt-2 text-blue-600 hover:underline text-sm"
+                                            class="mt-2 block text-blue-600 hover:underline text-sm"
                                         >
                                             ➕ Add New Supplier
                                         </button>
 
                                     </div>
                                 </template>
-
-                                <!-- Shown when search returns no result -->
-                                <!-- <template #no-results>
-                                    <div class="px-3 py-2 text-gray-500">
-                                        No results found.
-                                        <button
-                                         @click.stop="openSupplierModalWithName(searchText)"
-
-                                            class="mt-2 text-blue-600 hover:underline text-sm"
-                                        >
-                                            ➕ Add "<strong>{{ searchText }}</strong>" as Supplier
-                                        </button>
-                                    </div>
-                                </template> -->
                         </vSelect>
 
                 </div>
@@ -711,13 +721,13 @@ const submitForm = async () => {
             <div class="mt-6 flex justify-end gap-3 pt-2">
                 <button
                     @click="showSupplierModal = false"
-                    class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer font-medium"
+                    class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition cursor-pointer font-medium"
                 >
                     Cancel
                 </button>
                 <button
                     @click="submitSupplier"
-                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer font-medium"
+                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition cursor-pointer font-medium"
                 >
                     Save Supplier
                 </button>

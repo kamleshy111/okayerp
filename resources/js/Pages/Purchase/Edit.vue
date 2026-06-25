@@ -12,7 +12,8 @@ import "vue3-select/dist/vue3-select.css";
 const props = defineProps({
   suppliers: {
     type: Array,
-    required: true,
+    required: false,
+    default: () => [],
   },
   products: {
     type: Array,
@@ -32,10 +33,31 @@ const props = defineProps({
   },
 });
 
-const suppliers = props.suppliers;
+const suppliers = ref([...props.suppliers]);
 const products = props.products;
 const productItems = props.productItems;
 const purchases = props.purchases;
+
+const supplierSearchQuery = ref("");
+const onSupplierSearch = async (search, loading) => {
+  supplierSearchQuery.value = search;
+  if (!search.trim()) {
+    suppliers.value = [...props.suppliers];
+    return;
+  }
+  try {
+    const response = await axios.get(`/supplier/search?query=${encodeURIComponent(search)}`);
+    suppliers.value = response.data;
+
+    // Ensure selected supplier is always in options list
+    const selected = props.suppliers.find(s => s.id == form.value.supplier_id) || suppliers.value.find(s => s.id == form.value.supplier_id);
+    if (selected && !suppliers.value.some(s => s.id == selected.id)) {
+      suppliers.value.unshift(selected);
+    }
+  } catch (error) {
+    console.error("Error fetching suppliers:", error);
+  }
+};
 
 const form = ref({
     id: purchases.id,
@@ -67,10 +89,8 @@ const form = ref({
 const selectedSupplier = ref(null);
 
 watchEffect(() => {
-  if (form.value.supplier_id && suppliers.length > 0) {
-    selectedSupplier.value = suppliers.find(s => s.id == form.value.supplier_id) || null;
-
-    console.log(selectedSupplier.value.id);
+  if (form.value.supplier_id && suppliers.value.length > 0) {
+    selectedSupplier.value = suppliers.value.find(s => s.id == form.value.supplier_id) || null;
   }
 });
 
@@ -312,7 +332,15 @@ const submitForm = async () => {
                         :reduce="supplier => supplier.id"
                         placeholder="Search or select supplier"
                         class="w-full"
-                    />
+                        @search="onSupplierSearch"
+                    >
+                        <template #no-options>
+                            <div class="px-3 py-2 text-gray-500">
+                                <span v-if="!supplierSearchQuery">Type to search supplier...</span>
+                                <span v-else>No suppliers found.</span>
+                            </div>
+                        </template>
+                    </vSelect>
                 </div>
 
                 <div>
