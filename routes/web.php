@@ -218,7 +218,6 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/purchase/store', [PurchasesController::class, 'store'])->name('purchase.store');
         Route::get('/purchase/{id}/edit', [PurchasesController::class, 'edit'])->name('purchase.edit');
         Route::get('/purchase/{id}', [PurchasesController::class, 'show'])->name('purchase.show');
-        Route::get('/purchase/{id}/download-pdf', [PurchasesController::class, 'downloadInvoice'])->name('purchase.invoice.download');
         Route::post('/purchase/update/{id}', [PurchasesController::class, 'update'])->name('purchase.update');
         Route::delete('/purchase/destroy/{id}', [PurchasesController::class, 'destroy'])->name('purchase.destroy');
 

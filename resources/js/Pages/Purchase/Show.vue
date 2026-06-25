@@ -47,16 +47,6 @@ const formatDate = (dateStr) => {
           </div>
         </div>
 
-        <div class="flex items-center gap-3 w-full sm:w-auto">
-          <!-- Download PDF -->
-          <a 
-            :href="`/purchase/${purchase.id}/download-pdf`"
-            target="_blank"
-            class="flex items-center justify-center gap-2 px-4 py-2 bg-[#2e2c92] hover:bg-[#1f1d6b] text-white rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200 w-full sm:w-auto"
-          >
-            <i class="fa fa-file-pdf-o"></i> Download PDF
-          </a>
-        </div>
       </div>
 
       <!-- Invoice Content Container -->
