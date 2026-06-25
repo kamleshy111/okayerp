@@ -195,14 +195,7 @@ class SupplierPaymentController extends Controller
     }
 
     public function create(){
-
-        $userId = Auth::id();
-  
-        $suppliers = Supplier::where('user_id',$userId)->select('id','name')->get();
-
-        return Inertia::render('SupplierPayment/Create',[
-            'suppliers' => $suppliers
-        ]);
+        return Inertia::render('SupplierPayment/Create');
     }
 
     public function store(Request $request){

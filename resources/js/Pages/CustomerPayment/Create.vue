@@ -1,13 +1,15 @@
 <script setup>
 import { ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head ,usePage} from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 import axios from 'axios';
+import vSelect from "vue3-select";
+import "vue3-select/dist/vue3-select.css";
 
-
-const { customers } = usePage().props;
+const customers = ref([]);
+const customerSearchQuery = ref("");
 
 const customerInfo = ref({
     advance_amount: 0,
@@ -26,6 +28,20 @@ const form = ref({
     use_advance: false,
     advance_amount_used: 0,
 });
+
+const onCustomerSearch = async (search, loading) => {
+  customerSearchQuery.value = search;
+  if (!search.trim()) {
+    customers.value = [];
+    return;
+  }
+  try {
+    const response = await axios.get(`/customer/search?query=${encodeURIComponent(search)}`);
+    customers.value = response.data;
+  } catch (error) {
+    console.error("Error fetching customers:", error);
+  }
+};
 
 import { watch } from 'vue';
 
@@ -101,8 +117,10 @@ const submitForm = async () => {
     }
 
     // Reset the form
+    const currentCustomerId = form.value.customer_id;
+    const currentCustomer = customers.value.find(c => c.id === currentCustomerId);
     form.value = {
-      customer_id: form.value.customer_id,
+      customer_id: currentCustomerId,
       sale_id: "",
       amount: "",
       payment_date: today,
@@ -111,6 +129,8 @@ const submitForm = async () => {
       use_advance: false,
       advance_amount_used: 0,
     };
+    customers.value = currentCustomer ? [currentCustomer] : [];
+    customerSearchQuery.value = "";
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
     if (typeof errorMessage === 'object') {
@@ -140,12 +160,22 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Customer <span class="text-red-500">*</span></label>
-                        <select   name="customer_id" v-model="form.customer_id"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
-                        <option value="" disabled>Select Customer</option>
-                            <option v-for="customer in customers" :key="customer.id"
-                                    :value="customer.id"> {{ customer.name }}</option>
-                        </select>
+                    <vSelect
+                        v-model="form.customer_id"
+                        :options="customers"
+                        label="name"
+                        :reduce="customer => customer.id"
+                        placeholder="Search or select customer"
+                        class="w-full text-black bg-white"
+                        @search="onCustomerSearch"
+                    >
+                        <template #no-options>
+                            <div class="px-3 py-2 text-gray-500">
+                                <span v-if="!customerSearchQuery">Type to search customer...</span>
+                                <span v-else>No customers found.</span>
+                            </div>
+                        </template>
+                    </vSelect>
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">Invoice (Optional)</label>
@@ -209,3 +239,18 @@ const submitForm = async () => {
     </div>
     </AuthenticatedLayout>
 </template>
+
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 50px;
+    border-radius: 0.75rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>

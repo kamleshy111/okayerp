@@ -14,7 +14,7 @@ class GstRateSeeder extends Seeder
     {
         $gstRates = [
             [
-                'name' => 'GST 0% (Exempt)',
+                'name' => 'GST 0%',
                 'rate' => 0.00,
                 'cgst' => 0.00,
                 'sgst' => 0.00,

@@ -1,13 +1,15 @@
 <script setup>
 import { ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head ,usePage} from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 import axios from 'axios';
+import vSelect from "vue3-select";
+import "vue3-select/dist/vue3-select.css";
 
-
-const { suppliers } = usePage().props;
+const suppliers = ref([]);
+const supplierSearchQuery = ref("");
 
 const form = ref({
     supplier_id: "",
@@ -17,6 +19,20 @@ const form = ref({
     note: "",
 });
 
+const onSupplierSearch = async (search, loading) => {
+  supplierSearchQuery.value = search;
+  if (!search.trim()) {
+    suppliers.value = [];
+    return;
+  }
+  try {
+    const response = await axios.get(`/supplier/search?query=${encodeURIComponent(search)}`);
+    suppliers.value = response.data;
+  } catch (error) {
+    console.error("Error fetching suppliers:", error);
+  }
+};
+
 // Submit the form data
 const submitForm = async () => {
   try {
@@ -25,12 +41,14 @@ const submitForm = async () => {
 
     // Reset the form
     form.value = {
-      customer_id: "",
+      supplier_id: "",
       amount: "",
       payment_date: "",
       payment_method: "",
       note: "",
     };
+    suppliers.value = [];
+    supplierSearchQuery.value = "";
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
     toast.error(errorMessage);
@@ -53,12 +71,22 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Supplier <span class="text-red-500">*</span></label>
-                        <select   name="supplier_id" v-model="form.supplier_id"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
-                        <option value="" disabled>Select Supplier</option>
-                            <option v-for="supplier in suppliers" :key="supplier.id"
-                                    :value="supplier.id"> {{ supplier.name }}</option>
-                        </select>
+                    <vSelect
+                        v-model="form.supplier_id"
+                        :options="suppliers"
+                        label="name"
+                        :reduce="supplier => supplier.name"
+                        placeholder="Search or select supplier"
+                        class="w-full text-black bg-white"
+                        @search="onSupplierSearch"
+                    >
+                        <template #no-options>
+                            <div class="px-3 py-2 text-gray-500">
+                                <span v-if="!supplierSearchQuery">Type to search supplier...</span>
+                                <span v-else>No suppliers found.</span>
+                            </div>
+                        </template>
+                    </vSelect>
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">Amount <span class="text-red-500">*</span></label>
@@ -90,7 +118,7 @@ const submitForm = async () => {
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
-           
+
                 <div>
                     <label class="block text-black font-medium mb-2">Note</label>
                     <input type="note" name="note" v-model="form.note"
@@ -106,3 +134,19 @@ const submitForm = async () => {
     </div>
     </AuthenticatedLayout>
 </template>
+
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 50px;
+    border-radius: 0.75rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>
+
