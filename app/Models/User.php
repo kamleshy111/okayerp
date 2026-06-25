@@ -32,6 +32,13 @@ class User extends Authenticatable
         'ifsc_code',
         'branch_name',
         'gstin',
+        'city',
+        'district',
+        'state',
+        'country',
+        'pin_code',
+        'pan_number',
+        'cin_number',
     ];
 
     /**

@@ -21,6 +21,13 @@ const form = ref({
     ifsc_code: storesDetail.ifsc_code || "",
     branch_name: storesDetail.branch_name || "",
     gstin: storesDetail.gstin || "",
+    city: storesDetail.city || "",
+    district: storesDetail.district || "",
+    state: storesDetail.state || "",
+    country: storesDetail.country || "",
+    pin_code: storesDetail.pin_code || "",
+    pan_number: storesDetail.pan_number || "",
+    cin_number: storesDetail.cin_number || "",
 });
 
 // preview state
@@ -50,6 +57,13 @@ const submitForm = async () => {
         formData.append('ifsc_code', form.value.ifsc_code || '');
         formData.append('branch_name', form.value.branch_name || '');
         formData.append('gstin', form.value.gstin || '');
+        formData.append('city', form.value.city || '');
+        formData.append('district', form.value.district || '');
+        formData.append('state', form.value.state || '');
+        formData.append('country', form.value.country || '');
+        formData.append('pin_code', form.value.pin_code || '');
+        formData.append('pan_number', form.value.pan_number || '');
+        formData.append('cin_number', form.value.cin_number || '');
 
         if (form.value.profile_photo) {
             formData.append('profile_photo', form.value.profile_photo);
@@ -109,6 +123,36 @@ const submitForm = async () => {
                         placeholder="Address" />
                 </div>
                 <div>
+                    <label class="block text-black font-medium mb-2">City</label>
+                    <input type="text" v-model="form.city" name="city"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="City" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">District</label>
+                    <input type="text" v-model="form.district" name="district"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="District" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">State</label>
+                    <input type="text" v-model="form.state" name="state"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="State" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Country</label>
+                    <input type="text" v-model="form.country" name="country"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Country" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">PIN Code</label>
+                    <input type="text" v-model="form.pin_code" name="pin_code"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="PIN Code" />
+                </div>
+                <div>
                     <label class="block text-black font-medium mb-2">Profile Photo</label>
                     <input type="file" accept="image/*"  @change="handleFileUpload" class="w-full px-4 py-3 bg-white text-black border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"/>
                 </div>
@@ -155,12 +199,24 @@ const submitForm = async () => {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-7">
                     <div>
                         <label class="block text-black font-medium mb-2">GSTIN</label>
                         <input type="text" name="gstin" v-model="form.gstin"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Enter GSTIN" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">PAN Number</label>
+                        <input type="text" name="pan_number" v-model="form.pan_number"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter PAN Number" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">CIN Number</label>
+                        <input type="text" name="cin_number" v-model="form.cin_number"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter CIN Number" />
                     </div>
                 </div>
             </div>
