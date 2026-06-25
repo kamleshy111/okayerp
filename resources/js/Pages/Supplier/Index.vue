@@ -42,12 +42,13 @@ const columns = [
     {
       data: null,
       render: function (data) {
-        const amount = data.due_amount || data.advance_amount || 0;
+        const amount = parseFloat(data.due_amount || data.advance_amount || 0);
         const status = data.status;
+        const formattedAmount = (amount % 1 !== 0) ? amount.toFixed(2) : amount.toString();
         if (status === 'due') {
-          return `<span style="color:red">- ₹${amount}</span>`;
+          return `<span style="color:red">- ₹${formattedAmount}</span>`;
         } else if (status === 'advance') {
-          return `<span style="color:green">+ ₹${amount}</span>`;
+          return `<span style="color:green">+ ₹${formattedAmount}</span>`;
         } else {
           return `<span style="color:green">₹0</span>`;
         }

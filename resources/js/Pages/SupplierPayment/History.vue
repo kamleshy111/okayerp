@@ -43,12 +43,12 @@ const netAmount = computed(() => {
 
 // Column definitions for DataTable
 const columns = [
-    { 
+    {
       data: null,
       title: 'S No',
       render: (data, type, row, meta) => meta.row + 1,
     },
-    { 
+    {
       data: 'source',
       title: 'Source',
       render: function(data) {
@@ -63,7 +63,7 @@ const columns = [
         }
       }
     },
-    { 
+    {
       data: 'amount',
       title: 'Amount',
       render: function(data) {
@@ -75,14 +75,14 @@ const columns = [
         }
       }
     },
-    {  
+    {
       data: 'payment_date',
       title: 'Payment Date',
       render: function(data) {
           return formatDate(data);
       }
     },
-    { 
+    {
       data: 'payment_method',
       title: 'Payment Method'
     }
@@ -109,7 +109,7 @@ const columns = [
               </div>
 
               <div class="flex items-center gap-3">
-                <a 
+                <a
                   :href="`/paymentSupplier/${supplier.id}/history/download-pdf`"
                   target="_blank"
                   class="flex items-center justify-center gap-2 px-4 py-2 bg-[#2e2c92] hover:bg-[#1f1d6b] text-white rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200"
@@ -126,7 +126,7 @@ const columns = [
                 <!-- Decorative absolute shapes -->
                 <div class="absolute -right-10 -bottom-10 w-40 h-40 bg-white opacity-10 rounded-full"></div>
                 <div class="absolute -right-4 -top-4 w-24 h-24 bg-white opacity-5 rounded-full"></div>
-                
+
                 <div>
                   <div class="flex items-center gap-4 mb-4">
                     <div class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center text-xl font-bold border border-white/30 shadow-inner">
@@ -137,7 +137,7 @@ const columns = [
                       <span class="text-sm text-indigo-100 font-medium">Supplier Profile</span>
                     </div>
                   </div>
-                  
+
                   <div class="space-y-2.5 text-sm">
                     <div class="flex items-center gap-2 text-indigo-100">
                       <i class="fa fa-envelope w-5 opacity-85"></i>
@@ -154,7 +154,7 @@ const columns = [
               <!-- Stats Summary Card 1 (Net Transactions) -->
               <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 flex flex-col justify-between">
                 <div class="flex items-center justify-between mb-4">
-                  <span class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Net Amount</span>
+                  <span class="text-sm font-semibold text-gray-500 uppercase tracking-wider">Paid Amount</span>
                   <div class="w-10 h-10 rounded-lg bg-indigo-50 flex items-center justify-center text-[#2e2c92] border border-indigo-100">
                     <i class="fa fa-balance-scale"></i>
                   </div>
@@ -196,7 +196,7 @@ const columns = [
                   <p class="text-sm text-gray-500 mt-0.5">Chronological record of all supplier activities</p>
                 </div>
               </div>
-              
+
               <div class="overflow-x-auto">
                 <DataTable :data="history" :columns="columns" id="supplier-history-table" class="w-full text-sm text-left text-gray-600">
                     <thead class="bg-[#2e2c92] text-white main-head-table">

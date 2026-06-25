@@ -10,7 +10,7 @@ class Product extends Model
 {
     use Auditable;
 
-    protected $fillable = [ 'user_id', 'name', 'sku', 'hsn_code', 'price', 'category_id', 'unit_type', 'cgst', 'sgst', 'stock_quantity', 'description'];
+    protected $fillable = [ 'user_id', 'name', 'sku', 'hsn_code', 'price', 'category_id', 'unit_type', 'cgst', 'sgst', 'stock_quantity', 'description', 'image'];
 
     public function purchaseItems()
     {

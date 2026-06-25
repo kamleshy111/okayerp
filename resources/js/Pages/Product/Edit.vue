@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue3-toastify';
@@ -18,17 +18,129 @@ const form = ref({
     price: productDetail.price || '',
     category_id: productDetail.category_id,
     description: productDetail.description,
+    image: null,
+    remove_image: false,
 });
+
+const unitSearchQuery = ref("");
+const showUnitDropdown = ref(false);
+const imagePreview = ref(productDetail.image ? productDetail.image : null);
+const isDragging = ref(false);
+
+onMounted(() => {
+  if (form.value.unit_type && unitTypes[form.value.unit_type]) {
+    unitSearchQuery.value = unitTypes[form.value.unit_type];
+  }
+});
+
+const filteredUnitTypes = computed(() => {
+  const query = unitSearchQuery.value.toLowerCase().trim();
+  if (!query) {
+    return unitTypes;
+  }
+  const filtered = {};
+  for (const [key, label] of Object.entries(unitTypes)) {
+    if (label.toLowerCase().includes(query) || key.toLowerCase().includes(query)) {
+      filtered[key] = label;
+    }
+  }
+  return filtered;
+});
+
+const selectUnit = (key, label) => {
+  form.value.unit_type = key;
+  unitSearchQuery.value = label;
+  showUnitDropdown.value = false;
+};
+
+const closeUnitDropdownWithDelay = () => {
+  setTimeout(() => {
+    showUnitDropdown.value = false;
+    if (form.value.unit_type && unitTypes[form.value.unit_type]) {
+      unitSearchQuery.value = unitTypes[form.value.unit_type];
+    } else {
+      unitSearchQuery.value = "";
+    }
+  }, 200);
+};
+
+watch(() => form.value.unit_type, (newVal) => {
+  if (!newVal) {
+    unitSearchQuery.value = "";
+  } else if (unitTypes[newVal]) {
+    unitSearchQuery.value = unitTypes[newVal];
+  }
+});
+
+// Image Upload Handlers
+const handleFileSelect = (file) => {
+  if (file && file.type.startsWith('image/')) {
+    form.value.image = file;
+    form.value.remove_image = false;
+    imagePreview.value = URL.createObjectURL(file);
+  } else {
+    toast.error("Please upload a valid image file.");
+  }
+};
+
+const onFileChange = (e) => {
+  const file = e.target.files[0];
+  handleFileSelect(file);
+};
+
+const onDragOver = (e) => {
+  e.preventDefault();
+  isDragging.value = true;
+};
+
+const onDragLeave = () => {
+  isDragging.value = false;
+};
+
+const onDrop = (e) => {
+  e.preventDefault();
+  isDragging.value = false;
+  const file = e.dataTransfer.files[0];
+  handleFileSelect(file);
+};
+
+const removeImage = () => {
+  form.value.image = null;
+  form.value.remove_image = true;
+  imagePreview.value = null;
+};
 
 // Form submit handler
 const submitForm = async () => {
     try {
-        const response = await axios.post(`/product/update/${productDetail.id}`, form.value);
+        const formData = new FormData();
+        for (const [key, value] of Object.entries(form.value)) {
+            if (value !== null && value !== undefined) {
+                formData.append(key, value);
+            }
+        }
+
+        const response = await axios.post(`/product/update/${productDetail.id}`, formData, {
+            headers: {
+                'Content-Type': 'multipart/form-data'
+            }
+        });
         toast.success(response.data.message);
     } catch (error) {
         const errorMessage = error.response?.data?.message || 'An error occurred. Please try again.';
         toast.error(errorMessage);
     }
+};
+
+const getImageName = () => {
+  if (form.value.image) {
+    return form.value.image.name;
+  }
+  if (productDetail.image) {
+    const parts = productDetail.image.split('/');
+    return parts[parts.length - 1];
+  }
+  return 'Image Selected';
 };
 </script>
 <template>
@@ -63,20 +175,7 @@ const submitForm = async () => {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
-                    <div>
-                        <label class="block text-black font-medium mb-2">SGST (%)</label>
-                        <input type="number" name="sgst" v-model="form.sgst"
-                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                            placeholder="SGST (%)" />
-                    </div>
-                    <div>
-                        <label class="block text-black font-medium mb-2">CGST (%)</label>
-                        <input type="number" name="cgst" v-model="form.cgst"
-                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                            placeholder="CGST (%)" />
-                    </div>
-                </div>
+
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                     <div>
@@ -85,15 +184,39 @@ const submitForm = async () => {
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Enter HSN/SAC code" />
                     </div>
-                    <div>
+                    <div class="relative">
                         <label class="block text-black font-medium mb-2">Unit Type</label>
-                        <select name="unit_type" v-model="form.unit_type"
-                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
-                            <option value="" disabled>Select Unit</option>
-                            <option v-for="(label, value) in unitTypes" :key="value" :value="value">
+                        <div class="relative">
+                            <input 
+                                type="text" 
+                                v-model="unitSearchQuery" 
+                                @focus="showUnitDropdown = true"
+                                @blur="closeUnitDropdownWithDelay"
+                                class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                                placeholder="Search & select unit..." 
+                            />
+                            <span class="absolute right-4 top-1/2 transform -translate-y-1/2 pointer-events-none text-gray-500">
+                                <i class="bi bi-chevron-down"></i>
+                            </span>
+                        </div>
+
+                        <!-- Dropdown List -->
+                        <div 
+                            v-if="showUnitDropdown" 
+                            class="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg max-h-60 overflow-y-auto"
+                        >
+                            <div 
+                                v-for="(label, key) in filteredUnitTypes" 
+                                :key="key"
+                                @mousedown="selectUnit(key, label)"
+                                class="px-4 py-2.5 hover:bg-gray-100 cursor-pointer text-black transition-colors"
+                            >
                                 {{ label }}
-                            </option>
-                        </select>
+                            </div>
+                            <div v-if="Object.keys(filteredUnitTypes).length === 0" class="px-4 py-3 text-gray-500 text-sm text-center">
+                                No units found
+                            </div>
+                        </div>
                     </div>
                 </div>
 
@@ -101,7 +224,53 @@ const submitForm = async () => {
                     <label class="block text-black font-medium mb-2">Description</label>
                     <textarea name="description" v-model="form.description" rows="3"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="description"></textarea>
+                        placeholder="Description"></textarea>
+                </div>
+
+                <div class="mt-7">
+                    <label class="block text-black font-medium mb-2">Product Image</label>
+                    <div 
+                        @dragover="onDragOver" 
+                        @dragleave="onDragLeave" 
+                        @drop="onDrop"
+                        :class="[
+                            'border-2 border-dashed rounded-xl h-[180px] flex flex-col items-center justify-center p-4 text-center transition-all relative',
+                            isDragging ? 'border-[#292688] bg-slate-50' : 'border-gray-300 hover:border-[#292688]'
+                        ]"
+                    >
+                        <input 
+                            type="file" 
+                            @change="onFileChange" 
+                            accept="image/*" 
+                            class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" 
+                        />
+                        
+                        <div v-if="!imagePreview" class="space-y-2 pointer-events-none">
+                            <i class="bi bi-cloud-arrow-up text-3xl text-gray-400"></i>
+                            <p class="text-sm text-gray-600 font-medium">
+                                Drag and drop image here, or <span class="text-[#292688] font-bold">browse</span>
+                            </p>
+                            <p class="text-xs text-gray-400">Supports JPG, PNG, GIF, WEBP (Max 2MB)</p>
+                        </div>
+                        
+                        <div v-else class="w-full h-full flex items-center justify-between bg-slate-50 rounded-lg p-2 border border-gray-200 z-20">
+                            <div class="flex items-center gap-3 overflow-hidden">
+                                <img :src="imagePreview" class="w-16 h-16 object-cover rounded-lg border border-gray-200" alt="Preview" />
+                                <div class="text-left overflow-hidden">
+                                    <p class="text-sm font-semibold text-gray-800 truncate" style="max-width: 180px;">
+                                        {{ getImageName() }}
+                                    </p>
+                                </div>
+                            </div>
+                            <button 
+                                @click.prevent="removeImage" 
+                                type="button" 
+                                class="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-2 rounded-full transition cursor-pointer"
+                            >
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
+                    </div>
                 </div>
 
                 <div class="pt-4">

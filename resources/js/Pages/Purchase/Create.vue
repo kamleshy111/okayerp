@@ -28,6 +28,12 @@ const form = ref({
     supplier_id: "",
     invoice_no: "",
     purchase_date: new Date().toISOString().substring(0, 10),
+    received_date: new Date().toISOString().substring(0, 10),
+    delivery_mode: 'By Hand',
+    delivery_person_name: '',
+    delivery_person_phone: '',
+    vehicle_type: '',
+    vehicle_number: '',
     transport: 0,
     grand_total: "",
     GstAmount: "",
@@ -230,7 +236,7 @@ const totalAmount = computed(() => {
         const price = parseFloat(item.price) || 0;
         const baseAmount = quantity * price;
         return sum + baseAmount;
-        
+
     }, 0);
 });
 
@@ -353,6 +359,12 @@ const submitForm = async () => {
       supplier_id: "",
       invoice_no: "",
       purchase_date: new Date().toISOString().substring(0, 10),
+      received_date: new Date().toISOString().substring(0, 10),
+      delivery_mode: 'By Hand',
+      delivery_person_name: '',
+      delivery_person_phone: '',
+      vehicle_type: '',
+      vehicle_number: '',
       transport: 0,
       grand_total: "",
       GstAmount: "",
@@ -391,7 +403,7 @@ const submitForm = async () => {
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Add Purchase</h2>
         <div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Supplier</label>
                         <vSelect
@@ -413,7 +425,7 @@ const submitForm = async () => {
                                         >
                                             ➕ Add New Supplier
                                         </button>
-                                        
+
                                     </div>
                                 </template>
 
@@ -423,7 +435,7 @@ const submitForm = async () => {
                                         No results found.
                                         <button
                                          @click.stop="openSupplierModalWithName(searchText)"
-                                           
+
                                             class="mt-2 text-blue-600 hover:underline text-sm"
                                         >
                                             ➕ Add "<strong>{{ searchText }}</strong>" as Supplier
@@ -442,8 +454,14 @@ const submitForm = async () => {
                 </div>
 
                 <div>
-                    <label class="block text-black font-medium mb-2">Purchase Date</label>
+                    <label class="block text-black font-medium mb-2">Invoice Date</label>
                     <input type="date" name="purchase_date" v-model="form.purchase_date"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
+                </div>
+
+                <div>
+                    <label class="block text-black font-medium mb-2">Received Date</label>
+                    <input type="date" name="received_date" v-model="form.received_date"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
             </div>
@@ -453,6 +471,37 @@ const submitForm = async () => {
                 <p><strong>Phone:</strong> {{ selectedSupplier.phone }}</p>
                 <p><strong>Email:</strong> {{ selectedSupplier.email }}</p>
                 <p><strong>Address:</strong> {{ selectedSupplier.address }}</p>
+                </div>
+                <div v-else></div>
+
+                <div class="mt-4 p-4 border rounded bg-gray-50">
+                    <label class="block text-black font-medium mb-2">Delivery Mode</label>
+                    <select v-model="form.delivery_mode" class="w-full px-4 py-3 mb-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] outline-none transition">
+                        <option value="By Hand">By Hand</option>
+                        <option value="Vehicle">Vehicle</option>
+                    </select>
+
+                    <div v-if="form.delivery_mode === 'Vehicle'" class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Transpoter Name</label>
+                            <input type="text" v-model="form.vehicle_type" placeholder="e.g. Transpoter Name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Vehicle Number</label>
+                            <input type="text" v-model="form.vehicle_number" placeholder="e.g. MH 01 AB 1234" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Delivery Person Name</label>
+                            <input type="text" v-model="form.delivery_person_name" placeholder="Name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Delivery Person Phone</label>
+                            <input type="text" v-model="form.delivery_person_phone" placeholder="Phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -531,7 +580,7 @@ const submitForm = async () => {
                             <i class="fa fa-trash"></i> Remove
                         </button>
                     </div>
-                    
+
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Product</label>
@@ -544,7 +593,7 @@ const submitForm = async () => {
                                 class="w-full text-black bg-white"
                             />
                         </div>
-                        
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
@@ -592,8 +641,8 @@ const submitForm = async () => {
     </div>
 
     <!-- Add Supplier Modal -->
-    <div v-if="showSupplierModal" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="showSupplierModal"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 99999;"
          @click.self="showSupplierModal = false">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
@@ -676,7 +725,7 @@ const submitForm = async () => {
         </div>
     </div>
     <!-- Payment Modal -->
-    <div v-if="showPaymentModal" 
+    <div v-if="showPaymentModal"
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
@@ -686,7 +735,7 @@ const submitForm = async () => {
                     <i class="fa fa-close"></i>
                 </button>
             </div>
-            
+
             <div class="space-y-4 border-t pt-4">
 
                 <div class="flex justify-between items-center">
@@ -739,7 +788,7 @@ const submitForm = async () => {
                 </div>
 
                 <!-- Previous Balances -->
-                <div v-if="supplierData?.advance_amount && supplierData.advance_amount !== '0.00' && supplierData.advance_amount !== 0 && supplierData.advance_amount !== '0'" 
+                <div v-if="supplierData?.advance_amount && supplierData.advance_amount !== '0.00' && supplierData.advance_amount !== 0 && supplierData.advance_amount !== '0'"
                     class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Previous Advance</span>
                     <span class="text-green-600 font-bold">₹ {{ supplierData.advance_amount }}</span>
@@ -794,3 +843,17 @@ const submitForm = async () => {
     </div>
     </AuthenticatedLayout>
 </template>
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 50px;
+    border-radius: 0.75rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>

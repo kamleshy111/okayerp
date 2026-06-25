@@ -99,6 +99,12 @@ class PurchasesController extends Controller
                 'paid'  => $request->input('paid') ?? 0.00,
                 'payment_method' => $request->input('payment_method') ?? "",
                 'payment_status' => $request->input('payment_status') ?? "Unpaid",
+                'received_date' => $request->input('received_date'),
+                'delivery_mode' => $request->input('delivery_mode'),
+                'delivery_person_name' => $request->input('delivery_person_name'),
+                'delivery_person_phone' => $request->input('delivery_person_phone'),
+                'vehicle_type' => $request->input('vehicle_type'),
+                'vehicle_number' => $request->input('vehicle_number'),
             ]);
 
             // 2. Insert purchase items and update stock quantity
@@ -318,6 +324,12 @@ class PurchasesController extends Controller
                     'paid'  => $request->input('paid') ?? 0.00,
                     'payment_method' => $request->input('payment_method') ?? "",
                     'payment_status' => $request->input('payment_status') ?? "Unpaid",
+                    'received_date' => $request->input('received_date'),
+                    'delivery_mode' => $request->input('delivery_mode'),
+                    'delivery_person_name' => $request->input('delivery_person_name'),
+                    'delivery_person_phone' => $request->input('delivery_person_phone'),
+                    'vehicle_type' => $request->input('vehicle_type'),
+                    'vehicle_number' => $request->input('vehicle_number'),
                 ]);
 
                 //PurchaseItem old get and product in update quantity
