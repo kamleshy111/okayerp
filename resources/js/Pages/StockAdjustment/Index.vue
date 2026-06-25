@@ -79,17 +79,17 @@ watch(filterProductId, (newVal) => {
 </script>
 
 <template>
-    <Head title="Inventory Audit Logs">
+    <Head title="Stock Adjustments">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     </Head>  
 
     <AuthenticatedLayout>
       <div class="p-6">
         <div class="flex items-center justify-between mb-6">
-          <h1 class="text-3xl font-bold text-[#2e2c92]">Inventory Audit Ledger</h1>
+          <h1 class="text-3xl font-bold text-[#2e2c92]">Stock Adjustments</h1>
           <div class="flex items-center gap-4">
             <a :href="route('stock-adjustment.create')" class="hover:bg-[#2e2c92] hover:text-white border border-[#2e2c92] text-[#2e2c92] px-4 py-2 rounded-lg font-medium transition duration-200">
-                <span>➕ Adjust Stock</span>
+                <span>➕ Add</span>
             </a>
           </div>
         </div>
