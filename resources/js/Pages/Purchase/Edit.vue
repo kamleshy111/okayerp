@@ -12,7 +12,8 @@ import "vue3-select/dist/vue3-select.css";
 const props = defineProps({
   suppliers: {
     type: Array,
-    required: true,
+    required: false,
+    default: () => [],
   },
   products: {
     type: Array,
@@ -32,16 +33,43 @@ const props = defineProps({
   },
 });
 
-const suppliers = props.suppliers;
+const suppliers = ref([...props.suppliers]);
 const products = props.products;
 const productItems = props.productItems;
 const purchases = props.purchases;
+
+const supplierSearchQuery = ref("");
+const onSupplierSearch = async (search, loading) => {
+  supplierSearchQuery.value = search;
+  if (!search.trim()) {
+    suppliers.value = [...props.suppliers];
+    return;
+  }
+  try {
+    const response = await axios.get(`/supplier/search?query=${encodeURIComponent(search)}`);
+    suppliers.value = response.data;
+
+    // Ensure selected supplier is always in options list
+    const selected = props.suppliers.find(s => s.id == form.value.supplier_id) || suppliers.value.find(s => s.id == form.value.supplier_id);
+    if (selected && !suppliers.value.some(s => s.id == selected.id)) {
+      suppliers.value.unshift(selected);
+    }
+  } catch (error) {
+    console.error("Error fetching suppliers:", error);
+  }
+};
 
 const form = ref({
     id: purchases.id,
     supplier_id: purchases.supplier_id,
     invoice_no: purchases.invoice_no || '',
     purchase_date: purchases.purchase_date || '',
+    received_date: purchases.received_date || '',
+    delivery_mode: purchases.delivery_mode || 'By Hand',
+    delivery_person_name: purchases.delivery_person_name || '',
+    delivery_person_phone: purchases.delivery_person_phone || '',
+    vehicle_type: purchases.vehicle_type || '',
+    vehicle_number: purchases.vehicle_number || '',
     transport: purchases.transport_amount,
     grand_total: "",
     GstAmount: "",
@@ -61,10 +89,8 @@ const form = ref({
 const selectedSupplier = ref(null);
 
 watchEffect(() => {
-  if (form.value.supplier_id && suppliers.length > 0) {
-    selectedSupplier.value = suppliers.find(s => s.id == form.value.supplier_id) || null;
-
-    console.log(selectedSupplier.value.id);
+  if (form.value.supplier_id && suppliers.value.length > 0) {
+    selectedSupplier.value = suppliers.value.find(s => s.id == form.value.supplier_id) || null;
   }
 });
 
@@ -144,7 +170,7 @@ const totalAmount = computed(() => {
         const price = parseFloat(item.price) || 0;
         const baseAmount = quantity * price;
         return sum + baseAmount;
-        
+
     }, 0);
 });
 
@@ -168,15 +194,15 @@ const dueAmount = computed(() => {
 
 const supplierBalanceExcludingCurrentPurchase = computed(() => {
   if (!supplierData.value) return 0;
-  
+
   const currentAdvance = parseFloat(supplierData.value.advance_amount) || 0;
   const currentDue = parseFloat(supplierData.value.due_amount) || 0;
   const currentNet = currentAdvance - currentDue;
-  
+
   const originalPaid = parseFloat(props.purchases.paid) || 0;
   const originalGrandTotal = parseFloat(props.purchases.grand_total) || 0;
   const originalNet = originalPaid - originalGrandTotal;
-  
+
   return currentNet - originalNet;
 });
 
@@ -195,9 +221,9 @@ const finalBalance = computed(() => {
   const prevNet = supplierBalanceExcludingCurrentPurchase.value;
   const paidNow = parseFloat(form.value.paid) || 0;
   const currentNet = paidNow - grandTotal.value;
-  
+
   const finalNet = prevNet + currentNet;
-  
+
   if (finalNet > 0) {
     return { type: 'advance', amount: finalNet };
   } else if (finalNet < 0) {
@@ -296,7 +322,7 @@ const submitForm = async () => {
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Update Purchase</h2>
         <div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Supplier</label>
                     <vSelect
@@ -306,7 +332,15 @@ const submitForm = async () => {
                         :reduce="supplier => supplier.id"
                         placeholder="Search or select supplier"
                         class="w-full"
-                    />
+                        @search="onSupplierSearch"
+                    >
+                        <template #no-options>
+                            <div class="px-3 py-2 text-gray-500">
+                                <span v-if="!supplierSearchQuery">Type to search supplier...</span>
+                                <span v-else>No suppliers found.</span>
+                            </div>
+                        </template>
+                    </vSelect>
                 </div>
 
                 <div>
@@ -317,8 +351,14 @@ const submitForm = async () => {
                 </div>
 
                 <div>
-                    <label class="block text-black font-medium mb-2">Purchase Date</label>
+                    <label class="block text-black font-medium mb-2">Invoice Date</label>
                     <input type="date" name="purchase_date" v-model="form.purchase_date"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
+                </div>
+
+                <div>
+                    <label class="block text-black font-medium mb-2">Received Date</label>
+                    <input type="date" name="received_date" v-model="form.received_date"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
             </div>
@@ -328,6 +368,37 @@ const submitForm = async () => {
                 <p><strong>Name:</strong> {{ selectedSupplier.name }}</p>
                 <p><strong>Phone:</strong> {{ selectedSupplier.phone }}</p>
                 <p><strong>Address:</strong> {{ selectedSupplier.address }}</p>
+                </div>
+                <div v-else></div>
+
+                <div class="mt-4 p-4 border rounded bg-gray-50">
+                    <label class="block text-black font-medium mb-2">Delivery Mode</label>
+                    <select v-model="form.delivery_mode" class="w-full px-4 py-3 mb-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] outline-none transition">
+                        <option value="By Hand">By Hand</option>
+                        <option value="Vehicle">Vehicle</option>
+                    </select>
+
+                    <div v-if="form.delivery_mode === 'Vehicle'" class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Transpoter Name</label>
+                            <input type="text" v-model="form.vehicle_type" placeholder="e.g. Transpoter Name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Vehicle Number</label>
+                            <input type="text" v-model="form.vehicle_number" placeholder="e.g. MH 01 AB 1234" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Delivery Person Name</label>
+                            <input type="text" v-model="form.delivery_person_name" placeholder="Name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-500 mb-1">Delivery Person Phone</label>
+                            <input type="text" v-model="form.delivery_person_phone" placeholder="Phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -466,7 +537,7 @@ const submitForm = async () => {
         </div>
     </div>
     <!-- Payment Modal -->
-    <div v-if="showPaymentModal" 
+    <div v-if="showPaymentModal"
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
@@ -476,7 +547,7 @@ const submitForm = async () => {
                     <i class="fa fa-close"></i>
                 </button>
             </div>
-            
+
             <div class="space-y-4 border-t pt-4">
 
                 <div class="flex justify-between items-center">
@@ -565,7 +636,7 @@ const submitForm = async () => {
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Final Due</span>
                     <span class="text-red-600 font-bold">₹ {{ finalBalance.amount.toFixed(2) }}</span>
-                </div> 
+                </div>
 
                 <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center pb-4 border-b border-gray-100">
                     <span class="text-gray-700 font-semibold">Final Balance</span>
@@ -587,3 +658,17 @@ const submitForm = async () => {
     </div>
     </AuthenticatedLayout>
 </template>
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 50px;
+    border-radius: 0.75rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>

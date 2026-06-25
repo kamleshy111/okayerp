@@ -133,6 +133,17 @@ const columns = [
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
     },
+    {
+    data: 'image',
+    title: 'Image',
+    orderable: false,
+    searchable: false,
+    render: (data) => {
+        return data 
+            ? `<img src="${data}" class="w-10 h-10 object-cover rounded-lg border border-gray-200" alt="Product Image" />`
+            : `<div class="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400"><i class="fa fa-image text-lg"></i></div>`;
+    }
+    },
     { data: 'name' },
     { data: 'sku'},
     { data: 'categoryName' ?? '---'},
@@ -221,6 +232,7 @@ function deleteProduct(productId) {
               <thead class="bg-[#2e2c92] text-white main-head-table">
                   <tr>
                       <th scope="col">S No</th>
+                      <th scope="col">Image</th>
                       <th scope="col">Name</th>
                       <th scope="col">Sku</th>
                       <th scope="col">Category Name</th>

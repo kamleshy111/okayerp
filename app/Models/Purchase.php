@@ -11,7 +11,7 @@ class Purchase extends Model
     use Auditable;
 
     protected $fillable = ['supplier_id', 'invoice_no', 'purchase_date', 'transport_amount', 'gst_amount', 'accepted', 'total_amount', 'grand_total',
-                            'paid', 'payment_method', 'payment_status'];
+                            'paid', 'payment_method', 'payment_status', 'received_date', 'delivery_mode', 'delivery_person_name', 'delivery_person_phone', 'vehicle_type', 'vehicle_number'];
 
 
     public function items()

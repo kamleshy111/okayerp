@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Category;
+use Illuminate\Support\Facades\Storage;
 
 class ProductController extends Controller
 {
@@ -30,6 +31,7 @@ class ProductController extends Controller
                 'stockQuantity' => $item->stock_quantity ?? '',
                 'categoryName' => $item->categoryName ?? '----',
                 'unit_type' => $item->unit_type,
+                'image' => $item->image ? '/storage/' . $item->image : null,
             ];
 
         });
@@ -57,9 +59,12 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
-         
             'name.required' => 'Name is required.',
+            'image.image' => 'The file must be an image.',
+            'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
+            'image.max' => 'The image size must not exceed 2MB.',
         ]);
 
         if (!$validated) {
@@ -71,6 +76,13 @@ class ProductController extends Controller
         do {
             $sku = rand(10000, 99999);
         } while (Product::where('user_id', Auth::id())->where('sku', $sku)->exists());
+
+        $imagePath = null;
+        if ($request->hasFile('image')) {
+            $file = $request->file('image');
+            $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+            $imagePath = $file->storeAs('uploads/product', $filename, 'public');
+        }
 
         // Create a new Product
         $product = Product::create([
@@ -84,6 +96,7 @@ class ProductController extends Controller
             'price' => $request->input('price') ?? 0.00,
             'sku' => $sku,
             'description' => $request->input('description'),
+            'image' => $imagePath,
         ]);
 
         $product->message = 'Product added successfully!';
@@ -113,6 +126,7 @@ class ProductController extends Controller
             'price' => $data->price ?? 0.00,
             'category_id' => $data->category_id ?? '',
             'description' => $data->description ?? '',
+            'image' => $data->image ? '/storage/' . $data->image : null,
         ];
 
         return Inertia::render('Product/Edit',[
@@ -126,9 +140,12 @@ class ProductController extends Controller
 
         $validated = $request->validate([
             'name' => 'required',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
-         
             'name.required' => 'Name is required.',
+            'image.image' => 'The file must be an image.',
+            'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
+            'image.max' => 'The image size must not exceed 2MB.',
         ]);
 
         if (!$validated) {
@@ -145,6 +162,22 @@ class ProductController extends Controller
             $product->price = $request->input("price") ?? 0.00;
             $product->category_id = $request->input("category_id");
             $product->description = $request->input("description");
+
+            if ($request->input('remove_image') === 'true' || $request->input('remove_image') === true) {
+                if ($product->image && Storage::disk('public')->exists($product->image)) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                $product->image = null;
+            } elseif ($request->hasFile('image')) {
+                // Delete old image if exists
+                if ($product->image && Storage::disk('public')->exists($product->image)) {
+                    Storage::disk('public')->delete($product->image);
+                }
+                $file = $request->file('image');
+                $filename = time() . '_' . uniqid() . '.' . $file->getClientOriginalExtension();
+                $product->image = $file->storeAs('uploads/product', $filename, 'public');
+            }
+
             $product->save();
 
             return response()->json(['message' => 'Product updated successfully.']);

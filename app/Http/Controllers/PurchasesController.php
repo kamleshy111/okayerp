@@ -41,7 +41,7 @@ class PurchasesController extends Controller
                 'payment_status' => $item->payment_status,
             ];
         });
-                    
+
 
         $products = Product::where('user_id', $userId)->get();
         $suppliers = Supplier::where('user_id', $userId)->get();
@@ -58,9 +58,7 @@ class PurchasesController extends Controller
         $userId = Auth::id();
 
         $products = Product::where('user_id', $userId)->get();
-        $suppliers = Supplier::where('user_id', $userId)->get();
         return Inertia::render('Purchase/Create',[
-            'suppliers' => $suppliers,
             'products' => $products,
         ]);
     }
@@ -71,7 +69,7 @@ class PurchasesController extends Controller
         $validated = $request->validate([
             'supplier_id' => 'required',
             'purchase_items.*.product_id' => 'required',
-     
+
         ], [
             'supplier_id.required' => 'Supplier name is required.',
             'purchase_items.*.product_id.required' => 'Product is required.',
@@ -99,6 +97,12 @@ class PurchasesController extends Controller
                 'paid'  => $request->input('paid') ?? 0.00,
                 'payment_method' => $request->input('payment_method') ?? "",
                 'payment_status' => $request->input('payment_status') ?? "Unpaid",
+                'received_date' => $request->input('received_date'),
+                'delivery_mode' => $request->input('delivery_mode'),
+                'delivery_person_name' => $request->input('delivery_person_name'),
+                'delivery_person_phone' => $request->input('delivery_person_phone'),
+                'vehicle_type' => $request->input('vehicle_type'),
+                'vehicle_number' => $request->input('vehicle_number'),
             ]);
 
             // 2. Insert purchase items and update stock quantity
@@ -180,9 +184,9 @@ class PurchasesController extends Controller
         $totalDirectPaid = $paymentQuery->sum('amount');
 
         $totalReceived = $totalPurchasePaid + $totalDirectPaid;
-    
+
         $balance = $totalReceived - $totalPurchaseAmount;
-    
+
         return response()->json([
             'supplier_id' => $id,
             'due_amount' => $balance < 0 ? abs($balance) : 0,
@@ -260,7 +264,8 @@ class PurchasesController extends Controller
         $userId = Auth::id();
 
         $products = Product::where('user_id', $userId)->get();
-        $suppliers = Supplier::where('user_id', $userId)->get();
+        $supplier = Supplier::find($purchases->supplier_id);
+        $suppliers = $supplier ? [$supplier] : [];
 
         return Inertia::render('Purchase/Edit',[
             'products' => $products,
@@ -275,7 +280,7 @@ class PurchasesController extends Controller
 
         $validated = $request->validate([
             'supplier_id' => 'required',
-     
+
         ], [
             'supplier_id.required' => 'Supplier name is required.',
         ]);
@@ -294,7 +299,7 @@ class PurchasesController extends Controller
         if (!$purchaseExists) {
             return response()->json(['message' => 'Purchase not found or unauthorized access.'], 403);
         }
-        
+
         try {
 
             DB::transaction(function () use ($request, $id, $userId) {
@@ -318,6 +323,12 @@ class PurchasesController extends Controller
                     'paid'  => $request->input('paid') ?? 0.00,
                     'payment_method' => $request->input('payment_method') ?? "",
                     'payment_status' => $request->input('payment_status') ?? "Unpaid",
+                    'received_date' => $request->input('received_date'),
+                    'delivery_mode' => $request->input('delivery_mode'),
+                    'delivery_person_name' => $request->input('delivery_person_name'),
+                    'delivery_person_phone' => $request->input('delivery_person_phone'),
+                    'vehicle_type' => $request->input('vehicle_type'),
+                    'vehicle_number' => $request->input('vehicle_number'),
                 ]);
 
                 //PurchaseItem old get and product in update quantity
@@ -432,9 +443,9 @@ class PurchasesController extends Controller
         if (!$purchase) {
             return response()->json(['message' => 'Purchase not found or unauthorized access.'], 404);
         }
-    
+
         DB::beginTransaction();
-    
+
         try {
 
             PurchaseItem::where('purchase_id', $id)->delete();
@@ -449,15 +460,15 @@ class PurchasesController extends Controller
             }
 
             $purchase->delete();
-    
+
             $accountingService->clearEntries('Purchase', $id);
 
             DB::commit();
-    
+
             return response()->json(['message' => 'Purchase deleted successfully.'], 200);
         } catch (\Exception $e) {
             DB::rollBack();
-    
+
             return response()->json(['message' => 'Failed to delete purchase.', 'error' => $e->getMessage()], 500);
         }
     }
