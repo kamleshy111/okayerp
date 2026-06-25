@@ -60,11 +60,13 @@ class PurchasesController extends Controller
         $products = Product::where('user_id', $userId)->get();
         $categories = \App\Models\Category::where('user_id', $userId)->select('id', 'name')->get();
         $unitTypes = config('units.types') ?? [];
+        $gstRates = \App\Models\GstRate::where('is_active', true)->get();
 
         return Inertia::render('Purchase/Create',[
             'products' => $products,
             'categories' => $categories,
             'unitTypes' => $unitTypes,
+            'gstRates' => $gstRates,
         ]);
     }
 
@@ -271,6 +273,7 @@ class PurchasesController extends Controller
         $products = Product::where('user_id', $userId)->get();
         $supplier = Supplier::find($purchases->supplier_id);
         $suppliers = $supplier ? [$supplier] : [];
+        $gstRates = \App\Models\GstRate::where('is_active', true)->get();
 
         return Inertia::render('Purchase/Edit',[
             'products' => $products,
@@ -278,6 +281,7 @@ class PurchasesController extends Controller
             'productItems' => $productItems,
             'purchases' => $purchases,
             'allocatedPayment' => $allocatedPayment,
+            'gstRates' => $gstRates,
         ]);
     }
 

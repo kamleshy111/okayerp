@@ -441,7 +441,7 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Customer</label>
+                    <label class="block text-black font-medium mb-2">Customer <span class="text-red-500">*</span></label>
                     <vSelect
                         v-model="form.customer_id"
                         :options="customers"
@@ -483,11 +483,11 @@ const submitForm = async () => {
             <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
                 <thead class="bg-[#292688] text-white">
                     <tr>
-                        <th class="px-4 py-2 text-left">Product</th>
+                        <th class="px-4 py-2 text-left">Product <span class="text-red-500">*</span></th>
                         <th class="px-4 py-2 text-left">GST</th>
-                        <th class="px-4 py-2 text-left">Quantity</th>
+                        <th class="px-4 py-2 text-left">Quantity <span class="text-red-500">*</span></th>
                         <th class="px-4 py-2 text-left">Unit Type</th>
-                        <th class="px-4 py-2 text-left">Price</th>
+                        <th class="px-4 py-2 text-left">Price <span class="text-red-500">*</span></th>
                         <th class="px-4 py-2 text-left">Net Amount</th>
                         <th class="px-4 py-2 text-left">Action</th>
                     </tr>
@@ -553,7 +553,7 @@ const submitForm = async () => {
 
                     <div class="space-y-3">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-500 mb-1">Product</label>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Product <span class="text-red-500">*</span></label>
                             <vSelect
                                 v-model="item.product_id"
                                 :options="products"
@@ -566,13 +566,13 @@ const submitForm = async () => {
 
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity <span class="text-red-500">*</span></label>
                                 <input type="number" v-model="item.quantity" required
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Qty" />
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 mb-1">Price</label>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Price <span class="text-red-500">*</span></label>
                                 <input type="number" v-model="item.price" required
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Price" />

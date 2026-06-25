@@ -19,6 +19,11 @@ class ProfileUpdateRequest extends FormRequest
             'name' => ['required', 'string', 'max:255'],
             'phone' => ['nullable', 'max:12'],
             'address' => ['nullable',],
+            'city' => ['nullable', 'string', 'max:255'],
+            'district' => ['nullable', 'string', 'max:255'],
+            'state' => ['nullable', 'string', 'max:255'],
+            'country' => ['nullable', 'string', 'max:255'],
+            'pin_code' => ['nullable', 'string', 'max:10'],
             'email' => [
                 'required',
                 'string',

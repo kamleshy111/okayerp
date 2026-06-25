@@ -22,6 +22,11 @@ const form = useForm({
     name: user.name,
     phone: user.phone,
     address: user.address,
+    city: user.city || '',
+    district: user.district || '',
+    state: user.state || '',
+    country: user.country || '',
+    pin_code: user.pin_code || '',
     email: user.email,
     profile_photo: null,
     ledger_pin: '',
@@ -47,7 +52,7 @@ const handleFileUpload = (event) => {
 </script>
 
 <template>
-    <section>
+    <section class="max-w-none mx-auto p-6">
         <header>
             <h2 class="text-lg font-medium text-gray-900">
                 Profile Information
@@ -108,6 +113,75 @@ const handleFileUpload = (event) => {
                 <InputError class="mt-2" :message="form.errors.address" />
             </div>
 
+            <!-- Address Details -->
+            <div class="border-t border-gray-200 pt-5">
+                <h3 class="text-sm font-semibold text-gray-700 mb-4">Address Details</h3>
+                <div class="grid grid-cols-2 gap-4">
+
+                    <div>
+                        <InputLabel for="city" value="City" />
+                        <TextInput
+                            id="city"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.city"
+                            placeholder="Enter city"
+                        />
+                        <InputError class="mt-1" :message="form.errors.city" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="district" value="District" />
+                        <TextInput
+                            id="district"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.district"
+                            placeholder="Enter district"
+                        />
+                        <InputError class="mt-1" :message="form.errors.district" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="state" value="State" />
+                        <TextInput
+                            id="state"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.state"
+                            placeholder="Enter state"
+                        />
+                        <InputError class="mt-1" :message="form.errors.state" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="pin_code" value="Pin Code" />
+                        <TextInput
+                            id="pin_code"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.pin_code"
+                            placeholder="Enter pin code"
+                            maxlength="10"
+                        />
+                        <InputError class="mt-1" :message="form.errors.pin_code" />
+                    </div>
+
+                    <div class="col-span-2">
+                        <InputLabel for="country" value="Country" />
+                        <TextInput
+                            id="country"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.country"
+                            placeholder="Enter country"
+                        />
+                        <InputError class="mt-1" :message="form.errors.country" />
+                    </div>
+
+                </div>
+            </div>
+
             <div>
                 <InputLabel for="email" value="Email" />
 
@@ -147,7 +221,7 @@ const handleFileUpload = (event) => {
             <!-- Bank Details -->
             <div v-if="user.role === 'store'" class="border-t border-gray-200 pt-6 space-y-6">
                 <h3 class="text-md font-semibold text-gray-800">Bank Details</h3>
-                
+
                 <div>
                     <InputLabel for="bank_name" value="Bank Name" />
                     <TextInput
@@ -222,7 +296,7 @@ const handleFileUpload = (event) => {
                     class="mt-1 block w-full border rounded-md px-3 py-2"/>
                 <InputError class="mt-2" :message="form.errors.profile_photo" />
 
-                
+
                 <div v-if="preview" class="mt-3">
                     <img :src="preview" alt="Profile Preview" class="w-20 h-20 rounded-full object-cover" style="max-height: 80px;" />
                 </div>

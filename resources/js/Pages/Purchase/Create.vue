@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, computed  } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 import axios from 'axios';
@@ -9,7 +9,6 @@ import axios from 'axios';
 import vSelect from "vue3-select";
 import "vue3-select/dist/vue3-select.css";
 import AddProductModal from '@/Components/AddProductModal.vue';
-
 
 const props = defineProps({
   suppliers: {
@@ -30,6 +29,10 @@ const props = defineProps({
     type: Object,
     required: false,
     default: () => ({}),
+  },
+  gstRates: {
+    type: Array,
+    required: true,
   },
 });
 
@@ -101,6 +104,8 @@ const form = ref({
             quantity: "",
             price: "",
             baseAmount: "",
+            gst_rate_id: "",
+            last_product_id: "",
     }],
 });
 
@@ -208,14 +213,40 @@ watch(() => form.value.supplier_id, (newVal) => {
   selectedSupplier.value = suppliers.value.find(s => s.id == newVal);
 });
 
+const page = usePage();
+const storeState = computed(() => page.props.auth?.user?.state || '');
+
+const isInterstate = computed(() => {
+  if (!selectedSupplier.value || !selectedSupplier.value.state) return false;
+  return storeState.value.trim().toLowerCase() !== selectedSupplier.value.state.trim().toLowerCase();
+});
+
+const hasGstSelected = computed(() => {
+  return form.value.purchase_items.some(item => !!item.gst_rate_id);
+});
+
 // Watch for product change in each row to update unit_type
 watch(() => form.value.purchase_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
     const selectedProduct = products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
-      item.unit_type = selectedProduct.unit_type;
-      item.sgst = selectedProduct.sgst;
-      item.cgst = selectedProduct.cgst;
+      if (!item.last_product_id || item.last_product_id !== item.product_id) {
+        item.unit_type = selectedProduct.unit_type;
+        item.sgst = selectedProduct.sgst;
+        item.cgst = selectedProduct.cgst;
+        item.last_product_id = item.product_id;
+
+        // Auto-match gst_rate_id from product's default tax rates
+        const totalProductRate = (parseFloat(selectedProduct.sgst) || 0) + (parseFloat(selectedProduct.cgst) || 0);
+        const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+        if (matchedRate) {
+          item.gst_rate_id = matchedRate.id;
+        } else {
+          item.gst_rate_id = props.gstRates[0]?.id || "";
+          item.cgst = 0;
+          item.sgst = 0;
+        }
+      }
 
       const quantity = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.price) || 0;
@@ -224,6 +255,14 @@ watch(() => form.value.purchase_items, (newSaleItems) => {
     }
   });
 }, { deep: true });
+
+const onGstRateChange = (item) => {
+  const selectedRate = props.gstRates.find(r => r.id === item.gst_rate_id);
+  if (selectedRate) {
+    item.cgst = parseFloat(selectedRate.cgst) || 0;
+    item.sgst = parseFloat(selectedRate.sgst) || 0;
+  }
+};
 
 // Watcher to fetch supplier data when selected supplier changes
 watch(
@@ -254,7 +293,10 @@ const addRow = () => {
         unit_type: "",
         quantity: "",
         price: "",
-        gst: ""
+        sgst: 0,
+        cgst: 0,
+        gst_rate_id: "",
+        last_product_id: ""
     });
 };
 
@@ -468,7 +510,7 @@ const handleProductSuccess = (createdProduct) => {
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Supplier</label>
+                    <label class="block text-black font-medium mb-2">Supplier <span class="text-red-500">*</span></label>
                         <vSelect
                                 v-model="form.supplier_id"
                                 :options="suppliers"
@@ -564,11 +606,18 @@ const handleProductSuccess = (createdProduct) => {
             <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
                 <thead class="bg-[#292688] text-white">
                     <tr>
-                        <th class="px-4 py-2 text-left">Product</th>
+                        <th class="px-4 py-2 text-left">Product <span class="text-red-400">*</span></th>
                         <th class="px-4 py-2 text-left">GST</th>
-                        <th class="px-4 py-2 text-left">Quantity</th>
+                        <template v-if="hasGstSelected">
+                            <th v-if="isInterstate" class="px-4 py-2 text-left">IGST</th>
+                            <template v-else>
+                                <th class="px-4 py-2 text-left">CGST</th>
+                                <th class="px-4 py-2 text-left">SGST</th>
+                            </template>
+                        </template>
+                        <th class="px-4 py-2 text-left">Quantity <span class="text-red-400">*</span></th>
                         <th class="px-4 py-2 text-left">Unit Type</th>
-                        <th class="px-4 py-2 text-left">Price</th>
+                        <th class="px-4 py-2 text-left">Price <span class="text-red-400">*</span></th>
                         <th class="px-4 py-2 text-left">Net Amount</th>
                         <th class="px-4 py-2 text-left">Action</th>
                     </tr>
@@ -600,9 +649,40 @@ const handleProductSuccess = (createdProduct) => {
                             </vSelect>
                         </td>
 
-                        <td class="border-t px-4 py-3">
-                            {{ (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0) }} %
+                        <td class="border-t px-4 py-3 min-w-[140px]">
+                            <select
+                                v-model="item.gst_rate_id"
+                                @change="onGstRateChange(item)"
+                                class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
+                            >
+                                <option value="" disabled>Select GST</option>
+                                <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                    {{ rate.name }}
+                                </option>
+                            </select>
                         </td>
+                        <template v-if="hasGstSelected">
+                            <td v-if="isInterstate" class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                                <span v-if="item.gst_rate_id" style="font-size: 20px;">
+                                    {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }} %
+                                </span>
+                                <span v-else>-</span>
+                            </td>
+                            <template v-else>
+                                <td class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                                    <span v-if="item.gst_rate_id" style="font-size: 20px;">
+                                        {{ item.cgst }} %
+                                    </span>
+                                    <span v-else>-</span>
+                                </td>
+                                <td class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                                    <span v-if="item.gst_rate_id" style="font-size: 20px;">
+                                        {{ item.sgst }} %
+                                    </span>
+                                    <span v-else>-</span>
+                                </td>
+                            </template>
+                        </template>
                         <td class="border-t px-4 py-3">
                             <input type="text" name="quantity" v-model="item.quantity" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
@@ -647,7 +727,7 @@ const handleProductSuccess = (createdProduct) => {
 
                     <div class="space-y-3">
                         <div>
-                            <label class="block text-xs font-semibold text-gray-500 mb-1">Product</label>
+                            <label class="block text-xs font-semibold text-gray-500 mb-1">Product <span class="text-red-500">*</span></label>
                             <vSelect
                                 v-model="item.product_id"
                                 :options="products"
@@ -671,15 +751,31 @@ const handleProductSuccess = (createdProduct) => {
                             </vSelect>
                         </div>
 
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="col-span-2">
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">GST Rate</label>
+                                <select
+                                    v-model="item.gst_rate_id"
+                                    @change="onGstRateChange(item)"
+                                    class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm bg-white"
+                                >
+                                    <option value="" disabled>Select GST</option>
+                                    <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                        {{ rate.name }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity <span class="text-red-500">*</span></label>
                                 <input type="text" v-model="item.quantity" required
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Qty" />
                             </div>
                             <div>
-                                <label class="block text-xs font-semibold text-gray-500 mb-1">Price</label>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Price <span class="text-red-500">*</span></label>
                                 <input type="text" v-model="item.price" required
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Price" />
@@ -688,8 +784,14 @@ const handleProductSuccess = (createdProduct) => {
 
                         <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500">
                             <div>
-                                <span class="block text-gray-400">GST</span>
-                                <span class="text-gray-800 font-semibold">{{ (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0) }} %</span>
+                                <span class="block text-gray-400">GST Breakdown</span>
+                                <span class="text-gray-800 font-semibold">
+                                    <template v-if="item.gst_rate_id">
+                                        <span v-if="isInterstate">IGST: {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }}%</span>
+                                        <span v-else>CGST: {{ item.cgst }}% | SGST: {{ item.sgst }}%</span>
+                                    </template>
+                                    <template v-else>-</template>
+                                </span>
                             </div>
                             <div>
                                 <span class="block text-gray-400">Unit Type</span>
@@ -732,17 +834,17 @@ const handleProductSuccess = (createdProduct) => {
 
             <div class="space-y-4">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
                     <input type="text" v-model="newSupplier.name" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone <span class="text-red-500">*</span></label>
                     <input type="text" v-model="newSupplier.phone" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
                     <input type="email" v-model="newSupplier.email" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
                 </div>
 
