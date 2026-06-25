@@ -34,7 +34,7 @@ const updatePassword = () => {
 </script>
 
 <template>
-    <section>
+    <section class="max-w-none mx-auto p-6">
         <header>
             <h2 class="text-lg font-medium text-gray-900">
                 Update Password

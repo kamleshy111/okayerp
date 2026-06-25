@@ -139,7 +139,7 @@ const submitForm = async () => {
         <form @submit.prevent="submitForm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Customer</label>
+                    <label class="block text-black font-medium mb-2">Customer <span class="text-red-500">*</span></label>
                         <select   name="customer_id" v-model="form.customer_id"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="" disabled>Select Customer</option>
@@ -163,7 +163,7 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
-                    <label class="block text-black font-medium mb-2">Cash/Bank Amount</label>
+                    <label class="block text-black font-medium mb-2">Cash/Bank Amount <span class="text-red-500">*</span></label>
                     <input type="number" name="amount" v-model="form.amount"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter remaining cash/bank amount" />
@@ -172,14 +172,14 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
-                    <label class="block text-black font-medium mb-2">Date</label>
+                    <label class="block text-black font-medium mb-2">Date <span class="text-red-500">*</span></label>
                     <input type="date" name="payment_date" v-model="form.payment_date"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Payment Date" />
                 </div>
 
                 <div>
-                    <label class="block text-black font-medium mb-2">Payment Method</label>
+                    <label class="block text-black font-medium mb-2">Payment Method <span class="text-red-500">*</span></label>
                     <select name="payment_method" v-model="form.payment_method"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="" disabled>Select Payment Method</option>

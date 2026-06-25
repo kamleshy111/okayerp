@@ -58,7 +58,8 @@ class DatabaseSeeder extends Seeder
         );
         $adminUser->assignRole($adminRole);
 
-       
-       
+        $this->call([
+            GstRateSeeder::class,
+        ]);
     }
 }
