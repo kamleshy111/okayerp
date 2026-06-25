@@ -18,6 +18,13 @@ const form = ref({
     ifsc_code: "",
     branch_name: "",
     gstin: "",
+    city: "",
+    district: "",
+    state: "",
+    country: "",
+    pin_code: "",
+    pan_number: "",
+    cin_number: "",
 });
 
 // name input ref
@@ -53,6 +60,13 @@ const submitForm = async () => {
       ifsc_code: "",
       branch_name: "",
       gstin: "",
+      city: "",
+      district: "",
+      state: "",
+      country: "",
+      pin_code: "",
+      pan_number: "",
+      cin_number: "",
     };
     
     await nextTick();
@@ -127,6 +141,42 @@ const submitForm = async () => {
                 </div>
             </div>
 
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">City</label>
+                    <input type="text" name="city" v-model="form.city"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter city" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">District</label>
+                    <input type="text" name="district" v-model="form.district"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter district" />
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">State</label>
+                    <input type="text" name="state" v-model="form.state"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter state" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Country</label>
+                    <input type="text" name="country" v-model="form.country"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter country" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">PIN Code</label>
+                    <input type="text" name="pin_code" v-model="form.pin_code"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter PIN code" />
+                </div>
+            </div>
+
             <!-- Bank Details -->
             <div class="border-t border-gray-200 mt-7 pt-7">
                 <h3 class="text-lg font-bold mb-4 text-[#292688]">Bank Details</h3>
@@ -161,12 +211,24 @@ const submitForm = async () => {
                     </div>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-7">
                     <div>
                         <label class="block text-black font-medium mb-2">GSTIN</label>
                         <input type="text" name="gstin" v-model="form.gstin"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Enter GSTIN" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">PAN Number</label>
+                        <input type="text" name="pan_number" v-model="form.pan_number"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter PAN Number" />
+                    </div>
+                    <div>
+                        <label class="block text-black font-medium mb-2">CIN Number</label>
+                        <input type="text" name="cin_number" v-model="form.cin_number"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter CIN Number" />
                     </div>
                 </div>
             </div>

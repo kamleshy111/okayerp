@@ -45,27 +45,41 @@ class StoresController extends Controller
     {
         // Validate input
         $request->validate([
-            'email'         => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'email'          => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
             'bank_name'      => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string', 'max:255'],
             'ifsc_code'      => ['nullable', 'string', 'max:255'],
             'branch_name'    => ['nullable', 'string', 'max:255'],
             'gstin'          => ['nullable', 'string', 'max:255'],
+            'city'           => ['nullable', 'string', 'max:255'],
+            'district'       => ['nullable', 'string', 'max:255'],
+            'state'          => ['nullable', 'string', 'max:255'],
+            'country'        => ['nullable', 'string', 'max:255'],
+            'pin_code'       => ['nullable', 'string', 'max:255'],
+            'pan_number'     => ['nullable', 'string', 'max:255'],
+            'cin_number'     => ['nullable', 'string', 'max:255'],
         ]);
 
         // Create User
         $user = User::create([
-            'name'      => $request->name,
-            'email'     => $request->email,
-            'phone'     => $request->phone ?? '',
-            'address'   => $request->address ?? '',
-            'password'  => Hash::make($request->password),
-            'role'      => $request->role === 'admin' ? 'admin' : 'store',
+            'name'           => $request->name,
+            'email'          => $request->email,
+            'phone'          => $request->phone ?? '',
+            'address'        => $request->address ?? '',
+            'password'       => Hash::make($request->password),
+            'role'           => $request->role === 'admin' ? 'admin' : 'store',
             'bank_name'      => $request->bank_name ?? '',
             'account_number' => $request->account_number ?? '',
             'ifsc_code'      => $request->ifsc_code ?? '',
             'branch_name'    => $request->branch_name ?? '',
             'gstin'          => $request->gstin ?? '',
+            'city'           => $request->city ?? '',
+            'district'       => $request->district ?? '',
+            'state'          => $request->state ?? '',
+            'country'        => $request->country ?? '',
+            'pin_code'       => $request->pin_code ?? '',
+            'pan_number'     => $request->pan_number ?? '',
+            'cin_number'     => $request->cin_number ?? '',
         ]);
 
         return response()->json([
@@ -94,6 +108,13 @@ class StoresController extends Controller
             'ifsc_code' => $data->ifsc_code ?? '',
             'branch_name' => $data->branch_name ?? '',
             'gstin' => $data->gstin ?? '',
+            'city' => $data->city ?? '',
+            'district' => $data->district ?? '',
+            'state' => $data->state ?? '',
+            'country' => $data->country ?? '',
+            'pin_code' => $data->pin_code ?? '',
+            'pan_number' => $data->pan_number ?? '',
+            'cin_number' => $data->cin_number ?? '',
         ];
 
         return Inertia::render('Admin/Store/Edit',[
@@ -121,6 +142,13 @@ class StoresController extends Controller
             'ifsc_code' => 'nullable|string|max:255',
             'branch_name' => 'nullable|string|max:255',
             'gstin' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'district' => 'nullable|string|max:255',
+            'state' => 'nullable|string|max:255',
+            'country' => 'nullable|string|max:255',
+            'pin_code' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|string|max:255',
+            'cin_number' => 'nullable|string|max:255',
         ]);
 
         // Update fields
@@ -133,6 +161,13 @@ class StoresController extends Controller
         $store->ifsc_code = $request->ifsc_code;
         $store->branch_name = $request->branch_name;
         $store->gstin = $request->gstin;
+        $store->city = $request->city;
+        $store->district = $request->district;
+        $store->state = $request->state;
+        $store->country = $request->country;
+        $store->pin_code = $request->pin_code;
+        $store->pan_number = $request->pan_number;
+        $store->cin_number = $request->cin_number;
 
         // Handle profile photo upload
         if ($request->hasFile('profile_photo')) {
