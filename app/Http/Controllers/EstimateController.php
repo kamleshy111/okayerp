@@ -43,12 +43,10 @@ class EstimateController extends Controller
     {
         $userId = Auth::id();
         $products = Product::where('user_id', $userId)->get();
-        $customers = Customer::where('user_id', $userId)->get();
         $categories = Category::select('id', 'name')->where('user_id', $userId)->get();
         $unitTypes = config('units.types');
 
         return Inertia::render('Estimate/Create', [
-            'customers' => $customers,
             'products' => $products,
             'categories' => $categories,
             'unitTypes' => $unitTypes,
@@ -148,7 +146,8 @@ class EstimateController extends Controller
         }
 
         $products = Product::where('user_id', $userId)->get();
-        $customers = Customer::where('user_id', $userId)->get();
+        $customer = Customer::find($estimate->customer_id);
+        $customers = $customer ? [$customer] : [];
         $categories = Category::select('id', 'name')->where('user_id', $userId)->get();
         $unitTypes = config('units.types');
 

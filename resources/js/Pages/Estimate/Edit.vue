@@ -15,7 +15,8 @@ const props = defineProps({
   },
   customers: {
     type: Array,
-    required: true,
+    required: false,
+    default: () => [],
   },
   products: {
     type: Array,
@@ -33,6 +34,28 @@ const props = defineProps({
 
 const customers = ref([...props.customers]);
 const products = ref([...props.products]);
+
+const customerSearchQuery = ref("");
+const onCustomerSearch = async (search, loading) => {
+  customerSearchQuery.value = search;
+  if (!search.trim()) {
+    customers.value = [...props.customers];
+    return;
+  }
+  try {
+    const response = await axios.get(`/customer/search?query=${encodeURIComponent(search)}`);
+    customers.value = response.data;
+    
+    // Ensure selected customer is always in options list
+    const selected = props.customers.find(c => c.id == form.value.customer_id) || customers.value.find(c => c.id == form.value.customer_id);
+    if (selected && !customers.value.some(c => c.id == selected.id)) {
+      customers.value.unshift(selected);
+    }
+  } catch (error) {
+    console.error("Error fetching customers:", error);
+  }
+};
+
 const categories = props.categories;
 const unitTypes = props.unitTypes;
 const estimate = props.estimate;
@@ -346,10 +369,12 @@ const submitForm = async () => {
                         placeholder="Search or select customer"
                         class="w-full text-black bg-white"
                         @keydown.enter="onCustomerEnterKey"
+                        @search="onCustomerSearch"
                     >
                         <template #no-options>
                             <div class="px-3 py-2 text-gray-500 text-sm">
-                                No customers found.
+                                <span v-if="!customerSearchQuery">Type to search customer...</span>
+                                <span v-else>No customers found.</span>
                                 <button
                                     @click.stop="showCustomerModal = true"
                                     class="mt-2 text-blue-600 hover:underline text-xs block"

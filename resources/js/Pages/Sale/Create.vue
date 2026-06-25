@@ -11,7 +11,8 @@ import "vue3-select/dist/vue3-select.css";
 const props = defineProps({
   customers: {
     type: Array,
-    required: true,
+    required: false,
+    default: () => [],
   },
   products: {
     type: Array,
@@ -19,8 +20,29 @@ const props = defineProps({
   },
 });
 
-const customers = props.customers;
+const customers = ref([...props.customers]);
 const products = props.products;
+
+const customerSearchQuery = ref("");
+const onCustomerSearch = async (search, loading) => {
+  customerSearchQuery.value = search;
+  if (!search.trim()) {
+    customers.value = [...props.customers];
+    return;
+  }
+  try {
+    const response = await axios.get(`/customer/search?query=${encodeURIComponent(search)}`);
+    customers.value = response.data;
+    
+    // Ensure selected customer is always in options list
+    const selected = props.customers.find(c => c.id == form.value.customer_id) || customers.value.find(c => c.id == form.value.customer_id);
+    if (selected && !customers.value.some(c => c.id == selected.id)) {
+      customers.value.unshift(selected);
+    }
+  } catch (error) {
+    console.error("Error fetching customers:", error);
+  }
+};
 
 const form = ref({
     customer_id: "",
@@ -146,7 +168,7 @@ const submitCustomer = async () => {
 
     const response = await axios.post('/customer/store', newCustomer.value);
     const createdCustomer = response.data;
-    customers.push(createdCustomer);
+    customers.value.push(createdCustomer);
 
     form.value.customer_id = createdCustomer.id;
     selectedCustomer.value = createdCustomer;
@@ -174,11 +196,11 @@ const submitCustomer = async () => {
 
 // Watch Customer
 watch(() => form.value.customer_id, (newVal) => {
-  if (!newVal || !Array.isArray(customers)) {
+  if (!newVal || !Array.isArray(customers.value)) {
     selectedCustomer.value = null;
     return;
   }
-  selectedCustomer.value = customers.find(s => s.id == newVal);
+  selectedCustomer.value = customers.value.find(s => s.id == newVal);
 });
 
 // Watch sale items
@@ -428,14 +450,16 @@ const submitForm = async () => {
                         placeholder="Search or select customer"
                         class="w-full text-black bg-white"
                         @keydown.enter="onEnterKey"
+                        @search="onCustomerSearch"
                     >
                         <!-- Shown when there are no options at all -->
                         <template #no-options>
                             <div class="px-3 py-2 text-gray-500">
-                                No customers found.
+                                <span v-if="!customerSearchQuery">Type to search customer...</span>
+                                <span v-else>No customers found.</span>
                                 <button
                                     @click.stop="showCustomerModal = true"
-                                    class="mt-2 text-blue-600 hover:underline text-sm"
+                                    class="mt-2 block text-blue-600 hover:underline text-sm"
                                 >
                                     ➕ Add New Customer
                                 </button>
