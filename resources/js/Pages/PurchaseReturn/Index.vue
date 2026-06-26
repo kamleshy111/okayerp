@@ -11,20 +11,20 @@ defineProps({
 
 // Column definitions for DataTable
 const columns = [
-  { 
+  {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
   },
   { data: 'return_no', title: 'Return No' },
-  { 
-    data: 'purchase_id', 
+  {
+    data: 'purchase_id',
     title: 'Original Bill',
     render: (data) => `Bill #${data}`
   },
   { data: 'supplierName', title: 'Supplier' },
-  { 
-    data: 'refund_amount', 
+  {
+    data: 'refund_amount',
     title: 'Refund Amount',
     render: (data) => `₹ ${parseFloat(data).toFixed(2)}`
   },
@@ -49,7 +49,7 @@ const columns = [
 <template>
   <Head title="Purchase Returns">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-  </Head>  
+  </Head>
 
   <AuthenticatedLayout>
     <div class="p-6">
@@ -57,7 +57,7 @@ const columns = [
         <h1 class="text-3xl font-bold">Purchase Returns</h1>
         <div class="flex items-center gap-4">
           <a :href="route('purchase-return.create')" class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
-            <span>+ Record Supplier Return</span>
+            <span>+ Add</span>
           </a>
         </div>
       </div>

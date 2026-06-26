@@ -268,14 +268,7 @@ class CustomerPaymentsController extends Controller
     }
 
     public function create(){
-
-        $userId = Auth::id();
-
-        $customers = Customer::where('user_id', $userId)->select('id','name')->get();
-
-        return Inertia::render('CustomerPayment/Create',[
-            'customers' => $customers
-        ]);
+        return Inertia::render('CustomerPayment/Create');
     }
 
     public function paymentInfo($id) {

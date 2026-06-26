@@ -787,6 +787,20 @@ const submitForm = async () => {
             </div>
         </div>
     </div>
-
     </AuthenticatedLayout>
 </template>
+
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 40px;
+    border-radius: 0.5rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>

@@ -30,7 +30,7 @@ function showSupplierDetails(supplierId) {
 // Column definitions for DataTable
 const columns = [
 //   { data: 'id', title: 'S No' },
-    { 
+    {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
@@ -38,7 +38,6 @@ const columns = [
     { data: 'name' },
     { data: 'email'},
     { data: 'phone'},
-    { data: 'gstin', defaultContent: '-' },
     {
       data: null,
       render: function (data) {
@@ -66,7 +65,8 @@ const columns = [
               <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
             `;
-        }
+        },
+        sortable: false,
     }
 ];
 
@@ -146,8 +146,7 @@ function deleteSupplier(supplierId) {
                   <th scope="col">Name</th>
                   <th scope="col">Email</th>
                   <th scope="col">Phone</th>
-                  <th scope="col">GSTIN</th>
-                  <th scope="col">Volate</th>
+                  <th scope="col">Net Balance</th>
                   <th scope="col">Action</th>
               </tr>
           </thead>
@@ -158,8 +157,8 @@ function deleteSupplier(supplierId) {
     </AuthenticatedLayout>
 
     <!-- View Supplier Modal Popup -->
-    <div v-if="isViewModalOpen" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="isViewModalOpen"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
          @click.self="isViewModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-2xl w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
@@ -169,7 +168,7 @@ function deleteSupplier(supplierId) {
             <i class="fa fa-close text-xl"></i>
           </button>
         </div>
-        
+
         <div class="space-y-6 text-black text-left overflow-y-auto max-h-[70vh]">
           <!-- General Details -->
           <div>
@@ -242,7 +241,7 @@ function deleteSupplier(supplierId) {
         </div>
 
         <div class="flex justify-end pt-4 border-t border-gray-100">
-          <button type="button" @click="isViewModalOpen = false" 
+          <button type="button" @click="isViewModalOpen = false"
                   class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">
             Close
           </button>

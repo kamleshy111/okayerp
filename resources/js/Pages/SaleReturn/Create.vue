@@ -212,7 +212,7 @@ const submitReturn = async () => {
 </script>
 
 <template>
-  <Head title="Record Sales Return">
+  <Head title="Sales Return">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   </Head>
 
@@ -225,7 +225,7 @@ const submitReturn = async () => {
         </a>
       </div>
 
-      <h2 class="text-2xl font-bold mb-4 text-[#292688]">Record Sale Return</h2>
+      <h2 class="text-2xl font-bold mb-4 text-[#292688]">Sale Return</h2>
 
       <div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

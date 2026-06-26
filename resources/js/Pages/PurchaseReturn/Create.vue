@@ -40,7 +40,7 @@ watch(() => form.value.purchase_id, async (newVal) => {
   try {
     const response = await axios.get(`/purchase-return/purchase/${newVal}/details`);
     selectedPurchaseDetails.value = response.data;
-    
+
     // Initialize returned quantities to 0
     form.value.items = response.data.items.map(item => ({
       product_id: item.product_id,
@@ -158,7 +158,7 @@ const submitReturn = async () => {
 </script>
 
 <template>
-  <Head title="Record Purchase Return">
+  <Head title="Purchase Return">
     <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
   </Head>
 
@@ -170,8 +170,8 @@ const submitReturn = async () => {
           <span style="margin-left: 5px;">Purchase Returns</span>
         </a>
       </div>
-      
-      <h2 class="text-2xl font-bold mb-4 text-[#292688]">Record Purchase Return</h2>
+
+      <h2 class="text-2xl font-bold mb-4 text-[#292688]">Purchase Return</h2>
 
       <div>
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -199,7 +199,7 @@ const submitReturn = async () => {
           </div>
 
           <h3 class="text-xl font-bold text-[#292688]">Items Purchased</h3>
-          
+
           <!-- Desktop view: Table layout -->
           <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
             <thead class="bg-[#292688] text-white">
@@ -328,7 +328,7 @@ const submitReturn = async () => {
                   <span class="text-gray-800">Total Refund Value:</span>
                   <span class="font-mono text-indigo-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
                 </div>
-                
+
                 <div class="border-t pt-3 space-y-2">
                   <label class="block text-sm font-semibold text-gray-700">Deduct from Bill Due (Max: ₹ {{ Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.due_amount) || 0).toFixed(2) }})</label>
                   <input
