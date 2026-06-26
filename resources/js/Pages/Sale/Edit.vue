@@ -35,9 +35,56 @@ const props = defineProps({
 });
 
 const customers = ref([...props.customers]);
-const products = props.products;
+const products = ref([...props.products]);
 const productItems = props.productItems;
 const sales = props.sales;
+
+// Registry to store all products we have seen/loaded so far
+const productRegistry = ref({});
+
+// Initialize registry with initial products (from props)
+if (props.products) {
+  props.products.forEach(p => {
+    productRegistry.value[p.id] = p;
+  });
+}
+
+const productSearchQuery = ref('');
+const onProductSearch = async (search, loading) => {
+  productSearchQuery.value = search;
+  if (!search.trim()) {
+    let initialList = [];
+    form.value.sale_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInList = initialList.some(p => p.id === item.product_id);
+        if (!alreadyInList) {
+          initialList.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = initialList;
+    return;
+  }
+  try {
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(search)}`);
+    response.data.forEach(p => {
+      productRegistry.value[p.id] = p;
+    });
+
+    let results = response.data;
+    form.value.sale_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInResults = results.some(p => p.id === item.product_id);
+        if (!alreadyInResults) {
+          results.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = results;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
+};
 
 const customerSearchQuery = ref("");
 const onCustomerSearch = async (search, loading) => {
@@ -113,7 +160,7 @@ watch(
 // Watch for product change in each row to update unit_type
 watch(() => form.value.sale_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
-    const selectedProduct = products.find(product => product.id === item.product_id);
+    const selectedProduct = products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
       item.unit_type = selectedProduct.unit_type;
       item.sgst = selectedProduct.sgst;
@@ -373,13 +420,16 @@ const submitForm = async () => {
                 <tbody>
                     <tr v-for="(item, index) in form.sale_items" :key="index">
                         <td class="border-t px-4 py-3">
-                            <select name="product_id" v-model="item.product_id"
-                                class="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
-                                <option value="" disabled>Select Product</option>
-                                <option v-for="product in products" :key="product.id" :value="product.id">
-                                    {{ product.name }}
-                                </option>
-                            </select>
+                            <vSelect
+                                v-model="item.product_id"
+                                :options="products"
+                                label="name"
+                                :reduce="product => product.id"
+                                placeholder="Search or select product"
+                                class="w-full text-black bg-white"
+                                append-to-body
+                                @search="onProductSearch"
+                            />
                         </td>
 
                         <td class="border-t px-4 py-3">
@@ -430,13 +480,15 @@ const submitForm = async () => {
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Product</label>
-                            <select name="product_id" v-model="item.product_id"
-                                class="w-full px-3 py-2 bg-white text-black border border-gray-300 rounded-md shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm">
-                                <option value="" disabled>Select Product</option>
-                                <option v-for="product in products" :key="product.id" :value="product.id">
-                                    {{ product.name }}
-                                </option>
-                            </select>
+                            <vSelect
+                                v-model="item.product_id"
+                                :options="products"
+                                label="name"
+                                :reduce="product => product.id"
+                                placeholder="Search or select product"
+                                class="w-full text-black bg-white"
+                                @search="onProductSearch"
+                            />
                         </div>
 
                         <div class="grid grid-cols-2 gap-4">

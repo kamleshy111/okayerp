@@ -37,12 +37,58 @@ const props = defineProps({
 });
 
 const suppliers = ref([...props.suppliers]);
-const products = ref([...props.products]);
+const products = ref([]);
+
+// Registry to store all products we have seen/loaded so far
+const productRegistry = ref({});
+
+// Initialize registry with initial products (from props)
+if (props.products) {
+  props.products.forEach(p => {
+    productRegistry.value[p.id] = p;
+  });
+}
+
+const productSearchQuery = ref('');
+const onProductSearch = async (search, loading) => {
+  productSearchQuery.value = search;
+  if (!search.trim()) {
+    let initialList = [];
+    form.value.purchase_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInList = initialList.some(p => p.id === item.product_id);
+        if (!alreadyInList) {
+          initialList.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = initialList;
+    return;
+  }
+  try {
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(search)}`);
+    response.data.forEach(p => {
+      productRegistry.value[p.id] = p;
+    });
+
+    let results = response.data;
+    form.value.purchase_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInResults = results.some(p => p.id === item.product_id);
+        if (!alreadyInResults) {
+          results.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = results;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
+};
 
 // Add Product Modal State
 const showProductModal = ref(false);
 const activeProductRowIndex = ref(null);
-const productSearchQuery = ref('');
 
 const selectedSupplier = ref(null);
 const showPaymentModal = ref(false);
@@ -487,6 +533,7 @@ const openProductModal = (rowIndex, search) => {
 };
 
 const handleProductSuccess = (createdProduct) => {
+  productRegistry.value[createdProduct.id] = createdProduct;
   products.value.push(createdProduct);
   if (activeProductRowIndex.value !== null) {
     form.value.purchase_items[activeProductRowIndex.value].product_id = createdProduct.id;
@@ -633,6 +680,7 @@ const handleProductSuccess = (createdProduct) => {
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
                                 append-to-body
+                                @search="onProductSearch"
                             >
                                 <template #no-options="{ search, searching, loading }">
                                     <div class="px-3 py-2 text-gray-500">
@@ -735,6 +783,7 @@ const handleProductSuccess = (createdProduct) => {
                                 :reduce="product => product.id"
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
+                                @search="onProductSearch"
                             >
                                 <template #no-options="{ search, searching, loading }">
                                     <div class="px-3 py-2 text-gray-500">
