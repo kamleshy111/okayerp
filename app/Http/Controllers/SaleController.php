@@ -55,8 +55,10 @@ class SaleController extends Controller
         $userId = Auth::id();
 
         $products = [];
+        $gstRates = \App\Models\GstRate::where('is_active', true)->get();
         return Inertia::render('Sale/Create',[
             'products' => $products,
+            'gstRates' => $gstRates,
         ]);
     }
 
@@ -304,12 +306,15 @@ class SaleController extends Controller
         $customer = Customer::find($sales->customer_id);
         $customers = $customer ? [$customer] : [];
 
+        $gstRates = \App\Models\GstRate::where('is_active', true)->get();
+
         return Inertia::render('Sale/Edit',[
             'products' => $products,
             'customers' => $customers,
             'productItems' => $productItems,
             'sales' => $sales,
             'allocatedPayment' => $allocatedPayment,
+            'gstRates' => $gstRates,
         ]);
     }
 

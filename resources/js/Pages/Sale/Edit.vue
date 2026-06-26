@@ -1,7 +1,7 @@
 <script setup>
 import { ref, watch, computed, watchEffect  } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 import axios from 'axios';
@@ -31,6 +31,10 @@ const props = defineProps({
   allocatedPayment: {
     type: [Number, String],
     default: 0,
+  },
+  gstRates: {
+    type: Array,
+    required: true,
   },
 });
 
@@ -90,6 +94,14 @@ const customerSearchQuery = ref("");
 const onCustomerSearch = async (search, loading) => {
   customerSearchQuery.value = search;
   if (!search.trim()) {
+    const selectedId = form.value?.customer_id;
+    if (selectedId) {
+      const selected = selectedCustomer.value || customers.value.find(c => c.id == selectedId);
+      if (selected) {
+        customers.value = [selected];
+        return;
+      }
+    }
     customers.value = [...props.customers];
     return;
   }
@@ -98,7 +110,7 @@ const onCustomerSearch = async (search, loading) => {
     customers.value = response.data;
     
     // Ensure selected customer is always in options list
-    const selected = props.customers.find(c => c.id == form.value.customer_id) || customers.value.find(c => c.id == form.value.customer_id);
+    const selected = selectedCustomer.value || props.customers.find(c => c.id == form.value.customer_id) || customers.value.find(c => c.id == form.value.customer_id);
     if (selected && !customers.value.some(c => c.id == selected.id)) {
       customers.value.unshift(selected);
     }
@@ -117,14 +129,22 @@ const form = ref({
     paid: sales.paid,
     payment_method: sales.payment_method,
     discount: sales.discount || 0,
-    sale_items: productItems.map(item => ({
-                    product_id: item.product_id,
-                    quantity: item.quantity,
-                    price: item.price,
-                    unit_type: item.unit_type,
-                    sgst: item.sgst,
-                    cgst: item.cgst,
-    })),
+    sale_items: productItems.map(item => {
+                    const sgst = parseFloat(item.sgst) || 0;
+                    const cgst = parseFloat(item.cgst) || 0;
+                    const totalProductRate = sgst + cgst;
+                    const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+                    return {
+                        product_id: item.product_id,
+                        quantity: item.quantity,
+                        price: item.price,
+                        unit_type: item.unit_type,
+                        sgst: sgst,
+                        cgst: cgst,
+                        gst_rate_id: matchedRate ? matchedRate.id : (props.gstRates[0]?.id || ""),
+                        last_product_id: item.product_id,
+                    };
+    }),
 });
 
 const selectedCustomer = ref(null);
@@ -157,14 +177,40 @@ watch(
   { immediate: true }
 );
 
+const page = usePage();
+const storeState = computed(() => page.props.auth?.user?.state || '');
+
+const isInterstate = computed(() => {
+  if (!selectedCustomer.value || !selectedCustomer.value.state) return false;
+  return storeState.value.trim().toLowerCase() !== selectedCustomer.value.state.trim().toLowerCase();
+});
+
+const hasGstSelected = computed(() => {
+  return form.value.sale_items.some(item => !!item.gst_rate_id);
+});
+
 // Watch for product change in each row to update unit_type
 watch(() => form.value.sale_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
     const selectedProduct = products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
-      item.unit_type = selectedProduct.unit_type;
-      item.sgst = selectedProduct.sgst;
-      item.cgst = selectedProduct.cgst;
+      if (!item.last_product_id || item.last_product_id !== item.product_id) {
+        item.unit_type = selectedProduct.unit_type;
+        item.sgst = selectedProduct.sgst;
+        item.cgst = selectedProduct.cgst;
+        item.last_product_id = item.product_id;
+
+        // Auto-match gst_rate_id from product's default tax rates
+        const totalProductRate = (parseFloat(selectedProduct.sgst) || 0) + (parseFloat(selectedProduct.cgst) || 0);
+        const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+        if (matchedRate) {
+          item.gst_rate_id = matchedRate.id;
+        } else {
+          item.gst_rate_id = props.gstRates[0]?.id || "";
+          item.cgst = 0;
+          item.sgst = 0;
+        }
+      }
 
       const quantity = parseFloat(item.quantity) || 0;
       const price = parseFloat(item.price) || 0;
@@ -174,6 +220,14 @@ watch(() => form.value.sale_items, (newSaleItems) => {
   });
 }, { deep: true });
 
+const onGstRateChange = (item) => {
+  const selectedRate = props.gstRates.find(r => r.id === item.gst_rate_id);
+  if (selectedRate) {
+    item.cgst = parseFloat(selectedRate.cgst) || 0;
+    item.sgst = parseFloat(selectedRate.sgst) || 0;
+  }
+};
+
 const addRow = () => {
     // Add a new row to the sale_items array
     form.value.sale_items.push({
@@ -181,7 +235,10 @@ const addRow = () => {
         unit_type: "",
         quantity: "",
         price: "",
-        gst: "",
+        sgst: 0,
+        cgst: 0,
+        gst_rate_id: "",
+        last_product_id: ""
     });
 };
 
@@ -410,6 +467,13 @@ const submitForm = async () => {
                     <tr>
                         <th class="px-4 py-2 text-left">Product</th>
                         <th class="px-4 py-2 text-left">GST</th>
+                        <template v-if="hasGstSelected">
+                            <th v-if="isInterstate" class="px-4 py-2 text-left">IGST</th>
+                            <template v-else>
+                                <th class="px-4 py-2 text-left">CGST</th>
+                                <th class="px-4 py-2 text-left">SGST</th>
+                            </template>
+                        </template>
                         <th class="px-4 py-2 text-left">Quantity</th>
                         <th class="px-4 py-2 text-left">Unit Type</th>
                         <th class="px-4 py-2 text-left">Price</th>
@@ -419,7 +483,7 @@ const submitForm = async () => {
                 </thead>
                 <tbody>
                     <tr v-for="(item, index) in form.sale_items" :key="index">
-                        <td class="border-t px-4 py-3">
+                        <td class="border-t px-4 py-3 min-w-[220px]">
                             <vSelect
                                 v-model="item.product_id"
                                 :options="products"
@@ -432,9 +496,40 @@ const submitForm = async () => {
                             />
                         </td>
 
-                        <td class="border-t px-4 py-3">
-                            {{ (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0) }} %
+                        <td class="border-t px-4 py-3 min-w-[140px]">
+                            <select
+                                v-model="item.gst_rate_id"
+                                @change="onGstRateChange(item)"
+                                class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
+                            >
+                                <option value="" disabled>Select GST</option>
+                                <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                    {{ rate.name }}
+                                </option>
+                            </select>
                         </td>
+                        <template v-if="hasGstSelected">
+                            <td v-if="isInterstate" class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                                <span v-if="item.gst_rate_id" style="font-size: 20px;">
+                                    {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }} %
+                                </span>
+                                <span v-else>-</span>
+                            </td>
+                            <template v-else>
+                                <td class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                                    <span v-if="item.gst_rate_id" style="font-size: 20px;">
+                                        {{ item.cgst }} %
+                                    </span>
+                                    <span v-else>-</span>
+                                </td>
+                                <td class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
+                                    <span v-if="item.gst_rate_id" style="font-size: 20px;">
+                                        {{ item.sgst }} %
+                                    </span>
+                                    <span v-else>-</span>
+                                </td>
+                            </template>
+                        </template>
                         <td class="border-t px-4 py-3">
                             <input type="number" name="quantity" v-model="item.quantity" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
@@ -491,6 +586,22 @@ const submitForm = async () => {
                             />
                         </div>
 
+                        <div class="grid grid-cols-3 gap-2">
+                            <div class="col-span-2">
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">GST Rate</label>
+                                <select
+                                    v-model="item.gst_rate_id"
+                                    @change="onGstRateChange(item)"
+                                    class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm bg-white"
+                                >
+                                    <option value="" disabled>Select GST</option>
+                                    <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                        {{ rate.name }}
+                                    </option>
+                                </select>
+                            </div>
+                        </div>
+
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
@@ -508,8 +619,14 @@ const submitForm = async () => {
 
                         <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500">
                             <div>
-                                <span class="block text-gray-400">GST</span>
-                                <span class="text-gray-800 font-semibold">{{ (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0) }} %</span>
+                                <span class="block text-gray-400">GST Breakdown</span>
+                                <span class="text-gray-800 font-semibold">
+                                    <template v-if="item.gst_rate_id">
+                                        <span v-if="isInterstate">IGST: {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }}%</span>
+                                        <span v-else>CGST: {{ item.cgst }}% | SGST: {{ item.sgst }}%</span>
+                                    </template>
+                                    <template v-else>-</template>
+                                </span>
                             </div>
                             <div>
                                 <span class="block text-gray-400">Unit Type</span>
