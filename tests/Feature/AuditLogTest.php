@@ -28,6 +28,9 @@ class AuditLogTest extends TestCase
 
         $this->actingAs($storeUser);
 
+        // Clear seeded logs to isolate product create log
+        AuditLog::query()->delete();
+
         $product = Product::create([
             'user_id' => $storeUser->id,
             'name' => 'Test Product',
@@ -158,6 +161,9 @@ class AuditLogTest extends TestCase
         // Assign admin role to user
         $adminRole = \Spatie\Permission\Models\Role::findByName('admin');
         $adminUser->assignRole($adminRole);
+
+        // Clear seeded logs to ensure exact count of 2 logs
+        AuditLog::query()->delete();
 
         AuditLog::create([
             'user_id' => $storeUser->id,

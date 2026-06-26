@@ -57,7 +57,7 @@ class PurchasesController extends Controller
 
         $userId = Auth::id();
 
-        $products = Product::where('user_id', $userId)->get();
+        $products = [];
         $categories = \App\Models\Category::where('user_id', $userId)->select('id', 'name')->get();
         $unitTypes = config('units.types') ?? [];
         $gstRates = \App\Models\GstRate::where('is_active', true)->get();
@@ -270,7 +270,8 @@ class PurchasesController extends Controller
 
         $userId = Auth::id();
 
-        $products = Product::where('user_id', $userId)->get();
+        $productIds = $purchases->items->pluck('product_id')->unique()->toArray();
+        $products = Product::whereIn('id', $productIds)->get();
         $supplier = Supplier::find($purchases->supplier_id);
         $suppliers = $supplier ? [$supplier] : [];
         $gstRates = \App\Models\GstRate::where('is_active', true)->get();

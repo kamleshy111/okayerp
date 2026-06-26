@@ -96,6 +96,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     // AJAX Search Routes
     Route::get('/supplier/search', [SuppliersController::class, 'search'])->name('supplier.search');
     Route::get('/customer/search', [CustomersController::class, 'search'])->name('customer.search');
+    Route::get('/product/search', [ProductController::class, 'search'])->name('product.search');
 
     // Customers
     Route::middleware('permission:customer manage')->group(function () {

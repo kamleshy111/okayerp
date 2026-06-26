@@ -339,4 +339,24 @@ class ProductController extends Controller
             return response()->json(['message' => 'An error occurred during import: ' . $e->getMessage()], 500);
         }
     }
+
+    public function search(Request $request)
+    {
+        $query = $request->query('query');
+        $userId = Auth::id();
+
+        if (!$query) {
+            return response()->json([]);
+        }
+
+        $products = Product::where('user_id', $userId)
+            ->where(function($q) use ($query) {
+                $q->where('name', 'LIKE', "%{$query}%")
+                  ->orWhere('sku', 'LIKE', "%{$query}%");
+            })
+            ->limit(20)
+            ->get();
+
+        return response()->json($products);
+    }
 }

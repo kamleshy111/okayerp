@@ -38,9 +38,56 @@ const props = defineProps({
 });
 
 const suppliers = ref([...props.suppliers]);
-const products = props.products;
+const products = ref([...props.products]);
 const productItems = props.productItems;
 const purchases = props.purchases;
+
+// Registry to store all products we have seen/loaded so far
+const productRegistry = ref({});
+
+// Initialize registry with initial products (from props)
+if (props.products) {
+  props.products.forEach(p => {
+    productRegistry.value[p.id] = p;
+  });
+}
+
+const productSearchQuery = ref('');
+const onProductSearch = async (search, loading) => {
+  productSearchQuery.value = search;
+  if (!search.trim()) {
+    let initialList = [];
+    form.value.purchase_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInList = initialList.some(p => p.id === item.product_id);
+        if (!alreadyInList) {
+          initialList.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = initialList;
+    return;
+  }
+  try {
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(search)}`);
+    response.data.forEach(p => {
+      productRegistry.value[p.id] = p;
+    });
+
+    let results = response.data;
+    form.value.purchase_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInResults = results.some(p => p.id === item.product_id);
+        if (!alreadyInResults) {
+          results.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = results;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
+};
 
 const supplierSearchQuery = ref("");
 const onSupplierSearch = async (search, loading) => {
@@ -140,7 +187,7 @@ const hasGstSelected = computed(() => {
 // Watch for product change in each row to update unit_type
 watch(() => form.value.purchase_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
-    const selectedProduct = products.find(product => product.id === item.product_id);
+    const selectedProduct = products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = selectedProduct.unit_type;
@@ -484,6 +531,7 @@ const submitForm = async () => {
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
                                 append-to-body
+                                @search="onProductSearch"
                             />
                         </td>
 
@@ -573,6 +621,7 @@ const submitForm = async () => {
                                 :reduce="product => product.id"
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
+                                @search="onProductSearch"
                             />
                         </div>
 
