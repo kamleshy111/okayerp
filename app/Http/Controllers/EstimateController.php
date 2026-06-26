@@ -45,11 +45,13 @@ class EstimateController extends Controller
         $products = [];
         $categories = Category::select('id', 'name')->where('user_id', $userId)->get();
         $unitTypes = config('units.types');
+        $gstRates = \App\Models\GstRate::where('is_active', true)->get();
 
         return Inertia::render('Estimate/Create', [
             'products' => $products,
             'categories' => $categories,
             'unitTypes' => $unitTypes,
+            'gstRates' => $gstRates,
         ]);
     }
 
@@ -151,6 +153,7 @@ class EstimateController extends Controller
         $customers = $customer ? [$customer] : [];
         $categories = Category::select('id', 'name')->where('user_id', $userId)->get();
         $unitTypes = config('units.types');
+        $gstRates = \App\Models\GstRate::where('is_active', true)->get();
 
         return Inertia::render('Estimate/Edit', [
             'estimate' => $estimate,
@@ -158,6 +161,7 @@ class EstimateController extends Controller
             'products' => $products,
             'categories' => $categories,
             'unitTypes' => $unitTypes,
+            'gstRates' => $gstRates,
         ]);
     }
 
