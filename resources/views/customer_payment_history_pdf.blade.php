@@ -2,82 +2,144 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Customer Payment History</title>
+  <title>Customer Payment Statement</title>
   <style>
     body {
       margin: 0;
-      font-family: DejaVu Sans, sans-serif;
-      font-size: 13px;
-      color: #1f2937;
+      font-family: 'DejaVu Sans', sans-serif;
+      font-size: 11px;
+      color: #000;
+      line-height: 1.3;
     }
 
-    .statement-box {
+    .invoice-container {
       width: 100%;
-      padding: 20px;
-      background: #fff;
+      border: 1px solid #2e2c92;
+      padding: 0;
+      box-sizing: border-box;
     }
 
-    .statement-title h1 {
-      margin: 0;
-      font-size: 24px;
+    table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    td, th {
+      padding: 5px;
+      vertical-align: top;
+    }
+
+    .border-bottom {
+      border-bottom: 1px solid #2e2c92;
+    }
+
+    .border-right {
+      border-right: 1px solid #2e2c92;
+    }
+
+    .text-center {
+      text-align: center;
+    }
+
+    .text-right {
+      text-align: right;
+    }
+
+    .bold {
+      font-weight: bold;
+    }
+
+    /* Header styling */
+    .header-table td {
+      padding: 8px;
+    }
+
+    .logo-container {
+      width: 25%;
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .company-details {
+      width: 55%;
+      text-align: center;
+    }
+
+    .company-name {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 2px;
+      text-transform: uppercase;
       color: #2e2c92;
     }
 
-    .info-section {
-      margin-bottom: 20px;
+    .invoice-type {
+      width: 20%;
+      text-align: right;
+      font-size: 10px;
     }
 
-    .info-left, .info-right {
-      width: 48%;
-      display: inline-block;
-      vertical-align: top;
+    /* Meta Info Grid */
+    .meta-table td {
+      width: 50%;
+      padding: 0;
     }
 
-    .customer-profile {
-      background-color: #f8fafc;
-      border: 1px solid #e2e8f0;
-      border-radius: 12px;
-      padding: 15px;
-      margin-bottom: 25px;
+    .meta-sub-table td {
+      padding: 4px 6px;
+      border-bottom: 1px solid #ddd;
     }
 
-    .customer-profile h3 {
-      margin: 0 0 10px 0;
-      color: #1e1b4b;
-      font-size: 16px;
+    .meta-sub-table tr:last-child td {
+      border-bottom: none;
     }
 
-    .customer-profile p {
-      margin: 4px 0;
-      color: #4b5563;
-    }
-
-    .stats-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 25px;
-    }
-
+    /* Stats Box Table */
     .stats-table td {
-      border: 1px solid #e2e8f0;
-      padding: 12px;
+      border-right: 1px solid #2e2c92;
+      padding: 8px;
       width: 33.33%;
-      vertical-align: top;
     }
-
+    .stats-table td:last-child {
+      border-right: none;
+    }
     .stats-label {
-      font-size: 11px;
+      font-size: 9px;
       font-weight: bold;
       color: #6b7280;
       text-transform: uppercase;
-      margin-bottom: 5px;
       display: block;
+      margin-bottom: 2px;
     }
-
     .stats-value {
-      font-size: 18px;
+      font-size: 14px;
       font-weight: bold;
     }
+
+    /* Items / History Table */
+    .items-table th {
+      background-color: #e0e7ff;
+      color: #2e2c92;
+      border-bottom: 1px solid #2e2c92;
+      font-weight: bold;
+      text-align: center;
+      padding: 6px 4px;
+    }
+
+    .items-table td {
+      border-right: 1px solid #2e2c92;
+      padding: 5px 6px;
+    }
+
+    .items-table td:last-child {
+      border-right: none;
+    }
+
+    .items-table tr.item-row td {
+      min-height: 22px;
+    }
+
+
 
     .text-emerald {
       color: #16a34a;
@@ -87,35 +149,12 @@
       color: #dc2626;
     }
 
-    table.history-table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-top: 15px;
-    }
-
-    table.history-table th,
-    table.history-table td {
-      border: 1px solid #ddd;
-      padding: 10px 8px;
-      text-align: left;
-    }
-
-    table.history-table th {
-      background-color: #2e2c92;
-      color: #ffffff;
-      font-weight: bold;
-    }
-
-    .text-right {
-      text-align: right;
-    }
-
     .badge {
       display: inline-block;
-      padding: 3px 8px;
-      font-size: 11px;
+      padding: 2px 6px;
+      font-size: 9px;
       font-weight: bold;
-      border-radius: 9999px;
+      border-radius: 4px;
     }
 
     .badge-sale {
@@ -132,103 +171,230 @@
       background-color: #ffe4e6;
       color: #9f1239;
     }
+
+    .badge-due {
+      background-color: #fef3c7;
+      color: #92400e;
+    }
+
+    /* Summary row at bottom of table */
+    .summary-row td {
+      border-top: 2px solid #2e2c92;
+      border-bottom: 1px solid #2e2c92;
+      padding: 6px;
+      background-color: #f8fafc;
+    }
+
+    /* Footer styling */
+    .footer-table td {
+      width: 50%;
+      padding: 8px;
+    }
+
+    .terms-list {
+      margin: 4px 0 0 0;
+      padding-left: 15px;
+    }
   </style>
 </head>
 <body>
-  <div class="statement-box">
-    <table width="100%" style="border-bottom: 2px solid #2e2c92; padding-bottom: 10px; margin-bottom: 25px;">
+
+@php
+  $store = $customer->user;
+@endphp
+
+<div class="invoice-container">
+  
+  <!-- Header Table -->
+  <table class="border-bottom header-table">
+    <tr>
+      <td class="logo-container">
+        @if($store && $store->profile_photo && file_exists(storage_path('app/public/' . $store->profile_photo)))
+          <img src="{{ storage_path('app/public/' . $store->profile_photo) }}" style="max-height: 55px; max-width: 150px;">
+        @elseif(file_exists(public_path('images/logo.png')))
+          <img src="{{ public_path('images/logo.png') }}" style="max-height: 55px; max-width: 150px;">
+        @else
+          <span style="font-size: 14px; font-weight: bold; color: #2e2c92;">{{ $store ? $store->name : 'OKAY ERP' }}</span>
+        @endif
+      </td>
+      <td class="company-details">
+        <div class="bold text-center" style="font-size: 10px; margin-bottom: 2px; letter-spacing: 1px;">PAYMENT STATEMENT</div>
+        <div class="company-name">{{ $store ? $store->name : 'Your Store Name' }}</div>
+        <div>{{ $store ? $store->address : 'Store Address' }}</div>
+        @if($store && $store->gstin)
+          <div class="bold">GSTIN : {{ $store->gstin }}</div>
+        @endif
+        @if($store && $store->phone)
+          <div>Tel : {{ $store->phone }}</div>
+        @endif
+      </td>
+      <td class="invoice-type text-right bold">
+        Statement Copy
+      </td>
+    </tr>
+  </table>
+
+  <!-- Meta Info Table -->
+  <table class="border-bottom meta-table">
+    <tr>
+      <td class="border-right">
+        <table class="meta-sub-table">
+          <tr>
+            <td class="bold" style="width: 35%;">Statement For</td>
+            <td style="width: 5%;">:</td>
+            <td class="bold">{{ $customer->name }}</td>
+          </tr>
+          <tr>
+            <td class="bold">Phone</td>
+            <td>:</td>
+            <td>{{ $customer->phone ?? 'N/A' }}</td>
+          </tr>
+          <tr>
+            <td class="bold">Email</td>
+            <td>:</td>
+            <td>{{ $customer->email ?? 'N/A' }}</td>
+          </tr>
+        </table>
+      </td>
+      <td>
+        <table class="meta-sub-table">
+          <tr>
+            <td class="bold" style="width: 35%;">Generated On</td>
+            <td style="width: 5%;">:</td>
+            <td>{{ date('d-m-Y') }}</td>
+          </tr>
+          <tr>
+            <td class="bold">Account Status</td>
+            <td>:</td>
+            <td class="bold text-emerald">ACTIVE</td>
+          </tr>
+          <tr>
+            <td class="bold">GSTIN / UIN</td>
+            <td>:</td>
+            <td>{{ $customer->gst_number ?? 'N/A' }}</td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Stats Table -->
+  <table class="border-bottom stats-table">
+    <tr>
+      <td>
+        <span class="stats-label">Total Received</span>
+        <span class="stats-value text-emerald">+ ₹{{ number_format($totalReceived, 2) }}</span>
+      </td>
+      <td>
+        <span class="stats-label">Total Refunded</span>
+        <span class="stats-value text-rose">- ₹{{ number_format($totalRefunded, 2) }}</span>
+      </td>
+      <td>
+        <span class="stats-label">Net Balance</span>
+        <span class="stats-value {{ $netAmount < 0 ? 'text-rose' : 'text-emerald' }}">
+          {{ $netAmount < 0 ? '-' : '+' }} ₹{{ number_format(abs($netAmount), 2) }}
+        </span>
+      </td>
+    </tr>
+  </table>
+
+  <!-- Transaction History Log Table -->
+  <table class="items-table">
+    <thead>
       <tr>
-        <td style="width: 50%;">
-          @if($customer->user && $customer->user->profile_photo && file_exists(storage_path('app/public/' . $customer->user->profile_photo)))
-            <img src="{{ storage_path('app/public/' . $customer->user->profile_photo) }}" style="max-height: 60px; max-width: 180px;">
-          @elseif(file_exists(public_path('images/logo.png')))
-            <img src="{{ public_path('images/logo.png') }}" style="max-height: 60px; max-width: 180px;">
+        <th class="border-right" style="width: 7%;">S.N.</th>
+        <th class="border-right" style="width: 25%;">Source</th>
+        <th class="border-right" style="width: 18%;">Payment Date</th>
+        <th class="border-right" style="width: 30%;">Payment Method</th>
+        <th style="width: 20%;">Amount(₹)</th>
+      </tr>
+    </thead>
+    <tbody>
+      @foreach ($history as $index => $item)
+      <tr class="item-row">
+        <td class="text-center border-right">{{ $index + 1 }}.</td>
+        <td class="border-right" style="padding: 4px 6px;">
+          @php
+            $src = $item['source'];
+          @endphp
+          @if(str_starts_with($src, 'Sale'))
+            <span class="badge badge-sale">Sale</span>
+            @if(strlen($src) > 4)
+              <span style="font-size: 9px; color: #374151;">{{ str_replace('Sale ', '', $src) }}</span>
+            @endif
+          @elseif(str_starts_with($src, 'Return'))
+            <span class="badge badge-return">Return</span>
+            @if(strlen($src) > 6)
+              <span style="font-size: 9px; color: #374151;">{{ str_replace('Return ', '', $src) }}</span>
+            @endif
+          @elseif(str_starts_with($src, 'Due Clearance'))
+            <span class="badge badge-due">Due Clearance</span>
+            @if(strlen($src) > 13)
+              <span style="font-size: 9px; color: #374151;">{{ str_replace('Due Clearance ', '', $src) }}</span>
+            @endif
+          @elseif($src === 'Customer Payment')
+            <span class="badge badge-payment">Direct Payment</span>
           @else
-            <span style="font-size: 20px; font-weight: bold; color: #2e2c92; text-transform: uppercase; letter-spacing: 1px;">
-              {{ $customer->user ? $customer->user->name : 'OkayERP' }}
-            </span>
+            <span class="badge" style="background-color:#e2e8f0; color:#1f2937;">{{ $src }}</span>
           @endif
         </td>
-        <td style="width: 50%; text-align: right;">
-          <h1 style="margin: 0; font-size: 22px; color: #2e2c92;">Payment Statement</h1>
-          <div style="font-size: 11px; color: #6b7280;">Generated on {{ date('d.m.Y') }}</div>
+        <td class="text-center border-right">
+          {{ \Carbon\Carbon::parse($item['payment_date'])->format('d-m-Y') }}
+        </td>
+        <td class="border-right" style="padding: 4px 6px;">
+          {{ $item['payment_method'] }}
+        </td>
+        <td class="text-right bold">
+          @if($item['amount'] < 0)
+            <span class="text-rose">- ₹{{ number_format(abs($item['amount']), 2) }}</span>
+          @else
+            <span class="text-emerald">+ ₹{{ number_format($item['amount'], 2) }}</span>
+          @endif
         </td>
       </tr>
-    </table>
+      @endforeach
 
-    <div class="customer-profile">
-      <h3>Customer Account Profile</h3>
-      <p><strong>Name:</strong> {{ $customer->name }}</p>
-      @if($customer->email)
-        <p><strong>Email:</strong> {{ $customer->email }}</p>
-      @endif
-      @if($customer->phone)
-        <p><strong>Phone:</strong> {{ $customer->phone }}</p>
-      @endif
-      @if($customer->address)
-        <p><strong>Address:</strong> {{ $customer->address }}</p>
-      @endif
-    </div>
 
-    <table class="stats-table">
-      <tr>
-        <td>
-          <span class="stats-label">Total Received</span>
-          <span class="stats-value text-emerald">+ ₹{{ number_format($totalReceived, 2) }}</span>
-        </td>
-        <td>
-          <span class="stats-label">Total Refunded</span>
-          <span class="stats-value text-rose">- ₹{{ number_format($totalRefunded, 2) }}</span>
-        </td>
-        <td>
-          <span class="stats-label">Net Balance</span>
-          <span class="stats-value {{ $netAmount < 0 ? 'text-rose' : 'text-emerald' }}">
-            {{ $netAmount < 0 ? '-' : '+' }} ₹{{ number_format(abs($netAmount), 2) }}
-          </span>
+
+      <!-- Summary row -->
+      <tr class="summary-row">
+        <td class="border-right">&nbsp;</td>
+        <td class="border-right text-right bold" colspan="3">Net Balance</td>
+        <td class="text-right bold" style="font-size: 12px;">
+          @if($netAmount < 0)
+            <span class="text-rose">- ₹{{ number_format(abs($netAmount), 2) }}</span>
+          @else
+            <span class="text-emerald">+ ₹{{ number_format(abs($netAmount), 2) }}</span>
+          @endif
         </td>
       </tr>
-    </table>
+    </tbody>
+  </table>
 
-    <h2 style="font-size: 16px; color: #1e1b4b; margin: 20px 0 10px 0; border-bottom: 1px solid #e2e8f0; padding-bottom: 5px;">Transaction History Log</h2>
+  <!-- Footer Section -->
+  <table class="footer-table">
+    <tr>
+      <td class="border-right" style="width: 50%;">
+        <div class="bold border-bottom" style="padding-bottom: 2px; margin-bottom: 4px;">Terms & Conditions :</div>
+        <div style="font-size: 9px; color: #333;">
+          E. & O.E.
+          <ol class="terms-list">
+            <li>This is a system-generated account statement detailing customer payment history.</li>
+            <li>Please report any discrepancies in balance within 7 business days.</li>
+          </ol>
+        </div>
+      </td>
+      <td style="width: 50%; vertical-align: top; padding: 8px;">
+        <div class="text-center" style="font-size: 10px; margin-bottom: 30px;">Customer Representative</div>
+        <div style="text-align: right; width: 100%;">
+          <div style="font-size: 9px; margin-bottom: 2px;">for <span class="bold">{{ $store ? $store->name : 'Your Company' }}</span></div>
+          <div class="bold" style="font-size: 10px; margin-top: 15px; padding-right: 5px;">Authorized Signatory</div>
+        </div>
+      </td>
+    </tr>
+  </table>
 
-    <table class="history-table">
-      <thead>
-        <tr>
-          <th style="width: 8%;">S No</th>
-          <th style="width: 22%;">Source</th>
-          <th style="width: 20%;" class="text-right">Amount</th>
-          <th style="width: 22%;">Payment Date</th>
-          <th style="width: 28%;">Payment Method</th>
-        </tr>
-      </thead>
-      <tbody>
-        @foreach ($history as $index => $item)
-          <tr>
-            <td>{{ $index + 1 }}</td>
-            <td>
-              @if($item['source'] === 'Sale')
-                <span class="badge badge-sale">Sale</span>
-              @elseif($item['source'] === 'Customer Payment')
-                <span class="badge badge-payment">Direct Payment</span>
-              @elseif($item['source'] === 'Return')
-                <span class="badge badge-return">Return</span>
-              @else
-                <span class="badge" style="background-color:#e2e8f0;">{{ $item['source'] }}</span>
-              @endif
-            </td>
-            <td class="text-right" style="font-weight: bold;">
-              @if($item['amount'] < 0)
-                <span class="text-rose">- ₹{{ number_format(abs($item['amount']), 2) }}</span>
-              @else
-                <span class="text-emerald">+ ₹{{ number_format($item['amount'], 2) }}</span>
-              @endif
-            </td>
-            <td>{{ \Carbon\Carbon::parse($item['payment_date'])->format('d.m.Y') }}</td>
-            <td>{{ $item['payment_method'] }}</td>
-          </tr>
-        @endforeach
-      </tbody>
-    </table>
-  </div>
+</div>
+
 </body>
 </html>

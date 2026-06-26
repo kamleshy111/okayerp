@@ -494,35 +494,7 @@ class SaleController extends Controller
             abort(403, 'Sale not found or unauthorized access');
         }
 
-        // Subtract returned items and update totals in memory
-        $totalAmount = 0;
-        $gstAmount = 0;
 
-        $saleReturnItems = \App\Models\SaleReturnItem::whereHas('saleReturn', function ($q) use ($sale) {
-            $q->where('sale_id', $sale->id);
-        })->get()->groupBy('product_id');
-
-        foreach ($sale->saleItems as $item) {
-            $returnedQty = isset($saleReturnItems[$item->product_id])
-                ? $saleReturnItems[$item->product_id]->sum('quantity')
-                : 0;
-
-            $item->quantity = max(0, $item->quantity - $returnedQty);
-
-            // base_price = price * quantity
-            $item->base_price = $item->price * $item->quantity;
-
-            $totalAmount += $item->base_price;
-            $gstAmount += $item->base_price * ($item->sgst + $item->cgst) / 100;
-        }
-
-        // Recalculate grand_total
-        $grandTotal = max(0, $totalAmount + $gstAmount - $sale->discount);
-
-        // Update the model properties in memory
-        $sale->total_amount = $totalAmount;
-        $sale->gst_amount = $gstAmount;
-        $sale->grand_total = $grandTotal;
 
         $allocatedPayment = 0.0;
         if ($sale->customer) {
@@ -621,35 +593,7 @@ class SaleController extends Controller
             abort(403, 'Sale not found or unauthorized access');
         }
 
-        // Subtract returned items and update totals in memory
-        $totalAmount = 0;
-        $gstAmount = 0;
 
-        $saleReturnItems = \App\Models\SaleReturnItem::whereHas('saleReturn', function ($q) use ($sale) {
-            $q->where('sale_id', $sale->id);
-        })->get()->groupBy('product_id');
-
-        foreach ($sale->saleItems as $item) {
-            $returnedQty = isset($saleReturnItems[$item->product_id])
-                ? $saleReturnItems[$item->product_id]->sum('quantity')
-                : 0;
-
-            $item->quantity = max(0, $item->quantity - $returnedQty);
-
-            // base_price = price * quantity
-            $item->base_price = $item->price * $item->quantity;
-
-            $totalAmount += $item->base_price;
-            $gstAmount += $item->base_price * ($item->sgst + $item->cgst) / 100;
-        }
-
-        // Recalculate grand_total
-        $grandTotal = max(0, $totalAmount + $gstAmount - $sale->discount);
-
-        // Update the model properties in memory
-        $sale->total_amount = $totalAmount;
-        $sale->gst_amount = $gstAmount;
-        $sale->grand_total = $grandTotal;
 
         $allocatedPayment = 0.0;
         $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
