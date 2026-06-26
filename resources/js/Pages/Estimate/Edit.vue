@@ -7,6 +7,7 @@ import "vue3-toastify/dist/index.css";
 import axios from 'axios';
 import vSelect from "vue3-select";
 import "vue3-select/dist/vue3-select.css";
+import AddProductModal from '@/Components/AddProductModal.vue';
 
 const props = defineProps({
   estimate: {
@@ -147,16 +148,6 @@ const newCustomer = ref({
 
 // Product Quick Add Modal State
 const showProductModal = ref(false);
-const newProduct = ref({
-  name: '',
-  category_id: '',
-  unit_type: '',
-  sgst: 0,
-  cgst: 0,
-  price: 0,
-  hsn_code: '',
-  description: ''
-});
 const activeRowIndexForNewProduct = ref(null);
 
 const onCustomerEnterKey = (event) => {
@@ -226,49 +217,26 @@ const submitCustomer = async () => {
 
 const openProductModal = (rowIndex, search = '') => {
   activeRowIndexForNewProduct.value = rowIndex;
-  newProduct.value = {
-    name: search || '',
-    category_id: '',
-    unit_type: '',
-    sgst: 0,
-    cgst: 0,
-    price: 0,
-    hsn_code: '',
-    description: ''
-  };
+  productSearchQuery.value = search || '';
   showProductModal.value = true;
 };
 
-const submitProduct = async () => {
-  try {
-    if (!newProduct.value.name) {
-      toast.error("Product name is required!");
-      return;
-    }
+const handleProductSuccess = (createdProduct) => {
+  productRegistry.value[createdProduct.id] = createdProduct;
+  products.value.push(createdProduct);
 
-    const response = await axios.post('/product/store', newProduct.value);
-    const createdProduct = response.data;
-    productRegistry.value[createdProduct.id] = createdProduct;
-    products.value.push(createdProduct);
-
-    // Auto-select the newly created product in the active row
-    if (activeRowIndexForNewProduct.value !== null && form.value.estimate_items[activeRowIndexForNewProduct.value]) {
-      const targetItem = form.value.estimate_items[activeRowIndexForNewProduct.value];
-      targetItem.product_id = createdProduct.id;
-      targetItem.unit_type = createdProduct.unit_type;
-      targetItem.sgst = createdProduct.sgst;
-      targetItem.cgst = createdProduct.cgst;
-      targetItem.price = createdProduct.price || 0;
-    }
-
-    showProductModal.value = false;
-    activeRowIndexForNewProduct.value = null;
-
-    toast.success("Product added successfully!");
-  } catch (error) {
-    const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
-    toast.error(errorMessage);
+  // Auto-select the newly created product in the active row
+  if (activeRowIndexForNewProduct.value !== null && form.value.estimate_items[activeRowIndexForNewProduct.value]) {
+    const targetItem = form.value.estimate_items[activeRowIndexForNewProduct.value];
+    targetItem.product_id = createdProduct.id;
+    targetItem.unit_type = createdProduct.unit_type;
+    targetItem.sgst = createdProduct.sgst;
+    targetItem.cgst = createdProduct.cgst;
+    targetItem.price = createdProduct.price || 0;
   }
+
+  showProductModal.value = false;
+  activeRowIndexForNewProduct.value = null;
 };
 
 // Watch Customer ID to find Customer details
@@ -760,89 +728,15 @@ const submitForm = async () => {
         </div>
     </div>
 
-    <!-- Quick Add Product Modal -->
-    <div v-if="showProductModal" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
-         style="z-index: 99999;"
-         @click.self="showProductModal = false">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
-            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
-                <h2 class="text-xl font-bold text-[#2E2C92]">Add New Product</h2>
-                <button @click="showProductModal = false" class="text-gray-400 hover:text-gray-600 transition">
-                    <i class="fa fa-close"></i>
-                </button>
-            </div>
-
-            <div class="space-y-4">
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Product Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newProduct.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Category</label>
-                        <select v-model="newProduct.category_id" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none bg-white">
-                            <option value="">Select Category</option>
-                            <option v-for="category in categories" :key="category.id" :value="category.id">{{ category.name }}</option>
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Unit Type</label>
-                        <select v-model="newProduct.unit_type" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none bg-white">
-                            <option value="">Select Unit</option>
-                            <option v-for="(label, val) in unitTypes" :key="val" :value="val">{{ label }}</option>
-                        </select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">SGST (%)</label>
-                        <input type="number" step="0.01" v-model.number="newProduct.sgst" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">CGST (%)</label>
-                        <input type="number" step="0.01" v-model.number="newProduct.cgst" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">HSN/SAC Code</label>
-                        <input type="text" v-model="newProduct.hsn_code" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Selling Price (₹)</label>
-                        <input type="number" step="0.01" v-model.number="newProduct.price" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
-                    <textarea v-model="newProduct.description" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" rows="2"></textarea>
-                </div>
-            </div>
-
-            <div class="mt-6 flex justify-end gap-3 pt-2">
-                <button
-                    @click="showProductModal = false"
-                    class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer"
-                >
-                    Cancel
-                </button>
-                <button
-                    @click="submitProduct"
-                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer"
-                >
-                    Save Product
-                </button>
-            </div>
-        </div>
-    </div>
+    <!-- Add Product Modal -->
+    <AddProductModal
+        :show="showProductModal"
+        :initialName="productSearchQuery"
+        :categories="categories"
+        :unitTypes="unitTypes"
+        @close="showProductModal = false"
+        @success="handleProductSuccess"
+    />
 
     </AuthenticatedLayout>
 </template>
