@@ -33,7 +33,56 @@ const props = defineProps({
 });
 
 const customers = ref([...props.customers]);
-const products = ref([...props.products]);
+const products = ref([]);
+
+// Registry to store all products we have seen/loaded so far
+const productRegistry = ref({});
+
+// Initialize registry with initial products (from props)
+if (props.products) {
+  props.products.forEach(p => {
+    productRegistry.value[p.id] = p;
+  });
+  // Since this is edit mode, start products list with the pre-loaded products (currently selected items)
+  products.value = [...props.products];
+}
+
+const productSearchQuery = ref('');
+const onProductSearch = async (search, loading) => {
+  productSearchQuery.value = search;
+  if (!search.trim()) {
+    let initialList = [];
+    form.value.estimate_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInList = initialList.some(p => p.id === item.product_id);
+        if (!alreadyInList) {
+          initialList.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = initialList;
+    return;
+  }
+  try {
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(search)}`);
+    response.data.forEach(p => {
+      productRegistry.value[p.id] = p;
+    });
+
+    let results = response.data;
+    form.value.estimate_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInResults = results.some(p => p.id === item.product_id);
+        if (!alreadyInResults) {
+          results.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = results;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
+};
 
 const customerSearchQuery = ref("");
 const onCustomerSearch = async (search, loading) => {
@@ -175,10 +224,10 @@ const submitCustomer = async () => {
   }
 };
 
-const openProductModal = (rowIndex) => {
+const openProductModal = (rowIndex, search = '') => {
   activeRowIndexForNewProduct.value = rowIndex;
   newProduct.value = {
-    name: '',
+    name: search || '',
     category_id: '',
     unit_type: '',
     sgst: 0,
@@ -199,6 +248,7 @@ const submitProduct = async () => {
 
     const response = await axios.post('/product/store', newProduct.value);
     const createdProduct = response.data;
+    productRegistry.value[createdProduct.id] = createdProduct;
     products.value.push(createdProduct);
 
     // Auto-select the newly created product in the active row
@@ -233,7 +283,7 @@ watch(() => form.value.customer_id, (newVal) => {
 // Watch Estimate Items to auto-populate product details (price, SGST, CGST, unit_type)
 watch(() => form.value.estimate_items, (newItems) => {
   newItems.forEach(item => {
-    const prod = products.value.find(p => p.id === item.product_id);
+    const prod = productRegistry.value[item.product_id] || products.value.find(p => p.id === item.product_id);
     if (prod) {
       if (item.unit_type === "") item.unit_type = prod.unit_type;
       if (item.sgst === "" || item.sgst === 0) item.sgst = prod.sgst;
@@ -433,12 +483,14 @@ const submitForm = async () => {
                                         placeholder="Search product"
                                         class="w-full text-black bg-white"
                                         append-to-body
+                                        @search="onProductSearch"
                                     >
-                                        <template #no-options>
+                                        <template #no-options="{ search, searching, loading }">
                                             <div class="px-3 py-2 text-gray-500 text-xs">
-                                                No products found.
+                                                <span v-if="!search">Type to search product...</span>
+                                                <span v-else>No products found.</span>
                                                 <button
-                                                    @click.stop="openProductModal(index)"
+                                                    @click.stop="openProductModal(index, search)"
                                                     class="mt-1 text-blue-600 hover:underline text-xs block"
                                                 >
                                                     ➕ Add New Product
@@ -505,12 +557,14 @@ const submitForm = async () => {
                                     :reduce="product => product.id"
                                     placeholder="Search product"
                                     class="w-full text-black bg-white"
+                                    @search="onProductSearch"
                                 >
-                                    <template #no-options>
+                                    <template #no-options="{ search, searching, loading }">
                                         <div class="px-3 py-2 text-gray-500 text-xs">
-                                            No products found.
+                                            <span v-if="!search">Type to search product...</span>
+                                            <span v-else>No products found.</span>
                                             <button
-                                                @click.stop="openProductModal(index)"
+                                                @click.stop="openProductModal(index, search)"
                                                 class="mt-1 text-blue-600 hover:underline text-xs block"
                                             >
                                                 ➕ Add New Product
