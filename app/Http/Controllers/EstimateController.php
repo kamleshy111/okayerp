@@ -42,7 +42,7 @@ class EstimateController extends Controller
     public function create()
     {
         $userId = Auth::id();
-        $products = Product::where('user_id', $userId)->get();
+        $products = [];
         $categories = Category::select('id', 'name')->where('user_id', $userId)->get();
         $unitTypes = config('units.types');
 
@@ -145,7 +145,8 @@ class EstimateController extends Controller
             abort(404, 'Quotation not found.');
         }
 
-        $products = Product::where('user_id', $userId)->get();
+        $productIds = $estimate->items->pluck('product_id')->unique()->toArray();
+        $products = Product::whereIn('id', $productIds)->get();
         $customer = Customer::find($estimate->customer_id);
         $customers = $customer ? [$customer] : [];
         $categories = Category::select('id', 'name')->where('user_id', $userId)->get();
