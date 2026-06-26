@@ -14,7 +14,7 @@
 
     .invoice-container {
       width: 100%;
-      border: 1px solid #000;
+      border: 1px solid #2e2c92;
       padding: 0;
       box-sizing: border-box;
     }
@@ -30,11 +30,11 @@
     }
 
     .border-bottom {
-      border-bottom: 1px solid #000;
+      border-bottom: 1px solid #2e2c92;
     }
 
     .border-right {
-      border-right: 1px solid #000;
+      border-right: 1px solid #2e2c92;
     }
 
     .text-center {
@@ -70,6 +70,7 @@
       font-weight: bold;
       margin-bottom: 2px;
       text-transform: uppercase;
+      color: #2e2c92;
     }
 
     .invoice-type {
@@ -101,15 +102,16 @@
 
     /* Items Table */
     .items-table th {
-      background-color: #f3f4f6;
-      border-bottom: 1px solid #000;
+      background-color: #e0e7ff;
+      color: #2e2c92;
+      border-bottom: 1px solid #2e2c92;
       font-weight: bold;
       text-align: center;
       padding: 6px 4px;
     }
 
     .items-table td {
-      border-right: 1px solid #000;
+      border-right: 1px solid #2e2c92;
       padding: 4px 6px;
     }
 
@@ -123,22 +125,23 @@
 
     /* Totals rows in items table */
     .total-row td {
-      border-top: 1px solid #000;
-      border-bottom: 1px solid #000;
+      border-top: 1px solid #2e2c92;
+      border-bottom: 1px solid #2e2c92;
       padding: 6px;
     }
 
     /* Tax Summary Grid */
     .tax-summary-table th {
-      background-color: #f9fafb;
-      border: 1px solid #000;
+      background-color: #e0e7ff;
+      color: #2e2c92;
+      border: 1px solid #2e2c92;
       font-weight: bold;
       text-align: center;
       padding: 4px;
     }
 
     .tax-summary-table td {
-      border: 1px solid #000;
+      border: 1px solid #2e2c92;
       padding: 4px 6px;
     }
 
@@ -249,7 +252,7 @@
   $subtotal = 0;
   foreach ($sale->saleItems as $item) {
       $totalQty += $item->quantity;
-      $subtotal += ($item->base_price * $item->quantity);
+      $subtotal += $item->base_price;
       
       $gstRate = ($item->cgst + $item->sgst);
       $key = number_format($gstRate, 2);
@@ -266,7 +269,7 @@
           ];
       }
       
-      $taxable = $item->base_price * $item->quantity;
+      $taxable = $item->base_price;
       $taxGroups[$key]['taxable_amount'] += $taxable;
       
       $cgstVal = $taxable * ($item->cgst / 100);
@@ -417,8 +420,8 @@
         <td class="text-center border-right">{{ optional($item->product)->hsn_code ?? 'N/A' }}</td>
         <td class="text-right border-right">{{ number_format($item->quantity, 2) }}</td>
         <td class="text-center border-right">{{ $item->unit_type ?? 'Pcs.' }}</td>
-        <td class="text-right border-right">{{ number_format($item->base_price, 2) }}</td>
-        <td class="text-right">{{ number_format($item->base_price * $item->quantity, 2) }}</td>
+        <td class="text-right border-right">{{ number_format($item->price, 2) }}</td>
+        <td class="text-right">{{ number_format($item->base_price, 2) }}</td>
       </tr>
       @endforeach
 
@@ -438,45 +441,38 @@
       <!-- Subtotal exclusive of Tax -->
       <tr class="total-row">
         <td class="border-right">&nbsp;</td>
-        <td class="bold border-right text-right" colspan="2">Total Taxable Value</td>
+        <td class="bold border-right text-right" colspan="2">Total Amount</td>
         <td class="text-right border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="text-right bold">{{ number_format($subtotal, 2) }}</td>
       </tr>
 
-      <!-- CGST/SGST/IGST breakdown in items table -->
-      @foreach($taxGroups as $gstRateKey => $group)
-        @if($group['total_tax'] > 0)
-          @if($isInterstate)
-            <tr class="total-row">
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right text-right bold" colspan="2">Add : IGST @ {{ number_format($group['rate'], 2) }}%</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="text-right">{{ number_format($group['total_tax'], 2) }}</td>
-            </tr>
-          @else
-            <tr class="total-row">
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right text-right bold" colspan="2">Add : CGST @ {{ number_format($group['cgst_rate'], 2) }}%</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="text-right">{{ number_format($group['cgst_amount'], 2) }}</td>
-            </tr>
-            <tr class="total-row">
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right text-right bold" colspan="2">Add : SGST @ {{ number_format($group['sgst_rate'], 2) }}%</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="border-right">&nbsp;</td>
-              <td class="text-right">{{ number_format($group['sgst_amount'], 2) }}</td>
-            </tr>
-          @endif
-        @endif
-      @endforeach
+      <!-- Total GST -->
+      @if($sale->gst_amount > 0)
+      <tr class="total-row">
+        <td class="border-right">&nbsp;</td>
+        <td class="bold border-right text-right" colspan="2">Total GST</td>
+        <td class="text-right border-right">&nbsp;</td>
+        <td class="border-right">&nbsp;</td>
+        <td class="border-right">&nbsp;</td>
+        <td class="text-right bold">{{ number_format($sale->gst_amount, 2) }}</td>
+      </tr>
+      @endif
+
+      <!-- Discount -->
+      @if($sale->discount > 0)
+      <tr class="total-row">
+        <td class="border-right">&nbsp;</td>
+        <td class="bold border-right text-right" colspan="2">Discount</td>
+        <td class="text-right border-right">&nbsp;</td>
+        <td class="border-right">&nbsp;</td>
+        <td class="border-right">&nbsp;</td>
+        <td class="text-right bold">-{{ number_format($sale->discount, 2) }}</td>
+      </tr>
+      @endif
+
+
 
       <!-- Rounded off row -->
       @if($roundOff != 0)
