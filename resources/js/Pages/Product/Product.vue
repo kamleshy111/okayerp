@@ -46,8 +46,8 @@ const clearSelectedFile = () => {
 };
 
 const downloadSampleCsv = () => {
-  const headers = ['name', 'category_name', 'unit_type', 'cgst', 'sgst', 'hsn_code', 'description'];
-  const sampleRow = ['Sample Product', 'Electronics', 'Pcs', '9', '9', '8517', 'A premium quality sample product description.'];
+  const headers = ['name', 'category_name', 'unit_type', 'hsn_code', 'description'];
+  const sampleRow = ['Sample Product', 'Electronics', 'Pcs', '8517', 'A premium quality sample product description.'];
   
   const csvContent = "data:text/csv;charset=utf-8," 
     + [headers.join(','), sampleRow.join(',')].join('\n');
@@ -270,8 +270,6 @@ function deleteProduct(productId) {
                 <li><strong>name</strong> (Required) - Product name</li>
                 <li><strong>category_name</strong> - Associated category</li>
                 <li><strong>unit_type</strong> - Unit type (e.g. Kg, Pcs, Liters)</li>
-                <li><strong>cgst</strong> - CGST % (e.g. 9)</li>
-                <li><strong>sgst</strong> - SGST % (e.g. 9)</li>
                 <li><strong>hsn_code</strong> - Product HSN code</li>
                 <li><strong>description</strong> - Details about the product</li>
               </ul>
