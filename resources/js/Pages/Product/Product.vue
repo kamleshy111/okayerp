@@ -48,39 +48,39 @@ const clearSelectedFile = () => {
 const downloadSampleCsv = () => {
   const headers = ['name', 'category_name', 'unit_type', 'hsn_code', 'description'];
   const sampleRow = ['Sample Product', 'Electronics', 'Pcs', '8517', 'A premium quality sample product description.'];
-  
-  const csvContent = "data:text/csv;charset=utf-8," 
+
+  const csvContent = "data:text/csv;charset=utf-8,"
     + [headers.join(','), sampleRow.join(',')].join('\n');
-    
+
   const encodedUri = encodeURI(csvContent);
   const link = document.createElement("a");
   link.setAttribute("href", encodedUri);
   link.setAttribute("download", "products_import_template.csv");
   document.body.appendChild(link);
-  
+
   link.click();
   document.body.removeChild(link);
 };
 
 const submitImport = async () => {
   if (!selectedFile.value) return;
-  
+
   isImporting.value = true;
   importErrors.value = [];
-  
+
   const formData = new FormData();
   formData.append('file', selectedFile.value);
-  
+
   try {
     const response = await axios.post(route('product.import'), formData, {
       headers: {
         'Content-Type': 'multipart/form-data'
       }
     });
-    
+
     isImporting.value = false;
     showImportModal.value = false;
-    
+
     if (response.data.warnings && response.data.warnings.length > 0) {
       Swal.fire({
         icon: 'warning',
@@ -105,7 +105,7 @@ const submitImport = async () => {
     isImporting.value = false;
     const errorMsg = error.response?.data?.message || 'Something went wrong during the import process.';
     const validationErrors = error.response?.data?.errors || [];
-    
+
     if (validationErrors.length > 0) {
       importErrors.value = validationErrors;
       Swal.fire({
@@ -128,7 +128,7 @@ const submitImport = async () => {
 // Column definitions for DataTable
 const columns = [
 //   { data: 'id', title: 'S No' },
-    { 
+    {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
@@ -139,7 +139,7 @@ const columns = [
     orderable: false,
     searchable: false,
     render: (data) => {
-        return data 
+        return data
             ? `<img src="${data}" class="w-10 h-10 object-cover rounded-lg border border-gray-200" alt="Product Image" />`
             : `<div class="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400"><i class="fa fa-image text-lg"></i></div>`;
     }
@@ -153,7 +153,7 @@ const columns = [
         title: 'Actions',
         data: null,
         orderable: false,
-        searchable: false, 
+        searchable: false,
         render: (data, type, row) => {
             return `
             <div class="icon-all-dflex">
@@ -196,8 +196,9 @@ function deleteProduct(productId) {
           Swal.fire('Deleted!', 'Your product has been deleted.', 'success');
           location.reload(); // Reload or re-fetch the data if needed
         })
-        .catch(() => {
-          Swal.fire('Error!', 'Failed to delete the product. Please try again.', 'error');
+        .catch((error) => {
+          const errMsg = error.response?.data?.message || 'Failed to delete the product. Please try again.';
+          Swal.fire('Error!', errMsg, 'error');
         });
     }
   });
@@ -208,7 +209,7 @@ function deleteProduct(productId) {
 
     <Head title="Product">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    </Head>  
+    </Head>
 
     <AuthenticatedLayout>
       <div class="p-6">

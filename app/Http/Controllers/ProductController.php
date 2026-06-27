@@ -35,14 +35,14 @@ class ProductController extends Controller
         });
 
         return Inertia::render('Product/Product',[
-            'products' => $products, 
+            'products' => $products,
         ]);
     }
 
     public function create(){
 
         $userId = Auth::id();
-  
+
         $categories = Category::where('user_id', $userId)->select('id', 'name')->get();
 
         $unitTypes = config('units.types');
@@ -189,13 +189,21 @@ class ProductController extends Controller
     public function destroy($id)
     {
         $product = Product::find($id);
-    
-        if($product) {
-            $product->delete();
-            return response()->json(['message' => 'Product deleted successfully.'], 200);
+        if (!$product) {
+            return response()->json(['message' => 'Product not found.'], 404);
         }
-    
-        return response()->json(['message' => 'Product not found.'], 404);
+
+        $hasSales = \App\Models\SaleItem::where('product_id', $id)->exists();
+        $hasPurchases = \App\Models\PurchaseItem::where('product_id', $id)->exists();
+        $hasEstimates = \App\Models\EstimateItem::where('product_id', $id)->exists();
+        $hasMovements = \App\Models\StockMovement::where('product_id', $id)->exists();
+
+        if ($hasSales || $hasPurchases || $hasEstimates || $hasMovements) {
+            return response()->json(['message' => 'Cannot delete this product because it has associated sales, purchases, estimates, or stock movements.'], 422);
+        }
+
+        $product->delete();
+        return response()->json(['message' => 'Product deleted successfully.'], 200);
     }
 
     public function import(Request $request)
@@ -209,7 +217,7 @@ class ProductController extends Controller
 
         $file = $request->file('file');
         $path = $file->getRealPath();
-        
+
         $handle = fopen($path, 'r');
         if (!$handle) {
             return response()->json(['message' => 'Unable to read the uploaded CSV file.'], 400);
@@ -254,7 +262,7 @@ class ProductController extends Controller
         try {
             while (($row = fgetcsv($handle)) !== false) {
                 $rowNum++;
-                
+
                 // Skip empty rows
                 if (empty($row) || (count($row) === 1 && empty($row[0]))) {
                     continue;
