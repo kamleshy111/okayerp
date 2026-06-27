@@ -146,22 +146,66 @@ onMounted(async () => {
                     toast.error("This estimate has already been converted to a sale!");
                     return;
                 }
+
+                // Step 1: Load customer into customers array so vSelect shows selection
+                if (estimate.customer) {
+                    const alreadyExists = customers.value.some(c => c.id == estimate.customer.id);
+                    if (!alreadyExists) {
+                        customers.value.unshift(estimate.customer);
+                    }
+                    selectedCustomer.value = estimate.customer;
+                }
+
                 form.value.customer_id = estimate.customer_id;
                 form.value.estimate_id = estimate.id;
                 form.value.discount = parseFloat(estimate.discount) || 0;
                 form.value.accepted = estimate.accepted == 1;
 
-                // Map items
+                // Step 2: Load products from estimate.items.product relation into registry and products array
+                estimate.items.forEach(item => {
+                    if (item.product) {
+                        productRegistry.value[item.product.id] = item.product;
+                        const alreadyInProducts = products.value.some(p => p.id === item.product.id);
+                        if (!alreadyInProducts) {
+                            products.value.push(item.product);
+                        }
+                    }
+                });
+
+                // Step 3: Determine interstate status based on loaded customer
+                const customerState = estimate.customer?.state?.trim().toLowerCase() || '';
+                const storeStateVal = storeState.value.trim().toLowerCase();
+                const isInterstateNow = customerState && storeStateVal !== customerState;
+
+                // Step 4: Map items with correct GST rate using interstate knowledge
                 form.value.sale_items = estimate.items.map(item => {
                     const sgst = parseFloat(item.sgst) || 0;
                     const cgst = parseFloat(item.cgst) || 0;
                     const totalProductRate = sgst + cgst;
-                    const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+
+                    // Filter rates based on interstate status
+                    const applicableRates = isInterstateNow
+                        ? props.gstRates.filter(r => r.name.toLowerCase().includes('igst'))
+                        : props.gstRates.filter(r => !r.name.toLowerCase().includes('igst'));
+
+                    const matchedRate = applicableRates.find(r => parseFloat(r.rate) === totalProductRate)
+                        || props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+
+                    let computedCgst = cgst;
+                    let computedSgst = sgst;
+                    if (matchedRate && parseFloat(matchedRate.igst) > 0) {
+                        computedCgst = parseFloat(matchedRate.igst) / 2;
+                        computedSgst = parseFloat(matchedRate.igst) / 2;
+                    } else if (matchedRate) {
+                        computedCgst = parseFloat(matchedRate.cgst) || cgst;
+                        computedSgst = parseFloat(matchedRate.sgst) || sgst;
+                    }
+
                     return {
                         product_id: item.product_id,
                         unit_type: item.unit_type || "",
-                        sgst: sgst,
-                        cgst: cgst,
+                        sgst: computedSgst,
+                        cgst: computedCgst,
                         quantity: item.quantity,
                         price: item.price,
                         baseAmount: item.base_price,

@@ -137,15 +137,24 @@ const form = ref({
         const cgst = parseFloat(item.cgst) || 0;
         const totalProductRate = sgst + cgst;
         const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+        const computedId = matchedRate ? matchedRate.id : (props.gstRates[0]?.id || "");
+        // If matched rate is IGST type, split evenly
+        const rateObj = props.gstRates.find(r => r.id === computedId);
+        let computedCgst = cgst;
+        let computedSgst = sgst;
+        if (rateObj && parseFloat(rateObj.igst) > 0) {
+            computedCgst = parseFloat(rateObj.igst) / 2;
+            computedSgst = parseFloat(rateObj.igst) / 2;
+        }
         return {
             product_id: item.product_id,
             unit_type: item.unit_type || "",
-            sgst: sgst,
-            cgst: cgst,
+            sgst: computedSgst,
+            cgst: computedCgst,
             quantity: item.quantity || 1,
             price: item.price || 0,
             baseAmount: item.base_price || 0,
-            gst_rate_id: matchedRate ? matchedRate.id : (props.gstRates[0]?.id || ""),
+            gst_rate_id: computedId,
             last_product_id: item.product_id,
         };
     }),
@@ -276,6 +285,38 @@ const isInterstate = computed(() => {
   return storeState.value.trim().toLowerCase() !== selectedCustomer.value.state.trim().toLowerCase();
 });
 
+const filteredGstRates = computed(() => {
+  if (isInterstate.value) {
+    return props.gstRates.filter(r => r.name.toLowerCase().includes('igst'));
+  } else {
+    return props.gstRates.filter(r => !r.name.toLowerCase().includes('igst'));
+  }
+});
+
+// Watch isInterstate to update selected GST rates when customer changes
+watch(isInterstate, (newVal) => {
+  form.value.estimate_items.forEach(item => {
+    if (!item.gst_rate_id) return;
+    const currentRate = props.gstRates.find(r => r.id === item.gst_rate_id);
+    if (currentRate) {
+      const targetRate = props.gstRates.find(r =>
+        parseFloat(r.rate) === parseFloat(currentRate.rate) &&
+        (newVal ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
+      );
+      if (targetRate) {
+        item.gst_rate_id = targetRate.id;
+        if (parseFloat(targetRate.igst) > 0) {
+          item.cgst = parseFloat(targetRate.igst) / 2;
+          item.sgst = parseFloat(targetRate.igst) / 2;
+        } else {
+          item.cgst = parseFloat(targetRate.cgst) || 0;
+          item.sgst = parseFloat(targetRate.sgst) || 0;
+        }
+      }
+    }
+  });
+});
+
 const hasGstSelected = computed(() => {
   return form.value.estimate_items.some(item => !!item.gst_rate_id);
 });
@@ -293,13 +334,26 @@ watch(() => form.value.estimate_items, (newItems) => {
 
         // Auto-match gst_rate_id from product's default tax rates
         const totalProductRate = (parseFloat(prod.sgst) || 0) + (parseFloat(prod.cgst) || 0);
-        const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+        const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
         if (matchedRate) {
           item.gst_rate_id = matchedRate.id;
+          if (parseFloat(matchedRate.igst) > 0) {
+            item.cgst = parseFloat(matchedRate.igst) / 2;
+            item.sgst = parseFloat(matchedRate.igst) / 2;
+          } else {
+            item.cgst = parseFloat(matchedRate.cgst) || 0;
+            item.sgst = parseFloat(matchedRate.sgst) || 0;
+          }
         } else {
-          item.gst_rate_id = props.gstRates[0]?.id || "";
-          item.cgst = 0;
-          item.sgst = 0;
+          const defaultRate = filteredGstRates.value[0];
+          item.gst_rate_id = defaultRate?.id || "";
+          if (defaultRate && parseFloat(defaultRate.igst) > 0) {
+            item.cgst = parseFloat(defaultRate.igst) / 2;
+            item.sgst = parseFloat(defaultRate.igst) / 2;
+          } else {
+            item.cgst = defaultRate ? parseFloat(defaultRate.cgst) || 0 : 0;
+            item.sgst = defaultRate ? parseFloat(defaultRate.sgst) || 0 : 0;
+          }
         }
       }
 
@@ -313,8 +367,13 @@ watch(() => form.value.estimate_items, (newItems) => {
 const onGstRateChange = (item) => {
   const selectedRate = props.gstRates.find(r => r.id === item.gst_rate_id);
   if (selectedRate) {
-    item.cgst = parseFloat(selectedRate.cgst) || 0;
-    item.sgst = parseFloat(selectedRate.sgst) || 0;
+    if (parseFloat(selectedRate.igst) > 0) {
+      item.cgst = parseFloat(selectedRate.igst) / 2;
+      item.sgst = parseFloat(selectedRate.igst) / 2;
+    } else {
+      item.cgst = parseFloat(selectedRate.cgst) || 0;
+      item.sgst = parseFloat(selectedRate.sgst) || 0;
+    }
   }
 };
 
@@ -488,13 +547,6 @@ const submitForm = async () => {
                             <tr>
                                 <th class="px-4 py-3 text-left w-1/3">Product <span class="text-red-500">*</span></th>
                                 <th class="px-4 py-3 text-left">GST</th>
-                                <template v-if="hasGstSelected">
-                                    <th v-if="isInterstate" class="px-4 py-3 text-left">IGST</th>
-                                    <template v-else>
-                                        <th class="px-4 py-3 text-left">CGST</th>
-                                        <th class="px-4 py-3 text-left">SGST</th>
-                                    </template>
-                                </template>
                                 <th class="px-4 py-3 text-left w-20">Qty <span class="text-red-500">*</span></th>
                                 <th class="px-4 py-3 text-left">Unit</th>
                                 <th class="px-4 py-3 text-left w-32">Price <span class="text-red-500">*</span></th>
@@ -537,33 +589,11 @@ const submitForm = async () => {
                                         class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
                                     >
                                         <option value="" disabled>Select GST</option>
-                                        <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                        <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
                                             {{ rate.name }}
                                         </option>
                                     </select>
                                 </td>
-                                <template v-if="hasGstSelected">
-                                    <td v-if="isInterstate" class="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                        <span v-if="item.gst_rate_id" style="font-size: 14px;">
-                                            {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }} %
-                                        </span>
-                                        <span v-else>-</span>
-                                    </td>
-                                    <template v-else>
-                                        <td class="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                            <span v-if="item.gst_rate_id" style="font-size: 14px;">
-                                                {{ item.cgst }} %
-                                            </span>
-                                            <span v-else>-</span>
-                                        </td>
-                                        <td class="px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                            <span v-if="item.gst_rate_id" style="font-size: 14px;">
-                                                {{ item.sgst }} %
-                                            </span>
-                                            <span v-else>-</span>
-                                        </td>
-                                    </template>
-                                </template>
 
                                 <td class="px-4 py-3">
                                     <input type="number" v-model="item.quantity" min="1" required
@@ -644,7 +674,7 @@ const submitForm = async () => {
                                         class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm bg-white"
                                     >
                                         <option value="" disabled>Select GST</option>
-                                        <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                        <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
                                             {{ rate.name }}
                                         </option>
                                     </select>
@@ -666,11 +696,10 @@ const submitForm = async () => {
 
                             <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500 font-semibold">
                                 <div>
-                                    <span class="block text-gray-400">GST Breakdown</span>
+                                    <span class="block text-gray-400">GST</span>
                                     <span class="text-gray-800 font-semibold">
                                         <template v-if="item.gst_rate_id">
-                                            <span v-if="isInterstate">IGST: {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }}%</span>
-                                            <span v-else>CGST: {{ item.cgst }}% | SGST: {{ item.sgst }}%</span>
+                                            {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }}%
                                         </template>
                                         <template v-else>-</template>
                                     </span>
