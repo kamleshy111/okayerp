@@ -260,6 +260,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::get('/reports/aging', [AgingReportController::class, 'index'])->name('reports.aging');
     Route::get('/reports/ledger', [LedgerController::class, 'index'])->name('reports.ledger');
     Route::post('/reports/ledger/repost', [LedgerController::class, 'repost'])->name('reports.ledger.repost');
+    Route::post('/reports/ledger/close-year', [LedgerController::class, 'closeYear'])->name('reports.ledger.close-year');
 
     // Private Ledger
     Route::get('/private-ledger', [PrivateSaleController::class, 'index'])->name('private.index');
