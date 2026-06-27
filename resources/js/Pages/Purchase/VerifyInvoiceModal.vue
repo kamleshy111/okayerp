@@ -237,39 +237,17 @@ watch(grandTotal, (newTotal) => {
         form.value.paid = newTotal.toFixed(2);
     }
 }, { immediate: true });
-
 const paymentStatus = computed(() => {
-    if (!supplierData.value) {
-        const paidNow = parseFloat(form.value.paid) || 0;
-        if (paidNow === 0) return 'UNPAID';
-        if (paidNow >= grandTotal.value) return 'PAID';
-        return 'PARTIAL';
-    }
-
-    const previousAdvance = parseFloat(supplierData.value.advance_amount) || 0;
-    const previousDue = parseFloat(supplierData.value.due_amount) || 0;
     const paidNow = parseFloat(form.value.paid) || 0;
-
-    const previousNet = previousAdvance - previousDue;
-    const currentNet = paidNow - grandTotal.value;
-    const finalNet = previousNet + currentNet;
-
-    if (paidNow === 0 && previousDue > 0) return 'UNPAID';
-    else if (finalNet >= 0) return 'PAID';
-    else if (finalNet < 0) return 'PARTIAL';
-    return 'UNPAID';
+    if (paidNow === 0) return 'UNPAID';
+    if (paidNow >= grandTotal.value) return 'PAID';
+    return 'PARTIAL';
 });
 
 const calculatedDue = computed(() => {
     let baseDue = grandTotal.value - (parseFloat(form.value.paid) || 0);
-    if (supplierData.value) {
-        const previousAdvance = parseFloat(supplierData.value.advance_amount) || 0;
-        const previousDue = parseFloat(supplierData.value.due_amount) || 0;
-        baseDue = baseDue + previousDue - previousAdvance;
-    }
     return baseDue > 0 ? baseDue.toFixed(2) : '0.00';
 });
-
 const handleSave = async () => {
     if (!form.value.supplier_id) {
         Swal.fire('Error', 'Please select a supplier.', 'error');

@@ -267,6 +267,33 @@ const isInterstate = computed(() => {
   return storeState.value.trim().toLowerCase() !== selectedSupplier.value.state.trim().toLowerCase();
 });
 
+const filteredGstRates = computed(() => {
+  if (isInterstate.value) {
+    return props.gstRates.filter(r => r.name.toLowerCase().includes('igst'));
+  } else {
+    return props.gstRates.filter(r => !r.name.toLowerCase().includes('igst'));
+  }
+});
+
+// Watch isInterstate to update selected GST rates when supplier changes
+watch(isInterstate, (newVal) => {
+  form.value.purchase_items.forEach(item => {
+    if (!item.gst_rate_id) return;
+    const currentRate = props.gstRates.find(r => r.id === item.gst_rate_id);
+    if (currentRate) {
+      const targetRate = props.gstRates.find(r => 
+        parseFloat(r.rate) === parseFloat(currentRate.rate) && 
+        (newVal ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
+      );
+      if (targetRate) {
+        item.gst_rate_id = targetRate.id;
+        item.cgst = parseFloat(targetRate.cgst) || 0;
+        item.sgst = parseFloat(targetRate.sgst) || 0;
+      }
+    }
+  });
+});
+
 const hasGstSelected = computed(() => {
   return form.value.purchase_items.some(item => !!item.gst_rate_id);
 });
@@ -284,13 +311,15 @@ watch(() => form.value.purchase_items, (newSaleItems) => {
 
         // Auto-match gst_rate_id from product's default tax rates
         const totalProductRate = (parseFloat(selectedProduct.sgst) || 0) + (parseFloat(selectedProduct.cgst) || 0);
-        const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+        const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
         if (matchedRate) {
           item.gst_rate_id = matchedRate.id;
+          item.cgst = parseFloat(matchedRate.cgst) || 0;
+          item.sgst = parseFloat(matchedRate.sgst) || 0;
         } else {
-          item.gst_rate_id = props.gstRates[0]?.id || "";
-          item.cgst = 0;
-          item.sgst = 0;
+          item.gst_rate_id = filteredGstRates.value[0]?.id || "";
+          item.cgst = parseFloat(filteredGstRates.value[0]?.cgst) || 0;
+          item.sgst = parseFloat(filteredGstRates.value[0]?.sgst) || 0;
         }
       }
 
@@ -383,20 +412,12 @@ const grandTotal = computed(() => {
 });
 
 const paymentStatus = computed(() => {
-  if (!supplierData.value) return 'Unpaid';
-
-  const previousAdvance = parseFloat(supplierData.value.advance_amount) || 0;
-  const previousDue = parseFloat(supplierData.value.due_amount) || 0;
   const paidNow = parseFloat(form.value.paid) || 0;
-
-  const previousNet = previousAdvance - previousDue;
   const currentNet = paidNow - grandTotal.value;
-  const finalNet = previousNet + currentNet;
 
-  if (paidNow === 0 && previousDue > 0) return 'Unpaid';
-  else if (finalNet === 0) return 'Paid';
-  else if (finalNet < 0) return 'Partial';
-  else return 'Advance';
+  if (paidNow === 0) return 'Unpaid';
+  else if (currentNet >= 0) return 'Paid';
+  else return 'Partial';
 });
 
 // Show modal first, then submit all
@@ -435,42 +456,24 @@ const openPaymentModal = () => {
 //add 23/08/25
 
 const finalBalance = computed(() => {
-  if (!supplierData.value) return null;
-
-  const previousAdvance = parseFloat(supplierData.value.advance_amount) || 0;
-  const previousDue = parseFloat(supplierData.value.due_amount) || 0;
   const paidNow = parseFloat(form.value.paid) || 0;
-
-  // supplier ka pehle ka net balance (advance - due)
-  const previousNet = previousAdvance - previousDue;
-
-  // is baar ka balance (paid - grandTotal)
   const currentNet = paidNow - grandTotal.value;
 
-  // dono mila ke final
-  const finalNet = previousNet + currentNet;
-
-  if (finalNet > 0) {
-    return { type: 'advance', amount: finalNet };
-  } else if (finalNet < 0) {
-    return { type: 'due', amount: Math.abs(finalNet) };
+  if (currentNet > 0) {
+    return { type: 'advance', amount: currentNet.toFixed(2) };
+  } else if (currentNet < 0) {
+    return { type: 'due', amount: Math.abs(currentNet).toFixed(2) };
   } else {
     return { type: 'none', amount: 0 };
   }
 });
 
 const advanceApplied = computed(() => {
-  if (!supplierData.value) return 0;
-  const previousAdvance = parseFloat(supplierData.value.advance_amount) || 0;
-  const paidNow = parseFloat(form.value.paid) || 0;
-  return Math.min(previousAdvance, Math.max(0, grandTotal.value - paidNow));
+  return 0;
 });
 
 const dueReduced = computed(() => {
-  if (!supplierData.value) return 0;
-  const previousDue = parseFloat(supplierData.value.due_amount) || 0;
-  const paidNow = parseFloat(form.value.paid) || 0;
-  return Math.min(previousDue, Math.max(0, paidNow - grandTotal.value));
+  return 0;
 });
 
 //end
@@ -655,13 +658,6 @@ const handleProductSuccess = (createdProduct) => {
                     <tr>
                         <th class="px-4 py-2 text-left">Product <span class="text-red-400">*</span></th>
                         <th class="px-4 py-2 text-left">GST</th>
-                        <template v-if="hasGstSelected">
-                            <th v-if="isInterstate" class="px-4 py-2 text-left">IGST</th>
-                            <template v-else>
-                                <th class="px-4 py-2 text-left">CGST</th>
-                                <th class="px-4 py-2 text-left">SGST</th>
-                            </template>
-                        </template>
                         <th class="px-4 py-2 text-left">Quantity <span class="text-red-400">*</span></th>
                         <th class="px-4 py-2 text-left">Unit Type</th>
                         <th class="px-4 py-2 text-left">Price <span class="text-red-400">*</span></th>
@@ -704,33 +700,11 @@ const handleProductSuccess = (createdProduct) => {
                                 class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
                             >
                                 <option value="" disabled>Select GST</option>
-                                <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
                                     {{ rate.name }}
                                 </option>
                             </select>
                         </td>
-                        <template v-if="hasGstSelected">
-                            <td v-if="isInterstate" class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                <span v-if="item.gst_rate_id" style="font-size: 20px;">
-                                    {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }} %
-                                </span>
-                                <span v-else>-</span>
-                            </td>
-                            <template v-else>
-                                <td class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                    <span v-if="item.gst_rate_id" style="font-size: 20px;">
-                                        {{ item.cgst }} %
-                                    </span>
-                                    <span v-else>-</span>
-                                </td>
-                                <td class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                    <span v-if="item.gst_rate_id" style="font-size: 20px;">
-                                        {{ item.sgst }} %
-                                    </span>
-                                    <span v-else>-</span>
-                                </td>
-                            </template>
-                        </template>
                         <td class="border-t px-4 py-3">
                             <input type="text" name="quantity" v-model="item.quantity" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
@@ -809,7 +783,7 @@ const handleProductSuccess = (createdProduct) => {
                                     class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm bg-white"
                                 >
                                     <option value="" disabled>Select GST</option>
-                                    <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                    <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
                                         {{ rate.name }}
                                     </option>
                                 </select>
@@ -833,11 +807,10 @@ const handleProductSuccess = (createdProduct) => {
 
                         <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500">
                             <div>
-                                <span class="block text-gray-400">GST Breakdown</span>
+                                <span class="block text-gray-400">GST</span>
                                 <span class="text-gray-800 font-semibold">
                                     <template v-if="item.gst_rate_id">
-                                        <span v-if="isInterstate">IGST: {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }}%</span>
-                                        <span v-else>CGST: {{ item.cgst }}% | SGST: {{ item.sgst }}%</span>
+                                        {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }}%
                                     </template>
                                     <template v-else>-</template>
                                 </span>
@@ -1015,43 +988,19 @@ const handleProductSuccess = (createdProduct) => {
                         placeholder="Amount" min="0" />
                 </div>
 
-                <!-- Previous Balances -->
-                <div v-if="supplierData?.advance_amount && supplierData.advance_amount !== '0.00' && supplierData.advance_amount !== 0 && supplierData.advance_amount !== '0'"
-                    class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Previous Advance</span>
-                    <span class="text-green-600 font-bold">₹ {{ supplierData.advance_amount }}</span>
-                </div>
-
-                <div v-if="supplierData?.due_amount && supplierData.due_amount !== '0.00' && supplierData.due_amount !== 0 && supplierData.due_amount !== '0'"
-                    class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Previous Due</span>
-                    <span class="text-red-600 font-bold">₹ {{ supplierData.due_amount }}</span>
-                </div>
-
-                <!-- Wallet / Due Adjustments -->
-                <div v-if="advanceApplied > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Advance Applied</span>
-                    <span class="font-medium text-blue-600">- ₹ {{ advanceApplied.toFixed(2) }}</span>
-                </div>
-
-                <div v-if="dueReduced > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Applied to Previous Due</span>
-                    <span class="font-medium text-green-600">- ₹ {{ dueReduced.toFixed(2) }}</span>
-                </div>
-
-                <!-- Final Balance after this payment -->
+                <!-- Invoice Balance -->
                 <div v-if="finalBalance?.type === 'advance'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Advance</span>
+                    <span class="text-gray-700 font-semibold">Advance</span>
                     <span class="text-green-600 font-bold">₹ {{ finalBalance.amount }}</span>
                 </div>
 
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Due</span>
+                    <span class="text-gray-700 font-semibold">Due</span>
                     <span class="text-red-600 font-bold">₹ {{ finalBalance.amount }}</span>
                 </div>
 
                 <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center pb-4 border-b border-gray-100">
-                    <span class="text-gray-700 font-semibold">Final Balance</span>
+                    <span class="text-gray-700 font-semibold">Due / Advance</span>
                     <span class="text-gray-600 font-bold">₹ 0.00 (Clear)</span>
                 </div>
 
