@@ -250,6 +250,15 @@ onMounted(() => {
           </a>
         </li>
 
+        <li v-if="role === 'store'" :class="{ 'active': route().current('reports.gst*') }">
+          <a
+            :href="route('reports.gst')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-file-earmark-spreadsheet text-xl"></i> <span>GST Report</span>
+          </a>
+        </li>
+
         <li v-if="role === 'store'" :class="{ 'active': route().current('private*') }">
           <a
             :href="route('private.index')"

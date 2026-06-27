@@ -30,6 +30,7 @@ use App\Http\Controllers\AgingReportController;
 use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\PurchaseReturnController;
+use App\Http\Controllers\GstReportController;
 
 
 
@@ -260,6 +261,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::get('/reports/aging', [AgingReportController::class, 'index'])->name('reports.aging');
     Route::get('/reports/ledger', [LedgerController::class, 'index'])->name('reports.ledger');
     Route::post('/reports/ledger/repost', [LedgerController::class, 'repost'])->name('reports.ledger.repost');
+    Route::get('/reports/gst', [GstReportController::class, 'index'])->name('reports.gst');
+    Route::post('/purchases/{id}/toggle-refundable', [GstReportController::class, 'toggleRefundable'])->name('purchases.toggle-refundable');
 
     // Private Ledger
     Route::get('/private-ledger', [PrivateSaleController::class, 'index'])->name('private.index');
