@@ -382,18 +382,18 @@
   <table class="border-bottom party-table">
     <tr>
       <td class="border-right">
-        <div class="bold border-bottom" style="margin-bottom: 4px; padding-bottom: 2px;">Quote To :</div>
-        <div class="bold">{{ $estimate->customer->name ?? 'N/A' }}</div>
-        <div>{{ $estimate->customer->address ?? 'N/A' }}</div>
-        @if($estimate->customer && $estimate->customer->phone)
-          <div>Phone: {{ $estimate->customer->phone }}</div>
+        <div class="bold border-bottom" style="margin-bottom: 4px; padding-bottom: 2px;">Billed From :</div>
+        <div class="bold">{{ $store ? $store->name : 'N/A' }}</div>
+        <div>{{ $store ? $store->address : 'N/A' }}</div>
+        @if($store && $store->phone)
+          <div>Phone: {{ $store->phone }}</div>
         @endif
-        @if($estimate->customer && $estimate->customer->gst_number)
-          <div class="bold" style="margin-top: 4px;">GSTIN / UIN : {{ $estimate->customer->gst_number }}</div>
+        @if($store && $store->gstin)
+          <div class="bold" style="margin-top: 4px;">GSTIN : {{ $store->gstin }}</div>
         @endif
       </td>
       <td>
-        <div class="bold border-bottom" style="margin-bottom: 4px; padding-bottom: 2px;">Shipped to :</div>
+        <div class="bold border-bottom" style="margin-bottom: 4px; padding-bottom: 2px;">Billed To :</div>
         <div class="bold">{{ $estimate->customer->name ?? 'N/A' }}</div>
         <div>{{ $estimate->customer->address ?? 'N/A' }}</div>
         @if($estimate->customer && $estimate->customer->phone)
