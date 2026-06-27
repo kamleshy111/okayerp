@@ -207,8 +207,13 @@ watch(isInterstate, (newVal) => {
       );
       if (targetRate) {
         item.gst_rate_id = targetRate.id;
-        item.cgst = parseFloat(targetRate.cgst) || 0;
-        item.sgst = parseFloat(targetRate.sgst) || 0;
+        if (parseFloat(targetRate.igst) > 0) {
+          item.cgst = parseFloat(targetRate.igst) / 2;
+          item.sgst = parseFloat(targetRate.igst) / 2;
+        } else {
+          item.cgst = parseFloat(targetRate.cgst) || 0;
+          item.sgst = parseFloat(targetRate.sgst) || 0;
+        }
       }
     }
   });
@@ -234,12 +239,23 @@ watch(() => form.value.purchase_items, (newSaleItems) => {
         const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
         if (matchedRate) {
           item.gst_rate_id = matchedRate.id;
-          item.cgst = parseFloat(matchedRate.cgst) || 0;
-          item.sgst = parseFloat(matchedRate.sgst) || 0;
+          if (parseFloat(matchedRate.igst) > 0) {
+            item.cgst = parseFloat(matchedRate.igst) / 2;
+            item.sgst = parseFloat(matchedRate.igst) / 2;
+          } else {
+            item.cgst = parseFloat(matchedRate.cgst) || 0;
+            item.sgst = parseFloat(matchedRate.sgst) || 0;
+          }
         } else {
-          item.gst_rate_id = filteredGstRates.value[0]?.id || "";
-          item.cgst = parseFloat(filteredGstRates.value[0]?.cgst) || 0;
-          item.sgst = parseFloat(filteredGstRates.value[0]?.sgst) || 0;
+          const defaultRate = filteredGstRates.value[0];
+          item.gst_rate_id = defaultRate?.id || "";
+          if (defaultRate && parseFloat(defaultRate.igst) > 0) {
+            item.cgst = parseFloat(defaultRate.igst) / 2;
+            item.sgst = parseFloat(defaultRate.igst) / 2;
+          } else {
+            item.cgst = defaultRate ? parseFloat(defaultRate.cgst) || 0 : 0;
+            item.sgst = defaultRate ? parseFloat(defaultRate.sgst) || 0 : 0;
+          }
         }
       }
 
@@ -254,8 +270,13 @@ watch(() => form.value.purchase_items, (newSaleItems) => {
 const onGstRateChange = (item) => {
   const selectedRate = props.gstRates.find(r => r.id === item.gst_rate_id);
   if (selectedRate) {
-    item.cgst = parseFloat(selectedRate.cgst) || 0;
-    item.sgst = parseFloat(selectedRate.sgst) || 0;
+    if (parseFloat(selectedRate.igst) > 0) {
+      item.cgst = parseFloat(selectedRate.igst) / 2;
+      item.sgst = parseFloat(selectedRate.igst) / 2;
+    } else {
+      item.cgst = parseFloat(selectedRate.cgst) || 0;
+      item.sgst = parseFloat(selectedRate.sgst) || 0;
+    }
   }
 };
 

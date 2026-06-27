@@ -207,8 +207,15 @@
   $storeGst = $store && !empty($store->gstin) ? trim($store->gstin) : '';
   $suppGst = $return->purchase->supplier && !empty($return->purchase->supplier->gst_number) ? trim($return->purchase->supplier->gst_number) : '';
   
+  $storeStateName = $store && !empty($store->state) ? trim($store->state) : '';
+  $suppStateName = $return->purchase->supplier && !empty($return->purchase->supplier->state) ? trim($return->purchase->supplier->state) : '';
+
   $isInterstate = true;
-  if ($storeGst && $suppGst) {
+  if ($storeStateName && $suppStateName) {
+      if (strtolower($storeStateName) === strtolower($suppStateName)) {
+          $isInterstate = false;
+      }
+  } elseif ($storeGst && $suppGst) {
       $storeState = substr($storeGst, 0, 2);
       $suppState = substr($suppGst, 0, 2);
       if ($storeState === $suppState) {

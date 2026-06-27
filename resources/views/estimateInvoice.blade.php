@@ -223,8 +223,15 @@
   $storeGst = $store && !empty($store->gstin) ? trim($store->gstin) : '';
   $custGst = $estimate->customer && !empty($estimate->customer->gst_number) ? trim($estimate->customer->gst_number) : '';
   
+  $storeStateName = $store && !empty($store->state) ? trim($store->state) : '';
+  $custStateName = $estimate->customer && !empty($estimate->customer->state) ? trim($estimate->customer->state) : '';
+
   $isInterstate = true;
-  if ($storeGst && $custGst) {
+  if ($storeStateName && $custStateName) {
+      if (strtolower($storeStateName) === strtolower($custStateName)) {
+          $isInterstate = false;
+      }
+  } elseif ($storeGst && $custGst) {
       $storeState = substr($storeGst, 0, 2);
       $custState = substr($custGst, 0, 2);
       if ($storeState === $custState) {
@@ -509,10 +516,10 @@
               <th>Tax Rate</th>
               <th>Taxable Amt.</th>
               @if($isInterstate)
-                <th>IGST Amt.</th>
+                <th>IGST %</th>
               @else
-                <th>CGST Amt.</th>
-                <th>SGST Amt.</th>
+                <th>CGST %</th>
+                <th>SGST %</th>
               @endif
               <th>Total Tax</th>
             </tr>
@@ -520,13 +527,13 @@
           <tbody>
             @foreach($taxGroups as $rateKey => $group)
             <tr>
-              <td class="text-center">{{ number_format($group['rate'], 0) }}%</td>
+              <td class="text-center">{{ (float)$group['rate'] }}%</td>
               <td class="text-right">{{ number_format($group['taxable_amount'], 2) }}</td>
               @if($isInterstate)
-                <td class="text-right">{{ number_format($group['total_tax'], 2) }}</td>
+                <td class="text-right">{{ (float)$group['rate'] }}%</td>
               @else
-                <td class="text-right">{{ number_format($group['cgst_amount'], 2) }}</td>
-                <td class="text-right">{{ number_format($group['sgst_amount'], 2) }}</td>
+                <td class="text-right">{{ (float)$group['cgst_rate'] }}%</td>
+                <td class="text-right">{{ (float)$group['sgst_rate'] }}%</td>
               @endif
               <td class="text-right">{{ number_format($group['total_tax'], 2) }}</td>
             </tr>
