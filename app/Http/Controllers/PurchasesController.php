@@ -86,6 +86,11 @@ class PurchasesController extends Controller
             return response()->json(["message" => $validated]);
         }
 
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $request->input('purchase_date') <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot create transactions on or before the last closed date (' . $lastClosedDate . ').'], 403);
+        }
+
         // Begin a database transaction
         DB::beginTransaction();
 
@@ -304,10 +309,20 @@ class PurchasesController extends Controller
         if (session('private_ledger_unlocked') !== true) {
             $query->where('accepted', 1);
         }
-        $purchaseExists = $query->where('id', $id)->exists();
+        $purchase = $query->where('id', $id)->first();
 
-        if (!$purchaseExists) {
+        if (!$purchase) {
             return response()->json(['message' => 'Purchase not found or unauthorized access.'], 403);
+        }
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate) {
+            if ($purchase->purchase_date <= $lastClosedDate) {
+                return response()->json(['message' => 'Cannot update transactions from a closed financial year.'], 403);
+            }
+            if ($request->input('purchase_date') <= $lastClosedDate) {
+                return response()->json(['message' => 'Cannot change transaction date to a closed financial year.'], 403);
+            }
         }
 
         try {
@@ -452,6 +467,11 @@ class PurchasesController extends Controller
 
         if (!$purchase) {
             return response()->json(['message' => 'Purchase not found or unauthorized access.'], 404);
+        }
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $purchase->purchase_date <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot delete transactions from a closed financial year.'], 403);
         }
 
         DB::beginTransaction();

@@ -276,8 +276,9 @@ const handleDeleteClick = (event) => {
             Swal.fire('Deleted!', 'Private sale has been deleted.', 'success');
             router.reload();
           })
-          .catch(() => {
-            Swal.fire('Error!', 'Failed to delete sale.', 'error');
+          .catch((error) => {
+            const errMsg = error.response?.data?.message || 'Failed to delete sale.';
+            Swal.fire('Error!', errMsg, 'error');
           });
       }
     });
@@ -301,8 +302,9 @@ const handleDeleteClick = (event) => {
             Swal.fire('Deleted!', 'Private purchase has been deleted.', 'success');
             router.reload();
           })
-          .catch(() => {
-            Swal.fire('Error!', 'Failed to delete purchase.', 'error');
+          .catch((error) => {
+            const errMsg = error.response?.data?.message || 'Failed to delete purchase.';
+            Swal.fire('Error!', errMsg, 'error');
           });
       }
     });

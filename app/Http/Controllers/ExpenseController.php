@@ -52,6 +52,11 @@ class ExpenseController extends Controller
             'reference_no' => 'nullable|string|max:255'
         ]);
 
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $request->date <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot create transactions on or before the last closed date (' . $lastClosedDate . ').'], 403);
+        }
+
         // Security check: Make sure category belongs to this user
         ExpenseCategory::where('user_id', Auth::id())->findOrFail($request->expense_category_id);
 
@@ -75,6 +80,16 @@ class ExpenseController extends Controller
     public function update(Request $request, $id)
     {
         $expense = Expense::where('user_id', Auth::id())->findOrFail($id);
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate) {
+            if ($expense->date <= $lastClosedDate) {
+                return response()->json(['message' => 'Cannot update transactions from a closed financial year.'], 403);
+            }
+            if ($request->date <= $lastClosedDate) {
+                return response()->json(['message' => 'Cannot change transaction date to a closed financial year.'], 403);
+            }
+        }
 
         $request->validate([
             'expense_category_id' => 'required|exists:expense_categories,id',
@@ -106,6 +121,11 @@ class ExpenseController extends Controller
     public function destroy($id)
     {
         $expense = Expense::where('user_id', Auth::id())->findOrFail($id);
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $expense->date <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot delete transactions from a closed financial year.'], 403);
+        }
         $expense->delete();
 
         $accountingService = new AccountingService(Auth::id());

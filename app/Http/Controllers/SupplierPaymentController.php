@@ -217,6 +217,11 @@ class SupplierPaymentController extends Controller
             return response()->json(["message" => $validated]);
         }
 
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $request->input('payment_date') <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot create transactions on or before the last closed date (' . $lastClosedDate . ').'], 403);
+        }
+
         $userId = Auth::id();
         $supplierExists = Supplier::where('user_id', $userId)->where('id', $request->input('supplier_id'))->exists();
         if (!$supplierExists) {
