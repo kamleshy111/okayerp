@@ -12,8 +12,6 @@ const { productDetail, categories, unitTypes } = usePage().props;
 const form = ref({
     name: productDetail.name,
     unit_type: productDetail.unit_type,
-    sgst: productDetail.sgst,
-    cgst: productDetail.cgst,
     hsn_code: productDetail.hsn_code || '',
     price: productDetail.price || '',
     category_id: productDetail.category_id,

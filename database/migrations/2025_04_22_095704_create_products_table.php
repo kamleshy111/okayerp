@@ -15,13 +15,12 @@ return new class extends Migration
             $table->id();
             $table->unsignedBigInteger('user_id');
             $table->string('name');
-            $table->string('unit_type')->nullable(); 
+            $table->string('unit_type')->nullable();
             $table->string('sku')->unique();
             $table->bigInteger('category_id')->nullable();
-            $table->decimal('cgst', 10, 2)->default(0);
-            $table->decimal('sgst', 10, 2)->default(0);
             $table->bigInteger('stock_quantity')->default(0);
             $table->text('description')->nullable();
+            $table->string('image')->nullable();
             $table->timestamps();
 
             // Define the foreign key constraint

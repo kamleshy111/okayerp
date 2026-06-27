@@ -26,8 +26,6 @@ class ProductController extends Controller
                 'id' => $item->id,
                 'name' => $item->name,
                 'sku' => $item->sku,
-                'cgst' => $item->cgst,
-                'sgst' => $item->sgst,
                 'stockQuantity' => $item->stock_quantity ?? '',
                 'categoryName' => $item->categoryName ?? '----',
                 'unit_type' => $item->unit_type,
@@ -37,14 +35,14 @@ class ProductController extends Controller
         });
 
         return Inertia::render('Product/Product',[
-            'products' => $products, 
+            'products' => $products,
         ]);
     }
 
     public function create(){
 
         $userId = Auth::id();
-  
+
         $categories = Category::where('user_id', $userId)->select('id', 'name')->get();
 
         $unitTypes = config('units.types');
@@ -88,14 +86,11 @@ class ProductController extends Controller
             $imagePath = $file->storeAs('uploads/product', $filename, 'public');
         }
 
-        // Create a new Product
         $product = Product::create([
             'user_id' => Auth::id(),
             'name' => $request->input('name'),
             'category_id' => $request->input('category_id'),
             'unit_type' => $request->input('unit_type') ?? '',
-            'sgst' => $request->input('sgst') ?? 0,
-            'cgst' => $request->input('cgst') ?? 0,
             'hsn_code' => $request->input('hsn_code'),
             'price' => $request->input('price') ?? 0.00,
             'sku' => $sku,
@@ -124,8 +119,6 @@ class ProductController extends Controller
             'id'   => $data->id ?? 0,
             'name' => $data->name ?? '',
             'unit_type' => $data->unit_type ?? '',
-            'cgst' => $data->cgst ?? 0,
-            'sgst' => $data->sgst ?? 0,
             'hsn_code' => $data->hsn_code ?? '',
             'price' => $data->price ?? 0.00,
             'category_id' => $data->category_id ?? '',
@@ -164,8 +157,6 @@ class ProductController extends Controller
         if($product){
             $product->name = $request->input("name");
             $product->unit_type = $request->input("unit_type");
-            $product->sgst = $request->input("sgst");
-            $product->cgst = $request->input("cgst");
             $product->hsn_code = $request->input("hsn_code");
             $product->price = $request->input("price") ?? 0.00;
             $product->category_id = $request->input("category_id");
@@ -198,13 +189,21 @@ class ProductController extends Controller
     public function destroy($id)
     {
         $product = Product::find($id);
-    
-        if($product) {
-            $product->delete();
-            return response()->json(['message' => 'Product deleted successfully.'], 200);
+        if (!$product) {
+            return response()->json(['message' => 'Product not found.'], 404);
         }
-    
-        return response()->json(['message' => 'Product not found.'], 404);
+
+        $hasSales = \App\Models\SaleItem::where('product_id', $id)->exists();
+        $hasPurchases = \App\Models\PurchaseItem::where('product_id', $id)->exists();
+        $hasEstimates = \App\Models\EstimateItem::where('product_id', $id)->exists();
+        $hasMovements = \App\Models\StockMovement::where('product_id', $id)->exists();
+
+        if ($hasSales || $hasPurchases || $hasEstimates || $hasMovements) {
+            return response()->json(['message' => 'Cannot delete this product because it has associated sales, purchases, estimates, or stock movements.'], 422);
+        }
+
+        $product->delete();
+        return response()->json(['message' => 'Product deleted successfully.'], 200);
     }
 
     public function import(Request $request)
@@ -218,7 +217,7 @@ class ProductController extends Controller
 
         $file = $request->file('file');
         $path = $file->getRealPath();
-        
+
         $handle = fopen($path, 'r');
         if (!$handle) {
             return response()->json(['message' => 'Unable to read the uploaded CSV file.'], 400);
@@ -241,10 +240,6 @@ class ProductController extends Controller
                 $headerMap['category'] = $index;
             } elseif ($cleaned === 'unit' || $cleaned === 'unit_type' || $cleaned === 'unit type' || $cleaned === 'unittype') {
                 $headerMap['unit_type'] = $index;
-            } elseif ($cleaned === 'cgst' || $cleaned === 'cgst_tax' || $cleaned === 'cgst%') {
-                $headerMap['cgst'] = $index;
-            } elseif ($cleaned === 'sgst' || $cleaned === 'sgst_tax' || $cleaned === 'sgst%') {
-                $headerMap['sgst'] = $index;
             } elseif ($cleaned === 'hsn' || $cleaned === 'hsn_code' || $cleaned === 'hsn code') {
                 $headerMap['hsn_code'] = $index;
             } elseif ($cleaned === 'description' || $cleaned === 'desc') {
@@ -267,7 +262,7 @@ class ProductController extends Controller
         try {
             while (($row = fgetcsv($handle)) !== false) {
                 $rowNum++;
-                
+
                 // Skip empty rows
                 if (empty($row) || (count($row) === 1 && empty($row[0]))) {
                     continue;
@@ -292,8 +287,6 @@ class ProductController extends Controller
 
                 $unitType = isset($headerMap['unit_type']) && isset($row[$headerMap['unit_type']]) ? trim($row[$headerMap['unit_type']]) : '';
                 $price = 0.00;
-                $cgst = isset($headerMap['cgst']) && isset($row[$headerMap['cgst']]) ? floatval(trim($row[$headerMap['cgst']])) : 0;
-                $sgst = isset($headerMap['sgst']) && isset($row[$headerMap['sgst']]) ? floatval(trim($row[$headerMap['sgst']])) : 0;
                 $hsnCode = isset($headerMap['hsn_code']) && isset($row[$headerMap['hsn_code']]) ? trim($row[$headerMap['hsn_code']]) : '';
                 $description = isset($headerMap['description']) && isset($row[$headerMap['description']]) ? trim($row[$headerMap['description']]) : '';
 
@@ -307,8 +300,6 @@ class ProductController extends Controller
                     'name' => $name,
                     'category_id' => $categoryId,
                     'unit_type' => $unitType,
-                    'sgst' => $sgst,
-                    'cgst' => $cgst,
                     'hsn_code' => $hsnCode,
                     'price' => $price,
                     'sku' => $sku,
