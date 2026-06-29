@@ -281,8 +281,8 @@ watch(isInterstate, (newVal) => {
     if (!item.gst_rate_id) return;
     const currentRate = props.gstRates.find(r => r.id === item.gst_rate_id);
     if (currentRate) {
-      const targetRate = props.gstRates.find(r => 
-        parseFloat(r.rate) === parseFloat(currentRate.rate) && 
+      const targetRate = props.gstRates.find(r =>
+        parseFloat(r.rate) === parseFloat(currentRate.rate) &&
         (newVal ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
       );
       if (targetRate) {
