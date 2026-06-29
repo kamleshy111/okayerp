@@ -5,8 +5,8 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
-import vSelect from 'vue-select';
-import 'vue-select/dist/vue-select.css';
+import vSelect from 'vue3-select';
+import 'vue3-select/dist/vue3-select.css';
 
 defineProps({
     mustVerifyEmail: {

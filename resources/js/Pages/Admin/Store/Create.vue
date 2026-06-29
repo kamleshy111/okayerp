@@ -1,7 +1,7 @@
 <script setup>
 import { ref, nextTick, onMounted  } from 'vue';
-import vSelect from 'vue-select';
-import 'vue-select/dist/vue-select.css';
+import vSelect from 'vue3-select';
+import 'vue3-select/dist/vue3-select.css';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
