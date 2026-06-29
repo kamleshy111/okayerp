@@ -289,8 +289,8 @@
 
   // Calculate Round Off
   $calculatedGrandTotal = $subtotal + $sale->gst_amount - $sale->discount;
-  $roundedGrandTotal = round($calculatedGrandTotal);
-  $roundOff = $roundedGrandTotal - $calculatedGrandTotal;
+  $roundedGrandTotal = $calculatedGrandTotal;
+  $roundOff = 0.0;
 @endphp
 
 <div class="invoice-container">
