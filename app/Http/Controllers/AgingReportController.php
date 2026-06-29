@@ -33,8 +33,16 @@ class AgingReportController extends Controller
                 $paymentQuery->where('accepted', 1);
                 $saleQuery->where('accepted', 1);
             }
-            $totalPayments = $paymentQuery->whereNull('sale_id')->sum('amount');
-            $sales = $saleQuery->orderBy('created_at', 'asc')->get();
+            // Sum of store credit refunds on returns for this customer's sales
+            $storeCreditRefundsSum = (float)\App\Models\SaleReturn::whereHas('sale', function ($q) use ($customer) {
+                $q->where('customer_id', $customer->id);
+            })
+            ->where('refund_method', 'Store Credit')
+            ->get()
+            ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+            $totalPayments = $paymentQuery->whereNull('sale_id')->sum('amount') + $storeCreditRefundsSum;
+            $sales = $saleQuery->with('saleReturns')->orderBy('created_at', 'asc')->get();
 
             $buckets = [
                 'bucket_0_30' => 0.0,
@@ -44,7 +52,16 @@ class AgingReportController extends Controller
             ];
 
             foreach ($sales as $sale) {
-                $outstanding = (double)$sale->grand_total - (double)$sale->paid;
+                $paymentsSum = \App\Models\SalePayment::where('sale_id', $sale->id);
+                if (session('private_ledger_unlocked') !== true) {
+                    $paymentsSum->where('accepted', 1);
+                }
+                $actualPaid = $paymentsSum->sum('amount');
+
+                // Sum of due_deduction for returns on this sale
+                $dueDeductionsSum = (float)$sale->saleReturns->sum('due_deduction');
+
+                $outstanding = (double)$sale->grand_total - (double)max($sale->paid, $actualPaid) - $dueDeductionsSum;
                 if ($outstanding < 0) {
                     $totalPayments += abs($outstanding);
                     continue;
@@ -131,8 +148,16 @@ class AgingReportController extends Controller
                 $paymentQuery->where('accepted', 1);
                 $purchaseQuery->where('accepted', 1);
             }
-            $totalPayments = $paymentQuery->whereNull('purchase_id')->sum('amount');
-            $purchases = $purchaseQuery->orderBy('purchase_date', 'asc')->orderBy('created_at', 'asc')->get();
+            // Sum of store credit refunds on returns for this supplier's purchases
+            $storeCreditRefundsSum = (float)\App\Models\PurchaseReturn::whereHas('purchase', function ($q) use ($supplier) {
+                $q->where('supplier_id', $supplier->id);
+            })
+            ->where('refund_method', 'Store Credit')
+            ->get()
+            ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+            $totalPayments = $paymentQuery->whereNull('purchase_id')->sum('amount') + $storeCreditRefundsSum;
+            $purchases = $purchaseQuery->with('purchaseReturns')->orderBy('purchase_date', 'asc')->orderBy('created_at', 'asc')->get();
 
             $buckets = [
                 'bucket_0_30' => 0.0,
@@ -142,7 +167,16 @@ class AgingReportController extends Controller
             ];
 
             foreach ($purchases as $purchase) {
-                $outstanding = (double)$purchase->grand_total - (double)$purchase->paid;
+                $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $purchase->id);
+                if (session('private_ledger_unlocked') !== true) {
+                    $paymentsSum->where('accepted', 1);
+                }
+                $actualPaid = $paymentsSum->sum('amount');
+
+                // Sum of due_deduction for returns on this purchase
+                $dueDeductionsSum = (float)$purchase->purchaseReturns->sum('due_deduction');
+
+                $outstanding = (double)$purchase->grand_total - (double)max($purchase->paid, $actualPaid) - $dueDeductionsSum;
                 if ($outstanding < 0) {
                     $totalPayments += abs($outstanding);
                     continue;

@@ -75,7 +75,7 @@ const submitForm = async () => {
                         v-model="form.supplier_id"
                         :options="suppliers"
                         label="name"
-                        :reduce="supplier => supplier.name"
+                        :reduce="supplier => supplier.id"
                         placeholder="Search or select supplier"
                         class="w-full text-black bg-white"
                         @search="onSupplierSearch"

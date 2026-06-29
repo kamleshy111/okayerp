@@ -37,12 +37,23 @@ class CustomersController extends Controller
                     $paymentsSum->where('accepted', 1);
                 }
                 $actualPaid = $paymentsSum->sum('amount');
-                $saleBalance = $actualPaid - $sale->grand_total;
+
+                // Sum of due_deduction for returns on this sale
+                $dueDeductionsSum = (float)$sale->saleReturns->sum('due_deduction');
+
+                // Sum of store credit refunds on this sale
+                $storeCreditRefundsSum = (float)$sale->saleReturns
+                    ->where('refund_method', 'Store Credit')
+                    ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+                $saleBalance = $actualPaid - (float)$sale->grand_total + $dueDeductionsSum;
                 if ($saleBalance < 0) {
                     $dueAmount += abs($saleBalance);
                 } elseif ($saleBalance > 0) {
                     $advanceAmount += $saleBalance;
                 }
+
+                $advanceAmount += $storeCreditRefundsSum;
             }
 
             $totalDirectPaid = $customer->payments->where('sale_id', null)->sum('amount');
