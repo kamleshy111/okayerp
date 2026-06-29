@@ -186,8 +186,9 @@ function deleteIncome(incomeId) {
           Swal.fire('Deleted!', 'Your income has been deleted.', 'success');
           location.reload();
         })
-        .catch(() => {
-          Swal.fire('Error!', 'Failed to delete the income. Please try again.', 'error');
+        .catch((error) => {
+          const errMsg = error.response?.data?.message || 'Failed to delete the income. Please try again.';
+          Swal.fire('Error!', errMsg, 'error');
         });
     }
   });

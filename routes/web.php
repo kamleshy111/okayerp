@@ -263,6 +263,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::post('/reports/ledger/repost', [LedgerController::class, 'repost'])->name('reports.ledger.repost');
     Route::get('/reports/gst', [GstReportController::class, 'index'])->name('reports.gst');
     Route::post('/purchases/{id}/toggle-refundable', [GstReportController::class, 'toggleRefundable'])->name('purchases.toggle-refundable');
+    Route::post('/reports/ledger/close-year', [LedgerController::class, 'closeYear'])->name('reports.ledger.close-year');
 
     // Private Ledger
     Route::get('/private-ledger', [PrivateSaleController::class, 'index'])->name('private.index');

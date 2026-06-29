@@ -73,8 +73,9 @@ function deleteSale(saleId) {
           Swal.fire('Deleted!', 'Your sale has been deleted.', 'success');
           location.reload(); // Reload or re-fetch the data if needed
         })
-        .catch(() => {
-          Swal.fire('Error!', 'Failed to delete the sale. Please try again.', 'error');
+        .catch((error) => {
+          const errMsg = error.response?.data?.message || 'Failed to delete the sale. Please try again.';
+          Swal.fire('Error!', errMsg, 'error');
         });
     }
   });

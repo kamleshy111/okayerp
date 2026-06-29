@@ -60,6 +60,7 @@ class LedgerController extends Controller
                 ],
                 'startDate' => $request->input('start_date'),
                 'endDate' => $request->input('end_date'),
+                'lastClosedDate' => Auth::user()->last_closed_date,
             ]);
         }
 
@@ -288,6 +289,7 @@ class LedgerController extends Controller
             'balanceSheet' => $balanceSheet,
             'startDate'    => $startDate,
             'endDate'      => $endDate,
+            'lastClosedDate' => Auth::user()->last_closed_date,
         ]);
     }
 
@@ -338,5 +340,21 @@ class LedgerController extends Controller
 
         return redirect()->route('reports.ledger')
             ->with('success', 'Ledger re-synced: ' . $sales->count() . ' sales, ' . $purchases->count() . ' purchases, ' . ($salePayments->count() + $purchasePayments->count()) . ' payments, ' . $expenses->count() . ' expenses, ' . $incomes->count() . ' incomes, ' . ($saleReturns->count() + $purchaseReturns->count()) . ' returns posted.');
+    }
+
+    public function closeYear(Request $request)
+    {
+        $request->validate([
+            'close_date' => 'required|date',
+        ]);
+
+        $user = Auth::user();
+        $user->last_closed_date = $request->input('close_date');
+        $user->save();
+
+        return response()->json([
+            'message' => 'Financial Year closed successfully up to ' . $request->input('close_date'),
+            'last_closed_date' => $user->last_closed_date,
+        ]);
     }
 }

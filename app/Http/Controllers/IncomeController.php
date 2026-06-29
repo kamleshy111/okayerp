@@ -51,6 +51,11 @@ class IncomeController extends Controller
             'reference_no' => 'nullable|string|max:255'
         ]);
 
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $request->date <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot create transactions on or before the last closed date (' . $lastClosedDate . ').'], 403);
+        }
+
         // Security check: Make sure category belongs to this user
         IncomeCategory::where('user_id', Auth::id())->findOrFail($request->income_category_id);
 
@@ -73,6 +78,16 @@ class IncomeController extends Controller
     public function update(Request $request, $id)
     {
         $income = Income::where('user_id', Auth::id())->findOrFail($id);
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate) {
+            if ($income->date <= $lastClosedDate) {
+                return response()->json(['message' => 'Cannot update transactions from a closed financial year.'], 403);
+            }
+            if ($request->date <= $lastClosedDate) {
+                return response()->json(['message' => 'Cannot change transaction date to a closed financial year.'], 403);
+            }
+        }
 
         $request->validate([
             'income_category_id' => 'required|exists:income_categories,id',
@@ -104,6 +119,11 @@ class IncomeController extends Controller
     public function destroy($id)
     {
         $income = Income::where('user_id', Auth::id())->findOrFail($id);
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $income->date <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot delete transactions from a closed financial year.'], 403);
+        }
         $income->delete();
 
         $accountingService = new AccountingService(Auth::id());

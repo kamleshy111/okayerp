@@ -80,6 +80,11 @@ class SaleController extends Controller
 
         $userId = Auth::id();
 
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && now()->toDateString() <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot create transactions on or before the last closed date (' . $lastClosedDate . ').'], 403);
+        }
+
         // Validate customer belongs to logged-in user
         $customerExists = Customer::where('user_id', $userId)->where('id', $request->input('customer_id'))->exists();
         if (!$customerExists) {
@@ -338,10 +343,15 @@ class SaleController extends Controller
         if (session('private_ledger_unlocked') !== true) {
             $query->where('accepted', 1);
         }
-        $saleExists = $query->where('id', $id)->exists();
+        $sale = $query->where('id', $id)->first();
 
-        if (!$saleExists) {
+        if (!$sale) {
             return response()->json(['message' => 'Sale not found or unauthorized access.'], 403);
+        }
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $sale->created_at->toDateString() <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot update transactions from a closed financial year.'], 403);
         }
 
         // Validate customer belongs to logged-in user
@@ -549,6 +559,11 @@ class SaleController extends Controller
 
         if (!$sale) {
             return response()->json(['message' => 'Sale not found.'], 404);
+        }
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $sale->created_at->toDateString() <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot delete transactions from a closed financial year.'], 403);
         }
 
         DB::beginTransaction();

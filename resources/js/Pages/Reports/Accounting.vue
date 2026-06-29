@@ -3,24 +3,101 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { ref, computed } from 'vue';
 import axios from 'axios';
+import Swal from 'sweetalert2';
 
 const page = usePage();
 
 const props = defineProps({
-  unlocked:     { type: Boolean, required: true },
-  hasPin:       { type: Boolean, required: true },
-  ledgerType:   { type: String,  required: true },
-  trialBalance: { type: Object,  required: true },
-  profitAndLoss:{ type: Object,  required: true },
-  balanceSheet: { type: Object,  required: true },
-  startDate:    { type: String,  default: '' },
-  endDate:      { type: String,  default: '' },
+  unlocked:       { type: Boolean, required: true },
+  hasPin:         { type: Boolean, required: true },
+  ledgerType:     { type: String,  required: true },
+  trialBalance:   { type: Object,  required: true },
+  profitAndLoss:  { type: Object,  required: true },
+  balanceSheet:   { type: Object,  required: true },
+  startDate:      { type: String,  default: '' },
+  endDate:        { type: String,  default: '' },
+  lastClosedDate: { type: String,  default: null },
 });
 
 const activeTab            = ref('trial_balance');
 const selectedLedgerType   = ref(props.ledgerType);
 const filterStartDate      = ref(props.startDate || '');
 const filterEndDate        = ref(props.endDate   || '');
+
+const generateFinancialYears = () => {
+  const startYear = 2021;
+  const currentYear = new Date().getFullYear();
+  const yearsList = [{ label: 'Custom Range', start: '', end: '' }];
+  
+  for (let year = startYear; year <= currentYear + 1; year++) {
+    const nextYearShort = String(year + 1).slice(-2);
+    const start = `${year}-04-01`;
+    const end = `${year + 1}-03-31`;
+    yearsList.push({
+      label: `FY ${year}-${nextYearShort} (01/04/${year} - 31/03/${year + 1})`,
+      start,
+      end
+    });
+  }
+  return yearsList;
+};
+
+const financialYears = generateFinancialYears();
+
+const selectedFY = ref('Custom Range');
+
+const matchFinancialYear = () => {
+  const matched = financialYears.find(
+    fy => fy.start === filterStartDate.value && fy.end === filterEndDate.value
+  );
+  selectedFY.value = matched ? matched.label : 'Custom Range';
+};
+
+matchFinancialYear();
+
+const handleFYChange = () => {
+  const fy = financialYears.find(f => f.label === selectedFY.value);
+  if (fy && fy.label !== 'Custom Range') {
+    filterStartDate.value = fy.start;
+    filterEndDate.value = fy.end;
+    applyFilters();
+  }
+};
+
+const isFYClosed = computed(() => {
+  if (!props.lastClosedDate) return false;
+  const fy = financialYears.find(f => f.label === selectedFY.value);
+  if (!fy || fy.label === 'Custom Range') return false;
+  return fy.end <= props.lastClosedDate;
+});
+
+const closeFinancialYear = async () => {
+  const fy = financialYears.find(f => f.label === selectedFY.value);
+  if (!fy || fy.label === 'Custom Range') return;
+
+  const result = await Swal.fire({
+    title: 'Are you sure?',
+    text: `Do you want to close and lock ${fy.label}? This will prevent any edits on or before ${fy.end}.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#2e2c92',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Yes, Close & Lock It!'
+  });
+
+  if (result.isConfirmed) {
+    try {
+      const response = await axios.post(route('reports.ledger.close-year'), {
+        close_date: fy.end
+      });
+      Swal.fire('Closed!', response.data.message, 'success').then(() => {
+        location.reload();
+      });
+    } catch (error) {
+      Swal.fire('Error!', error.response?.data?.message || 'Failed to close financial year.', 'error');
+    }
+  }
+};
 
 // PIN screen states
 const pin      = ref('');
@@ -166,6 +243,14 @@ const flashSuccess = computed(() => page.props?.flash?.success || null);
       <!-- ══════════════ FILTERS ══════════════ -->
       <div v-if="ledgerType === 'standard' || unlocked" class="filter-bar no-print">
         <div class="filter-group">
+          <label class="filter-label">Financial Year</label>
+          <select v-model="selectedFY" @change="handleFYChange" class="filter-input" style="background: white;">
+            <option v-for="fy in financialYears" :key="fy.label" :value="fy.label">
+              {{ fy.label }}
+            </option>
+          </select>
+        </div>
+        <div class="filter-group">
           <label class="filter-label">From Date</label>
           <input type="date" v-model="filterStartDate" class="filter-input" />
         </div>
@@ -176,9 +261,27 @@ const flashSuccess = computed(() => page.props?.flash?.success || null);
         <div class="filter-actions">
           <button @click="applyFilters" class="btn-primary">Apply Filter</button>
           <button @click="clearFilters" class="btn-ghost">Clear</button>
+          <button
+            v-if="selectedFY !== 'Custom Range' && !isFYClosed"
+            @click="closeFinancialYear"
+            type="button"
+            class="btn-primary"
+            style="background-color: #d97706;"
+          >
+            🔒 Close Year
+          </button>
+          <span
+            v-else-if="selectedFY !== 'Custom Range' && isFYClosed"
+            class="px-3 py-2 text-xs font-semibold rounded-lg bg-red-100 text-red-800 border border-red-200"
+          >
+            🔒 Year Closed
+          </span>
         </div>
         <div v-if="startDate || endDate" class="filter-active-badge">
           <span>📅 Filtered: {{ startDate || '∞' }} → {{ endDate || 'Today' }}</span>
+          <span v-if="lastClosedDate && endDate <= lastClosedDate" class="ml-2 px-2 py-0.5 text-xs font-bold rounded-full bg-red-200 text-red-800">
+            🔒 Closed Period
+          </span>
         </div>
       </div>
 
