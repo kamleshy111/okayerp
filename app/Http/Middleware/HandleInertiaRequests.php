@@ -64,7 +64,7 @@ class HandleInertiaRequests extends Middleware
             'gst_states' => collect(config('gst_states'))->map(fn($name, $code) => [
                 'code' => $code,
                 'name' => $name,
-                'display' => "$name ($code)"
+                'display' => $name
             ])->values()->all(),
         ];
     }
