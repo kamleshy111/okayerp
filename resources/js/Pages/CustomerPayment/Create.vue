@@ -32,7 +32,12 @@ const form = ref({
 const onCustomerSearch = async (search, loading) => {
   customerSearchQuery.value = search;
   if (!search.trim()) {
-    customers.value = [];
+    if (form.value.customer_id) {
+      const selected = customers.value.find(c => c.id === form.value.customer_id);
+      customers.value = selected ? [selected] : [];
+    } else {
+      customers.value = [];
+    }
     return;
   }
   try {
@@ -69,7 +74,7 @@ watch(() => form.value.use_advance, (newVal) => {
             if (invoice) {
                 let due = parseFloat(invoice.due) || 0;
                 let available = parseFloat(customerInfo.value.advance_amount) || 0;
-                form.value.advance_amount_used = Math.min(due, available);
+                form.value.advance_amount_used = parseFloat(Math.min(due, available).toFixed(2));
             }
         }
     }
@@ -81,7 +86,7 @@ watch(() => form.value.sale_id, (newSaleId) => {
         if (invoice) {
             let due = parseFloat(invoice.due) || 0;
             let advanceUsed = form.value.use_advance ? parseFloat(form.value.advance_amount_used) || 0 : 0;
-            form.value.amount = Math.max(0, due - advanceUsed);
+            form.value.amount = parseFloat(Math.max(0, due - advanceUsed).toFixed(2));
         }
     } else {
         form.value.amount = "";
@@ -94,7 +99,7 @@ watch(() => form.value.advance_amount_used, (newVal) => {
         if (invoice) {
             let due = parseFloat(invoice.due) || 0;
             let advanceUsed = parseFloat(newVal) || 0;
-            form.value.amount = Math.max(0, due - advanceUsed);
+            form.value.amount = parseFloat(Math.max(0, due - advanceUsed).toFixed(2));
         }
     }
 });
@@ -183,7 +188,7 @@ const submitForm = async () => {
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="">Direct Payment (No Invoice)</option>
                         <option v-for="invoice in customerInfo.due_invoices" :key="invoice.id" :value="invoice.id">
-                            Inv #{{ invoice.invoice_no }} (Due: ₹{{ invoice.due }})
+                            Inv #{{ invoice.invoice_no }} (Due: ₹{{ parseFloat(invoice.due).toFixed(2) }})
                         </option>
                     </select>
                 </div>

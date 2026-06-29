@@ -96,6 +96,10 @@ class PurchasesController extends Controller
 
         try {
 
+            // Fetch supplier to determine if they have a GSTIN
+            $supplier = Supplier::find($request->input('supplier_id'));
+            $isRefundable = ($supplier && !empty(trim($supplier->gstin))) ? 1 : 0;
+
             // 1. Insert into `purchases` table
             $purchase = Purchase::create([
                 'supplier_id' => $request->input('supplier_id'),
@@ -115,6 +119,7 @@ class PurchasesController extends Controller
                 'delivery_person_phone' => $request->input('delivery_person_phone'),
                 'vehicle_type' => $request->input('vehicle_type'),
                 'vehicle_number' => $request->input('vehicle_number'),
+                'is_refundable' => $isRefundable,
             ]);
 
             // 2. Insert purchase items and update stock quantity
@@ -335,6 +340,9 @@ class PurchasesController extends Controller
                 }
                 $purchases = $query->where('id', $id)->first();
 
+                $supplier = Supplier::find($request->input('supplier_id'));
+                $isRefundable = ($supplier && !empty(trim($supplier->gstin))) ? 1 : 0;
+
                 // Update purchase data
                 $purchases->update([
                     'supplier_id' => $request->input('supplier_id'),
@@ -354,6 +362,7 @@ class PurchasesController extends Controller
                     'delivery_person_phone' => $request->input('delivery_person_phone'),
                     'vehicle_type' => $request->input('vehicle_type'),
                     'vehicle_number' => $request->input('vehicle_number'),
+                    'is_refundable' => $isRefundable,
                 ]);
 
                 //PurchaseItem old get and product in update quantity
