@@ -49,9 +49,9 @@ const formatCurrency = (val) => {
 const filteredSales = computed(() => {
   if (!salesSearch.value.trim()) return salesData.value;
   const q = salesSearch.value.toLowerCase();
-  return salesData.value.filter(s => 
-    s.invoice_no.toLowerCase().includes(q) || 
-    s.customer_name.toLowerCase().includes(q) || 
+  return salesData.value.filter(s =>
+    s.invoice_no.toLowerCase().includes(q) ||
+    s.customer_name.toLowerCase().includes(q) ||
     (s.gstin && s.gstin.toLowerCase().includes(q))
   );
 });
@@ -59,9 +59,9 @@ const filteredSales = computed(() => {
 const filteredPurchases = computed(() => {
   if (!purchasesSearch.value.trim()) return purchasesData.value;
   const q = purchasesSearch.value.toLowerCase();
-  return purchasesData.value.filter(p => 
-    p.invoice_no.toLowerCase().includes(q) || 
-    p.supplier_name.toLowerCase().includes(q) || 
+  return purchasesData.value.filter(p =>
+    p.invoice_no.toLowerCase().includes(q) ||
+    p.supplier_name.toLowerCase().includes(q) ||
     (p.gstin && p.gstin.toLowerCase().includes(q))
   );
 });
@@ -95,7 +95,7 @@ const dynamicSummary = computed(() => {
     totalInputCgst += parseFloat(p.cgst) || 0;
     totalInputSgst += parseFloat(p.sgst) || 0;
     totalInputIgst += parseFloat(p.igst) || 0;
-    
+
     const itemGst = parseFloat(p.total_gst) || 0;
     totalInputGst += itemGst;
 
@@ -133,17 +133,17 @@ const dynamicSummary = computed(() => {
 const isToggling = ref({});
 const toggleRefundableStatus = async (purchase) => {
   if (isToggling.value[purchase.id]) return;
-  
+
   isToggling.value[purchase.id] = true;
   try {
     const response = await axios.post(`/purchases/${purchase.id}/toggle-refundable`);
-    
+
     // Update local state instantly
     purchase.is_refundable = response.data.is_refundable;
-    
+
     toast.success(
-      purchase.is_refundable 
-        ? "GST marked as Refundable (Claimable ITC)!" 
+      purchase.is_refundable
+        ? "GST marked as Refundable (Claimable ITC)!"
         : "GST marked as Non-Refundable (Blocked Credit)!"
     );
   } catch (error) {
@@ -180,7 +180,7 @@ const printReport = () => {
 
   <AuthenticatedLayout>
     <div class="p-6 max-w-7xl mx-auto space-y-8 print:p-0 print:max-w-full">
-      
+
       <!-- Top header with clean design -->
       <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 no-print">
         <div>
@@ -192,31 +192,31 @@ const printReport = () => {
         </div>
 
         <div class="flex items-center gap-3">
-          <button 
+          <button
             @click="printReport"
             class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition flex items-center gap-2 border border-gray-200"
           >
             <i class="bi bi-printer"></i> Print / PDF
           </button>
-          
+
           <div class="bg-gray-100 p-1 rounded-xl flex items-center shadow-inner">
-            <button 
+            <button
               @click="activeTab = 'sales'"
               :class="[
                 'px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300',
-                activeTab === 'sales' 
-                  ? 'bg-white text-[#2e2c92] shadow' 
+                activeTab === 'sales'
+                  ? 'bg-white text-[#2e2c92] shadow'
                   : 'text-gray-600 hover:text-gray-900'
               ]"
             >
               📈 Sales (Output GST)
             </button>
-            <button 
+            <button
               @click="activeTab = 'purchases'"
               :class="[
                 'px-4 py-2 rounded-lg text-sm font-semibold transition-all duration-300',
-                activeTab === 'purchases' 
-                  ? 'bg-white text-[#2e2c92] shadow' 
+                activeTab === 'purchases'
+                  ? 'bg-white text-[#2e2c92] shadow'
                   : 'text-gray-600 hover:text-gray-900'
               ]"
             >
@@ -230,28 +230,28 @@ const printReport = () => {
       <div class="bg-white p-5 rounded-2xl border border-gray-100 shadow-md flex flex-wrap items-end gap-4 no-print">
         <div class="w-full sm:w-auto">
           <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">Start Date</label>
-          <input 
-            type="date" 
+          <input
+            type="date"
             v-model="filterStartDate"
             class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#2e2c92] focus:outline-none"
           />
         </div>
         <div class="w-full sm:w-auto">
           <label class="block text-xs font-bold text-gray-500 mb-1.5 uppercase tracking-wider">End Date</label>
-          <input 
-            type="date" 
+          <input
+            type="date"
             v-model="filterEndDate"
             class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-[#2e2c92] focus:outline-none"
           />
         </div>
         <div class="flex gap-2 w-full sm:w-auto">
-          <button 
+          <button
             @click="applyFilters"
             class="flex-1 sm:flex-initial px-5 py-2 bg-[#2e2c92] hover:bg-[#3d3bb3] text-white rounded-xl text-sm font-semibold transition"
           >
             Apply Filters
           </button>
-          <button 
+          <button
             @click="clearFilters"
             class="flex-1 sm:flex-initial px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl text-sm font-semibold transition border border-gray-200"
           >
@@ -291,16 +291,16 @@ const printReport = () => {
         </div>
 
         <!-- Card 5: Net Government Balance -->
-        <div 
+        <div
           :class="[
             'p-5 rounded-2xl shadow-lg flex flex-col justify-between h-32 border transition-all duration-300',
-            dynamicSummary.net_status === 'Payable' 
-              ? 'bg-amber-50 border-amber-200 text-amber-900 shadow-amber-100/50' 
+            dynamicSummary.net_status === 'Payable'
+              ? 'bg-amber-50 border-amber-200 text-amber-900 shadow-amber-100/50'
               : 'bg-emerald-50 border-emerald-200 text-emerald-900 shadow-emerald-100/50'
           ]"
         >
           <span class="text-xs font-bold uppercase tracking-wider opacity-85">
-            {{ dynamicSummary.net_status === 'Payable' ? 'Govt Net Payable ⚠️' : 'Govt Net Refundable 🎉' }}
+            {{ dynamicSummary.net_status === 'Payable' ? 'Net Payable ⚠️' : 'Net Refundable 🎉' }}
           </span>
           <span class="text-2xl font-black">
             {{ formatCurrency(dynamicSummary.net_tax_amount) }}
@@ -313,7 +313,7 @@ const printReport = () => {
 
       <!-- Main Tables Display Container -->
       <div class="space-y-6">
-        
+
         <!-- Sales GST Table -->
         <div v-if="activeTab === 'sales'" class="print-area bg-white p-6 rounded-2xl border border-gray-100 shadow-md animate-fadeIn">
           <!-- Print-only Header for Sales -->
@@ -339,11 +339,11 @@ const printReport = () => {
               </h2>
               <p class="text-xs text-gray-400 mt-0.5">GST collected from customers on sales invoices.</p>
             </div>
-            
-            <input 
-              type="text" 
-              v-model="salesSearch" 
-              placeholder="Search by invoice, customer, GSTIN..." 
+
+            <input
+              type="text"
+              v-model="salesSearch"
+              placeholder="Search by invoice, customer, GSTIN..."
               class="w-full sm:w-72 px-3 py-1.5 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-[#2e2c92] focus:outline-none"
             />
           </div>
@@ -422,11 +422,11 @@ const printReport = () => {
               </h2>
               <p class="text-xs text-gray-400 mt-0.5">GST paid to suppliers on purchases. Manage Blocked Credit (Non-Refundable) vs Claimable ITC.</p>
             </div>
-            
-            <input 
-              type="text" 
-              v-model="purchasesSearch" 
-              placeholder="Search by purchase invoice, supplier, GSTIN..." 
+
+            <input
+              type="text"
+              v-model="purchasesSearch"
+              placeholder="Search by purchase invoice, supplier, GSTIN..."
               class="w-full sm:w-72 px-3 py-1.5 border border-gray-300 rounded-xl text-xs focus:ring-2 focus:ring-[#2e2c92] focus:outline-none"
             />
           </div>
@@ -454,9 +454,9 @@ const printReport = () => {
                     No purchase GST records found matching your filters.
                   </td>
                 </tr>
-                <tr 
-                  v-for="(row, idx) in filteredPurchases" 
-                  :key="row.id" 
+                <tr
+                  v-for="(row, idx) in filteredPurchases"
+                  :key="row.id"
                   :class="[
                     'transition',
                     row.is_refundable ? 'hover:bg-gray-50/50' : 'bg-rose-50/20 hover:bg-rose-50/40'
@@ -473,17 +473,17 @@ const printReport = () => {
                   <td class="p-3 border-b border-gray-100 text-right text-gray-500">{{ formatCurrency(row.igst) }}</td>
                   <td class="p-3 border-b border-gray-100 text-right font-bold text-gray-900">{{ formatCurrency(row.total_gst) }}</td>
                   <td class="p-3 border-b border-gray-100 text-center print:hidden">
-                    <button 
+                    <button
                       @click="toggleRefundableStatus(row)"
                       :disabled="isToggling[row.id]"
                       :class="[
                         'px-3 py-1 rounded-full text-[10px] font-bold uppercase transition flex items-center gap-1.5 mx-auto border focus:outline-none',
-                        row.is_refundable 
-                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/50' 
+                        row.is_refundable
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200 hover:bg-emerald-100/50'
                           : 'bg-rose-50 text-rose-700 border-rose-200 hover:bg-rose-100/50'
                       ]"
                     >
-                      <span 
+                      <span
                         class="w-1.5 h-1.5 rounded-full"
                         :class="row.is_refundable ? 'bg-emerald-500' : 'bg-rose-500'"
                       ></span>
