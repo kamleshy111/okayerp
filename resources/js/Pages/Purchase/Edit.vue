@@ -42,6 +42,9 @@ const products = ref([...props.products]);
 const productItems = props.productItems;
 const purchases = props.purchases;
 
+const page = usePage();
+const storeState = computed(() => page.props.auth?.user?.state || '');
+
 // Registry to store all products we have seen/loaded so far
 const productRegistry = ref({});
 
@@ -129,7 +132,14 @@ const form = ref({
     payment_method: purchases.payment_method,
     purchase_items: productItems.map(item => {
         const totalRate = (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0);
-        const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalRate);
+        const initialSupplier = props.suppliers.find(s => s.id == purchases.supplier_id);
+        const initialIsInterstate = initialSupplier && initialSupplier.state
+          ? storeState.value.trim().toLowerCase() !== initialSupplier.state.trim().toLowerCase()
+          : false;
+        const matchedRate = props.gstRates.find(r => 
+          parseFloat(r.rate) === totalRate && 
+          (initialIsInterstate ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
+        );
         return {
             product_id: item.product_id,
             quantity: item.quantity,
@@ -172,12 +182,41 @@ watch(
   { immediate: true }
 );
 
-const page = usePage();
-const storeState = computed(() => page.props.auth?.user?.state || '');
-
 const isInterstate = computed(() => {
   if (!selectedSupplier.value || !selectedSupplier.value.state) return false;
   return storeState.value.trim().toLowerCase() !== selectedSupplier.value.state.trim().toLowerCase();
+});
+
+const filteredGstRates = computed(() => {
+  if (isInterstate.value) {
+    return props.gstRates.filter(r => r.name.toLowerCase().includes('igst'));
+  } else {
+    return props.gstRates.filter(r => !r.name.toLowerCase().includes('igst'));
+  }
+});
+
+// Watch isInterstate to update selected GST rates when supplier changes
+watch(isInterstate, (newVal) => {
+  form.value.purchase_items.forEach(item => {
+    if (!item.gst_rate_id) return;
+    const currentRate = props.gstRates.find(r => r.id === item.gst_rate_id);
+    if (currentRate) {
+      const targetRate = props.gstRates.find(r => 
+        parseFloat(r.rate) === parseFloat(currentRate.rate) && 
+        (newVal ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
+      );
+      if (targetRate) {
+        item.gst_rate_id = targetRate.id;
+        if (parseFloat(targetRate.igst) > 0) {
+          item.cgst = parseFloat(targetRate.igst) / 2;
+          item.sgst = parseFloat(targetRate.igst) / 2;
+        } else {
+          item.cgst = parseFloat(targetRate.cgst) || 0;
+          item.sgst = parseFloat(targetRate.sgst) || 0;
+        }
+      }
+    }
+  });
 });
 
 const hasGstSelected = computed(() => {
@@ -197,13 +236,26 @@ watch(() => form.value.purchase_items, (newSaleItems) => {
 
         // Auto-match gst_rate_id from product's default tax rates
         const totalProductRate = (parseFloat(selectedProduct.sgst) || 0) + (parseFloat(selectedProduct.cgst) || 0);
-        const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+        const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
         if (matchedRate) {
           item.gst_rate_id = matchedRate.id;
+          if (parseFloat(matchedRate.igst) > 0) {
+            item.cgst = parseFloat(matchedRate.igst) / 2;
+            item.sgst = parseFloat(matchedRate.igst) / 2;
+          } else {
+            item.cgst = parseFloat(matchedRate.cgst) || 0;
+            item.sgst = parseFloat(matchedRate.sgst) || 0;
+          }
         } else {
-          item.gst_rate_id = props.gstRates[0]?.id || "";
-          item.cgst = 0;
-          item.sgst = 0;
+          const defaultRate = filteredGstRates.value[0];
+          item.gst_rate_id = defaultRate?.id || "";
+          if (defaultRate && parseFloat(defaultRate.igst) > 0) {
+            item.cgst = parseFloat(defaultRate.igst) / 2;
+            item.sgst = parseFloat(defaultRate.igst) / 2;
+          } else {
+            item.cgst = defaultRate ? parseFloat(defaultRate.cgst) || 0 : 0;
+            item.sgst = defaultRate ? parseFloat(defaultRate.sgst) || 0 : 0;
+          }
         }
       }
 
@@ -218,8 +270,13 @@ watch(() => form.value.purchase_items, (newSaleItems) => {
 const onGstRateChange = (item) => {
   const selectedRate = props.gstRates.find(r => r.id === item.gst_rate_id);
   if (selectedRate) {
-    item.cgst = parseFloat(selectedRate.cgst) || 0;
-    item.sgst = parseFloat(selectedRate.sgst) || 0;
+    if (parseFloat(selectedRate.igst) > 0) {
+      item.cgst = parseFloat(selectedRate.igst) / 2;
+      item.sgst = parseFloat(selectedRate.igst) / 2;
+    } else {
+      item.cgst = parseFloat(selectedRate.cgst) || 0;
+      item.sgst = parseFloat(selectedRate.sgst) || 0;
+    }
   }
 };
 
@@ -274,8 +331,8 @@ const grandTotal = computed(() => {
 });
 
 const dueAmount = computed(() => {
-  const paidValue = (parseFloat(form.value.paid) || 0) + (parseFloat(props.allocatedPayment) || 0);
-  const difference = paidValue - grandTotal.value;
+  const paidNow = parseFloat(form.value.paid) || 0;
+  const difference = paidNow - grandTotal.value;
 
   if (difference > 0) {
     return { type: 'advance', amount: difference };
@@ -287,62 +344,42 @@ const dueAmount = computed(() => {
 });
 
 const supplierBalanceExcludingCurrentPurchase = computed(() => {
-  if (!supplierData.value) return 0;
-
-  const currentAdvance = parseFloat(supplierData.value.advance_amount) || 0;
-  const currentDue = parseFloat(supplierData.value.due_amount) || 0;
-  const currentNet = currentAdvance - currentDue;
-
-  const originalPaid = parseFloat(props.purchases.paid) || 0;
-  const originalGrandTotal = parseFloat(props.purchases.grand_total) || 0;
-  const originalNet = originalPaid - originalGrandTotal;
-
-  return currentNet - originalNet;
+  return 0;
 });
 
 const previousAdvance = computed(() => {
-  const bal = supplierBalanceExcludingCurrentPurchase.value;
-  return bal > 0 ? bal : 0;
+  return 0;
 });
 
 const previousDue = computed(() => {
-  const bal = supplierBalanceExcludingCurrentPurchase.value;
-  return bal < 0 ? Math.abs(bal) : 0;
+  return 0;
 });
 
 const finalBalance = computed(() => {
-  if (!supplierData.value) return null;
-  const prevNet = supplierBalanceExcludingCurrentPurchase.value;
   const paidNow = parseFloat(form.value.paid) || 0;
   const currentNet = paidNow - grandTotal.value;
 
-  const finalNet = prevNet + currentNet;
-
-  if (finalNet > 0) {
-    return { type: 'advance', amount: finalNet };
-  } else if (finalNet < 0) {
-    return { type: 'due', amount: Math.abs(finalNet) };
+  if (currentNet > 0) {
+    return { type: 'advance', amount: currentNet };
+  } else if (currentNet < 0) {
+    return { type: 'due', amount: Math.abs(currentNet) };
   } else {
     return { type: 'none', amount: 0 };
   }
 });
 
 const advanceApplied = computed(() => {
-  const prevAdvance = previousAdvance.value;
-  const paidNow = parseFloat(form.value.paid) || 0;
-  return Math.min(prevAdvance, Math.max(0, grandTotal.value - paidNow));
+  return 0;
 });
 
 const dueReduced = computed(() => {
-  const prevDue = previousDue.value;
-  const paidNow = parseFloat(form.value.paid) || 0;
-  return Math.min(prevDue, Math.max(0, paidNow - grandTotal.value));
+  return 0;
 });
 
 const paymentStatus = computed(() => {
-  const paidValue = (parseFloat(form.value.paid) || 0) + (parseFloat(props.allocatedPayment) || 0);
-  if (paidValue === 0) return 'Unpaid';
-  else if (paidValue < grandTotal.value) return 'Partial';
+  const paidNow = parseFloat(form.value.paid) || 0;
+  if (paidNow === 0) return 'Unpaid';
+  else if (paidNow < grandTotal.value) return 'Partial';
   else return 'Paid';
 });
 
@@ -506,13 +543,6 @@ const submitForm = async () => {
                     <tr>
                         <th class="px-4 py-2 text-left">Product</th>
                         <th class="px-4 py-2 text-left">GST</th>
-                        <template v-if="hasGstSelected">
-                            <th v-if="isInterstate" class="px-4 py-2 text-left">IGST</th>
-                            <template v-else>
-                                <th class="px-4 py-2 text-left">CGST</th>
-                                <th class="px-4 py-2 text-left">SGST</th>
-                            </template>
-                        </template>
                         <th class="px-4 py-2 text-left">Quantity</th>
                         <th class="px-4 py-2 text-left">Unit Type</th>
                         <th class="px-4 py-2 text-left">Price</th>
@@ -542,33 +572,11 @@ const submitForm = async () => {
                                 class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
                             >
                                 <option value="" disabled>Select GST</option>
-                                <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
                                     {{ rate.name }}
                                 </option>
                             </select>
                         </td>
-                        <template v-if="hasGstSelected">
-                            <td v-if="isInterstate" class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                <span v-if="item.gst_rate_id">
-                                    {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }} %
-                                </span>
-                                <span v-else>-</span>
-                            </td>
-                            <template v-else>
-                                <td class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                    <span v-if="item.gst_rate_id">
-                                        {{ item.cgst }} %
-                                    </span>
-                                    <span v-else>-</span>
-                                </td>
-                                <td class="border-t px-4 py-3 text-xs text-gray-600 whitespace-nowrap">
-                                    <span v-if="item.gst_rate_id">
-                                        {{ item.sgst }} %
-                                    </span>
-                                    <span v-else>-</span>
-                                </td>
-                            </template>
-                        </template>
                         <td class="border-t px-4 py-3">
                             <input type="number" name="quantity" v-model="item.quantity" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
@@ -634,7 +642,7 @@ const submitForm = async () => {
                                     class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm bg-white"
                                 >
                                     <option value="" disabled>Select GST</option>
-                                    <option v-for="rate in gstRates" :key="rate.id" :value="rate.id">
+                                    <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
                                         {{ rate.name }}
                                     </option>
                                 </select>
@@ -658,11 +666,10 @@ const submitForm = async () => {
 
                         <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500">
                             <div>
-                                <span class="block text-gray-400">GST Breakdown</span>
+                                <span class="block text-gray-400">GST</span>
                                 <span class="text-gray-800 font-semibold">
                                     <template v-if="item.gst_rate_id">
-                                        <span v-if="isInterstate">IGST: {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }}%</span>
-                                        <span v-else>CGST: {{ item.cgst }}% | SGST: {{ item.sgst }}%</span>
+                                        {{ (parseFloat(item.cgst) || 0) + (parseFloat(item.sgst) || 0) }}%
                                     </template>
                                     <template v-else>-</template>
                                 </span>
@@ -755,47 +762,19 @@ const submitForm = async () => {
                         placeholder="Amount" min="0" />
                 </div>
 
-                <!-- Allocated General Payments -->
-                <div v-if="parseFloat(props.allocatedPayment) > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Supplier Payments Applied</span>
-                    <span class="font-medium text-[#292688]">₹ {{ props.allocatedPayment }}</span>
-                </div>
-
-                <!-- Previous Balances -->
-                <div v-if="previousAdvance > 0" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Previous Advance</span>
-                    <span class="text-green-600 font-bold">₹ {{ previousAdvance.toFixed(2) }}</span>
-                </div>
-
-                <div v-if="previousDue > 0" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Previous Due</span>
-                    <span class="text-red-600 font-bold">₹ {{ previousDue.toFixed(2) }}</span>
-                </div>
-
-                <!-- Wallet / Due Adjustments -->
-                <div v-if="advanceApplied > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Advance Applied</span>
-                    <span class="font-medium text-blue-600">- ₹ {{ advanceApplied.toFixed(2) }}</span>
-                </div>
-
-                <div v-if="dueReduced > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Applied to Previous Due</span>
-                    <span class="font-medium text-green-600">- ₹ {{ dueReduced.toFixed(2) }}</span>
-                </div>
-
-                <!-- Final Balance after this payment -->
+                <!-- Invoice Balance -->
                 <div v-if="finalBalance?.type === 'advance'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Advance</span>
+                    <span class="text-gray-700 font-semibold">Advance</span>
                     <span class="text-green-600 font-bold">₹ {{ finalBalance.amount.toFixed(2) }}</span>
                 </div>
 
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Due</span>
+                    <span class="text-gray-700 font-semibold">Due</span>
                     <span class="text-red-600 font-bold">₹ {{ finalBalance.amount.toFixed(2) }}</span>
                 </div>
 
                 <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center pb-4 border-b border-gray-100">
-                    <span class="text-gray-700 font-semibold">Final Balance</span>
+                    <span class="text-gray-700 font-semibold">Due / Advance</span>
                     <span class="text-gray-600 font-bold">₹ 0.00 (Clear)</span>
                 </div>
 

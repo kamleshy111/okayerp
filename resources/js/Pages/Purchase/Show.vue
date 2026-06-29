@@ -134,31 +134,8 @@ const formatDate = (dateStr) => {
 
         <!-- Totals & Summary section -->
         <div class="flex flex-col md:flex-row justify-between items-start gap-8">
-          <!-- Left side: Payment Info -->
-          <div class="w-full md:w-1/2 space-y-4">
-            <div class="bg-gray-50 rounded-xl p-5 border border-gray-100">
-              <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2">Payment details</h4>
-              <div class="space-y-1.5 text-sm">
-                <p class="text-gray-600"><span class="font-medium text-gray-800">Method:</span> {{ purchase.payment_method || 'N/A' }}</p>
-                <div class="flex items-center gap-2">
-                  <span class="text-gray-600 font-medium">Status:</span>
-                  <span 
-                    class="px-2 py-0.5 text-xs font-semibold rounded"
-                    :class="{
-                      'bg-emerald-100 text-emerald-800': purchase.payment_status === 'Paid',
-                      'bg-amber-100 text-amber-800': purchase.payment_status === 'Partial',
-                      'bg-rose-100 text-rose-800': purchase.payment_status === 'Unpaid'
-                    }"
-                  >
-                    {{ purchase.payment_status }}
-                  </span>
-                </div>
-              </div>
-            </div>
-          </div>
-
           <!-- Right side: Calculation Breakdown -->
-          <div class="w-full md:w-5/12">
+          <div class="w-full md:w-5/12 md:ml-auto">
             <div class="divide-y divide-gray-100 text-sm">
               <div class="flex justify-between py-3">
                 <span class="text-gray-500 font-medium">Total Amount</span>
@@ -175,22 +152,6 @@ const formatDate = (dateStr) => {
               <div class="flex justify-between py-3 text-base font-bold border-t border-gray-200">
                 <span class="text-gray-900">Grand Total</span>
                 <span class="text-[#2e2c92]">₹{{ parseFloat(purchase.grand_total).toFixed(2) }}</span>
-              </div>
-              <div class="flex justify-between py-3">
-                <span class="text-gray-500 font-medium">Paid</span>
-                <span class="text-emerald-600 font-semibold">₹{{ parseFloat(purchase.paid).toFixed(2) }}</span>
-              </div>
-              <div v-if="parseFloat(allocatedPayment) > 0" class="flex justify-between py-3">
-                <span class="text-gray-500 font-medium">Advance Applied</span>
-                <span class="text-emerald-600 font-semibold">₹{{ parseFloat(allocatedPayment).toFixed(2) }}</span>
-              </div>
-              <div v-if="parseFloat(returnDueDeduction) > 0" class="flex justify-between py-3">
-                <span class="text-gray-500 font-medium">Return Credit Applied</span>
-                <span class="text-emerald-600 font-semibold">₹{{ parseFloat(returnDueDeduction).toFixed(2) }}</span>
-              </div>
-              <div class="flex justify-between py-3 text-base font-bold bg-[#f8fafc] px-4 rounded-lg mt-2 border border-gray-100">
-                <span class="text-gray-700">Balance Due</span>
-                <span class="text-rose-600">₹{{ Math.max(0, parseFloat(purchase.grand_total) - parseFloat(purchase.paid) - parseFloat(allocatedPayment) - parseFloat(returnDueDeduction)).toFixed(2) }}</span>
               </div>
             </div>
           </div>
