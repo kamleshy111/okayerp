@@ -1,5 +1,7 @@
 <script setup>
 import { ref } from 'vue';
+import vSelect from 'vue-select';
+import 'vue-select/dist/vue-select.css';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from 'vue3-toastify';
@@ -136,9 +138,14 @@ const submitForm = async () => {
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">State</label>
-                    <input type="text" v-model="form.state" name="state"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="State" />
+                    <v-select
+                        :options="$page.props.gst_states"
+                        label="display"
+                        :reduce="state => state.name"
+                        v-model="form.state"
+                        placeholder="Search & Select State"
+                        class="w-full"
+                    ></v-select>
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">Country</label>
@@ -231,3 +238,18 @@ const submitForm = async () => {
     </AuthenticatedLayout>
 
 </template>
+
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 50px;
+    border-radius: 0.75rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>

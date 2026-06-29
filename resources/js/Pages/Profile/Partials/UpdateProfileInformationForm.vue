@@ -5,6 +5,8 @@ import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import { ref } from 'vue';
+import vSelect from 'vue-select';
+import 'vue-select/dist/vue-select.css';
 
 defineProps({
     mustVerifyEmail: {
@@ -144,13 +146,14 @@ const handleFileUpload = (event) => {
 
                     <div>
                         <InputLabel for="state" value="State" />
-                        <TextInput
-                            id="state"
-                            type="text"
-                            class="mt-1 block w-full"
+                        <v-select
+                            :options="$page.props.gst_states"
+                            label="display"
+                            :reduce="state => state.name"
                             v-model="form.state"
-                            placeholder="Enter state"
-                        />
+                            placeholder="Search & Select State"
+                            class="w-full mt-1"
+                        ></v-select>
                         <InputError class="mt-1" :message="form.errors.state" />
                     </div>
 
@@ -343,3 +346,18 @@ const handleFileUpload = (event) => {
         </form>
     </section>
 </template>
+
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 42px;
+    border-radius: 0.375rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>

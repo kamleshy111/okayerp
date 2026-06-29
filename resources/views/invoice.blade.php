@@ -204,25 +204,13 @@
   }
 
   // State Codes for GST
-  $stateCodes = [
-      '01' => 'Jammu & Kashmir', '02' => 'Himachal Pradesh', '03' => 'Punjab',
-      '04' => 'Chandigarh', '05' => 'Uttarakhand', '06' => 'Haryana',
-      '07' => 'Delhi', '08' => 'Rajasthan', '09' => 'Uttar Pradesh',
-      '10' => 'Bihar', '11' => 'Sikkim', '12' => 'Arunachal Pradesh',
-      '13' => 'Nagaland', '14' => 'Manipur', '15' => 'Mizoram',
-      '16' => 'Tripura', '17' => 'Meghalaya', '18' => 'Assam',
-      '19' => 'West Bengal', '20' => 'Jharkhand', '21' => 'Odisha',
-      '22' => 'Chhattisgarh', '23' => 'Madhya Pradesh', '24' => 'Gujarat',
-      '27' => 'Maharashtra', '28' => 'Andhra Pradesh', '29' => 'Karnataka',
-      '30' => 'Goa', '31' => 'Lakshadweep', '32' => 'Kerala',
-      '33' => 'Tamil Nadu', '34' => 'Puducherry', '35' => 'Andaman & Nicobar Islands',
-      '36' => 'Telangana', '37' => 'Andhra Pradesh', '38' => 'Ladakh'
-  ];
+  $stateCodes = config('gst_states');
+
 
   $store = $sale->customer && $sale->customer->user ? $sale->customer->user : null;
   $storeGst = $store && !empty($store->gstin) ? trim($store->gstin) : '';
   $custGst = $sale->customer && !empty($sale->customer->gst_number) ? trim($sale->customer->gst_number) : '';
-  
+
   $storeStateName = $store && !empty($store->state) ? trim($store->state) : '';
   $custStateName = $sale->customer && !empty($sale->customer->state) ? trim($sale->customer->state) : '';
 
@@ -260,10 +248,10 @@
   foreach ($sale->saleItems as $item) {
       $totalQty += $item->quantity;
       $subtotal += $item->base_price;
-      
+
       $gstRate = ($item->cgst + $item->sgst);
       $key = number_format($gstRate, 2);
-      
+
       if (!isset($taxGroups[$key])) {
           $taxGroups[$key] = [
               'rate' => $gstRate,
@@ -275,13 +263,13 @@
               'total_tax' => 0
           ];
       }
-      
+
       $taxable = $item->base_price;
       $taxGroups[$key]['taxable_amount'] += $taxable;
-      
+
       $cgstVal = $taxable * ($item->cgst / 100);
       $sgstVal = $taxable * ($item->sgst / 100);
-      
+
       $taxGroups[$key]['cgst_amount'] += $cgstVal;
       $taxGroups[$key]['sgst_amount'] += $sgstVal;
       $taxGroups[$key]['total_tax'] += ($cgstVal + $sgstVal);
@@ -294,7 +282,7 @@
 @endphp
 
 <div class="invoice-container">
-  
+
   <!-- Header Table -->
   <table class="border-bottom header-table">
     <tr>
@@ -479,20 +467,6 @@
       </tr>
       @endif
 
-
-
-      <!-- Rounded off row -->
-      @if($roundOff != 0)
-        <tr class="total-row">
-          <td class="border-right">&nbsp;</td>
-          <td class="border-right text-right bold" colspan="2">Add : Rounded Off ({{ $roundOff > 0 ? '+' : '' }})</td>
-          <td class="border-right">&nbsp;</td>
-          <td class="border-right">&nbsp;</td>
-          <td class="border-right">&nbsp;</td>
-          <td class="text-right">{{ number_format($roundOff, 2) }}</td>
-        </tr>
-      @endif
-
       <!-- Grand Total row -->
       <tr class="total-row" style="background-color: #f3f4f6;">
         <td class="border-right">&nbsp;</td>
@@ -500,7 +474,7 @@
         <td class="text-right border-right bold">{{ number_format($totalQty, 2) }}</td>
         <td class="text-center border-right bold">Pcs.</td>
         <td class="border-right">&nbsp;</td>
-        <td class="text-right bold">₹ {{ number_format($roundedGrandTotal, 2) }}</td>
+        <td class="text-right bold"> ₹&nbsp;{{ number_format($roundedGrandTotal, 2) }} </td>
       </tr>
     </tbody>
   </table>
@@ -557,9 +531,9 @@
         <td style="padding: 0; width: 10%;" class="bold">Bank Details :</td>
         <td style="padding: 0; width: 90%;">
           @if($store && $store->bank_name)
-            BANK : <span class="bold">{{ $store->bank_name }}</span>, 
-            BRANCH : <span class="bold">{{ $store->branch_name ?? 'N/A' }}</span>, 
-            A/C NO. : <span class="bold">{{ $store->account_number }}</span>, 
+            BANK : <span class="bold">{{ $store->bank_name }}</span>,
+            BRANCH : <span class="bold">{{ $store->branch_name ?? 'N/A' }}</span>,
+            A/C NO. : <span class="bold">{{ $store->account_number }}</span>,
             IFSC : <span class="bold">{{ $store->ifsc_code }}</span>
           @else
             <span style="color: #6b7280; font-style: italic;">Bank details not configured in Store Profile settings.</span>

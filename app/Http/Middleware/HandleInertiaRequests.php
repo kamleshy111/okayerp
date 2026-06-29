@@ -61,6 +61,11 @@ class HandleInertiaRequests extends Middleware
                 'success' => session('success'),
                 'error'   => session('error'),
             ],
+            'gst_states' => collect(config('gst_states'))->map(fn($name, $code) => [
+                'code' => $code,
+                'name' => $name,
+                'display' => "$name ($code)"
+            ])->values()->all(),
         ];
     }
 }

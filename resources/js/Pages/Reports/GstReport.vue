@@ -306,7 +306,7 @@ const printReport = () => {
             {{ formatCurrency(dynamicSummary.net_tax_amount) }}
           </span>
           <span class="text-[10px] font-bold opacity-80 uppercase tracking-wide">
-            {{ dynamicSummary.net_status === 'Payable' ? 'Pay to Government' : 'Receive from Government' }}
+            {{ dynamicSummary.net_status === 'Payable' ? 'Pay' : 'Receive' }}
           </span>
         </div>
       </div>
