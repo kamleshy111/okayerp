@@ -1,12 +1,14 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, watch } from 'vue';
 import vSelect from 'vue3-select';
 import 'vue3-select/dist/vue3-select.css';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 import axios from 'axios';
+
+const page = usePage();
 
 const form = ref({
     name: "",
@@ -22,6 +24,23 @@ const form = ref({
     state: "",
     country: "",
     pin_code: "",
+});
+
+const availableDistricts = computed(() => {
+    if (!form.value.state) return [];
+    const stateName = form.value.state;
+    const statesData = page.props.state_cities || {};
+    const lookupKey = Object.keys(statesData).find(
+        key => key.toLowerCase().replace(/[^a-z0-9]/g, '') === stateName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
+    return lookupKey ? statesData[lookupKey] : [];
+});
+
+watch(() => form.value.state, (newVal, oldVal) => {
+    if (oldVal !== undefined) {
+        form.value.district = "";
+        form.value.city = "";
+    }
 });
 
 // Submit the form data
@@ -98,20 +117,11 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
-                    <label class="block text-black font-medium mb-2">City</label>
-                    <input type="text" name="city" v-model="form.city"
+                    <label class="block text-black font-medium mb-2">Address</label>
+                    <input type="text" name="address" v-model="form.address"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="Enter City" />
+                        placeholder="Enter address" />
                 </div>
-                <div>
-                    <label class="block text-black font-medium mb-2">District</label>
-                    <input type="text" name="district" v-model="form.district"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="Enter District" />
-                </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">State</label>
                     <v-select
@@ -123,6 +133,32 @@ const submitForm = async () => {
                         class="w-full"
                     ></v-select>
                 </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">District</label>
+                    <v-select
+                        :options="availableDistricts"
+                        v-model="form.district"
+                        placeholder="Search & Select District"
+                        class="w-full"
+                        :disabled="!form.state"
+                    ></v-select>
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">City</label>
+                    <v-select
+                        :options="availableDistricts"
+                        v-model="form.city"
+                        placeholder="Search & Select City"
+                        class="w-full"
+                        :disabled="!form.state"
+                    ></v-select>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">Country</label>
                     <input type="text" name="country" v-model="form.country"
