@@ -335,14 +335,42 @@ class DashboardController extends Controller
                 if (!$privateLedgerUnlocked) {
                     $q->where('accepted', 1);
                 }
-            }])
+            }, 'sales.saleReturns'])
             ->get();
         
-        $totalCustomerDue = $customers->sum(function ($customer) {
-            $totalSaleAmount = $customer->sales->sum('grand_total');
-            $totalPaid = $customer->payments->sum('amount');
-            $balance = $totalPaid - $totalSaleAmount;
-            return $balance < 0 ? abs($balance) : 0;
+        $totalCustomerDue = $customers->sum(function ($customer) use ($privateLedgerUnlocked) {
+            $dueAmount = 0;
+            $advanceAmount = 0;
+            foreach ($customer->sales as $sale) {
+                $paymentsSum = \App\Models\SalePayment::where('sale_id', $sale->id);
+                if (!$privateLedgerUnlocked) {
+                    $paymentsSum->where('accepted', 1);
+                }
+                $actualPaid = $paymentsSum->sum('amount');
+
+                // Sum of due_deduction for returns on this sale
+                $dueDeductionsSum = (float)$sale->saleReturns->sum('due_deduction');
+
+                // Sum of store credit refunds on this sale
+                $storeCreditRefundsSum = (float)$sale->saleReturns
+                    ->where('refund_method', 'Store Credit')
+                    ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+                $saleBalance = $actualPaid - (float)$sale->grand_total + $dueDeductionsSum;
+                if ($saleBalance < 0) {
+                    $dueAmount += abs($saleBalance);
+                } elseif ($saleBalance > 0) {
+                    $advanceAmount += $saleBalance;
+                }
+
+                $advanceAmount += $storeCreditRefundsSum;
+            }
+
+            $totalDirectPaid = $customer->payments->where('sale_id', null)->sum('amount');
+            $advanceAmount += $totalDirectPaid;
+
+            $netBalance = $advanceAmount - $dueAmount;
+            return $netBalance < 0 ? abs($netBalance) : 0;
         });
 
         $suppliers = Supplier::where('user_id', $userId)
@@ -354,15 +382,42 @@ class DashboardController extends Controller
                 if (!$privateLedgerUnlocked) {
                     $q->where('accepted', 1);
                 }
-            }])
+            }, 'purchases.purchaseReturns'])
             ->get();
 
-        $totalSupplierDue = $suppliers->sum(function ($supplier) {
-            $totalPurchaseAmount = $supplier->purchases->sum('grand_total');
-            $totalPurchasePaid = $supplier->purchases->sum('paid');
+        $totalSupplierDue = $suppliers->sum(function ($supplier) use ($privateLedgerUnlocked) {
+            $dueAmount = 0;
+            $advanceAmount = 0;
+            foreach ($supplier->purchases as $purchase) {
+                $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $purchase->id);
+                if (!$privateLedgerUnlocked) {
+                    $paymentsSum->where('accepted', 1);
+                }
+                $actualPaid = $paymentsSum->sum('amount');
+
+                // Sum of due_deduction for returns on this purchase
+                $dueDeductionsSum = (float)$purchase->purchaseReturns->sum('due_deduction');
+
+                // Sum of store credit refunds on this purchase
+                $storeCreditRefundsSum = (float)$purchase->purchaseReturns
+                    ->where('refund_method', 'Store Credit')
+                    ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+                $purchaseBalance = $actualPaid - (float)$purchase->grand_total + $dueDeductionsSum;
+                if ($purchaseBalance < 0) {
+                    $dueAmount += abs($purchaseBalance);
+                } elseif ($purchaseBalance > 0) {
+                    $advanceAmount += $purchaseBalance;
+                }
+
+                $advanceAmount += $storeCreditRefundsSum;
+            }
+
             $totalDirectPaid = $supplier->purchasePayments->where('purchase_id', null)->sum('amount');
-            $balance = $totalPurchasePaid + $totalDirectPaid - $totalPurchaseAmount;
-            return $balance < 0 ? abs($balance) : 0;
+            $advanceAmount += $totalDirectPaid;
+
+            $netBalance = $advanceAmount - $dueAmount;
+            return $netBalance < 0 ? abs($netBalance) : 0;
         });
 
         return Inertia::render('Dashboard', [

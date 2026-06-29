@@ -1,10 +1,12 @@
 <script setup>
+import { ref, computed, watch } from 'vue';
 import InputError from '@/Components/InputError.vue';
 import InputLabel from '@/Components/InputLabel.vue';
 import PrimaryButton from '@/Components/PrimaryButton.vue';
 import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
-import { ref } from 'vue';
+import vSelect from 'vue3-select';
+import 'vue3-select/dist/vue3-select.css';
 
 defineProps({
     mustVerifyEmail: {
@@ -15,7 +17,8 @@ defineProps({
     },
 });
 
-const user = usePage().props.auth.user;
+const page = usePage();
+const user = page.props.auth.user;
 
 const form = useForm({
     _method: 'patch',
@@ -35,6 +38,23 @@ const form = useForm({
     ifsc_code: user.ifsc_code || '',
     branch_name: user.branch_name || '',
     gstin: user.gstin || '',
+});
+
+const availableDistricts = computed(() => {
+    if (!form.state) return [];
+    const stateName = form.state;
+    const statesData = page.props.state_cities || {};
+    const lookupKey = Object.keys(statesData).find(
+        key => key.toLowerCase().replace(/[^a-z0-9]/g, '') === stateName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
+    return lookupKey ? statesData[lookupKey] : [];
+});
+
+watch(() => form.state, (newVal, oldVal) => {
+    if (oldVal !== undefined) {
+        form.district = "";
+        form.city = "";
+    }
 });
 
 // preview image
@@ -119,39 +139,43 @@ const handleFileUpload = (event) => {
                 <div class="grid grid-cols-2 gap-4">
 
                     <div>
-                        <InputLabel for="city" value="City" />
-                        <TextInput
-                            id="city"
-                            type="text"
-                            class="mt-1 block w-full"
-                            v-model="form.city"
-                            placeholder="Enter city"
-                        />
-                        <InputError class="mt-1" :message="form.errors.city" />
+                        <InputLabel for="state" value="State" />
+                        <v-select
+                            id="state"
+                            :options="$page.props.gst_states"
+                            label="display"
+                            :reduce="state => state.name"
+                            v-model="form.state"
+                            placeholder="Search & Select State"
+                            class="w-full mt-1"
+                        ></v-select>
+                        <InputError class="mt-1" :message="form.errors.state" />
                     </div>
 
                     <div>
                         <InputLabel for="district" value="District" />
-                        <TextInput
+                        <v-select
                             id="district"
-                            type="text"
-                            class="mt-1 block w-full"
+                            :options="availableDistricts"
                             v-model="form.district"
-                            placeholder="Enter district"
-                        />
+                            placeholder="Search & Select District"
+                            class="w-full mt-1"
+                            :disabled="!form.state"
+                        ></v-select>
                         <InputError class="mt-1" :message="form.errors.district" />
                     </div>
 
                     <div>
-                        <InputLabel for="state" value="State" />
-                        <TextInput
-                            id="state"
-                            type="text"
-                            class="mt-1 block w-full"
-                            v-model="form.state"
-                            placeholder="Enter state"
-                        />
-                        <InputError class="mt-1" :message="form.errors.state" />
+                        <InputLabel for="city" value="City" />
+                        <v-select
+                            id="city"
+                            :options="availableDistricts"
+                            v-model="form.city"
+                            placeholder="Search & Select City"
+                            class="w-full mt-1"
+                            :disabled="!form.state"
+                        ></v-select>
+                        <InputError class="mt-1" :message="form.errors.city" />
                     </div>
 
                     <div>
@@ -343,3 +367,18 @@ const handleFileUpload = (event) => {
         </form>
     </section>
 </template>
+
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 42px;
+    border-radius: 0.375rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.125rem;
+    padding-bottom: 0.125rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>

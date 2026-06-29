@@ -71,8 +71,6 @@ class ProductImportTest extends TestCase
             'category_id' => $existingCategory->id,
             'unit_type' => 'Pcs',
             'price' => 0.00,
-            'cgst' => 9.0,
-            'sgst' => 9.0,
             'hsn_code' => '8471',
             'description' => 'Wireless optical mouse'
         ]);
@@ -86,8 +84,6 @@ class ProductImportTest extends TestCase
             'category_id' => $newCategory->id,
             'unit_type' => 'Pcs',
             'price' => 0.00,
-            'cgst' => 9.0,
-            'sgst' => 9.0,
             'hsn_code' => '8471',
             'description' => 'Mechanical keyboard'
         ]);

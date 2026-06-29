@@ -114,7 +114,7 @@ class CustomerPaymentsController extends Controller
 
         //Merge both arrays and sort by payment_date descending
         $detailedHistory = $payments->concat($returns)
-            ->sortByDesc('created_at')
+            ->sortByDesc('payment_date')
             ->values()
             ->all();
 
@@ -182,7 +182,7 @@ class CustomerPaymentsController extends Controller
             ];
         });
 
-        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
+        $history = $payments->concat($returns)->sortByDesc('payment_date')->values()->all();
 
         return Inertia::render('CustomerPayment/History', [
             'customer' => $customer,

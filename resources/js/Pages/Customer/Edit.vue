@@ -1,5 +1,7 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, computed, watch } from 'vue';
+import vSelect from 'vue3-select';
+import 'vue3-select/dist/vue3-select.css';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 
@@ -24,6 +26,25 @@ const form = ref({
     state: customerDetail.state || '',
     country: customerDetail.country || '',
     pin_code: customerDetail.pin_code || '',
+});
+
+const page = usePage();
+
+const availableDistricts = computed(() => {
+    if (!form.value.state) return [];
+    const stateName = form.value.state;
+    const statesData = page.props.state_cities || {};
+    const lookupKey = Object.keys(statesData).find(
+        key => key.toLowerCase().replace(/[^a-z0-9]/g, '') === stateName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
+    return lookupKey ? statesData[lookupKey] : [];
+});
+
+watch(() => form.value.state, (newVal, oldVal) => {
+    if (oldVal !== undefined) {
+        form.value.district = "";
+        form.value.city = "";
+    }
 });
 
 // Form submit handler
@@ -91,25 +112,38 @@ const submitForm = async () => {
                         placeholder="address" />
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">City</label>
-                    <input type="text" v-model="form.city" name="city"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="City" />
+                    <label class="block text-black font-medium mb-2">State</label>
+                    <v-select
+                        :options="$page.props.gst_states"
+                        label="display"
+                        :reduce="state => state.name"
+                        v-model="form.state"
+                        placeholder="Search & Select State"
+                        class="w-full"
+                    ></v-select>
                 </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">District</label>
-                    <input type="text" v-model="form.district" name="district"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="District" />
+                    <v-select
+                        :options="availableDistricts"
+                        v-model="form.district"
+                        placeholder="Search & Select District"
+                        class="w-full"
+                        :disabled="!form.state"
+                    ></v-select>
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">State</label>
-                    <input type="text" v-model="form.state" name="state"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="State" />
+                    <label class="block text-black font-medium mb-2">City</label>
+                    <v-select
+                        :options="availableDistricts"
+                        v-model="form.city"
+                        placeholder="Search & Select City"
+                        class="w-full"
+                        :disabled="!form.state"
+                    ></v-select>
                 </div>
             </div>
 
@@ -153,3 +187,18 @@ const submitForm = async () => {
     </AuthenticatedLayout>
 
 </template>
+
+<style>
+.v-select .vs__dropdown-toggle {
+    min-height: 50px;
+    border-radius: 0.75rem !important;
+    border-color: #d1d5db;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+}
+.v-select .vs__selected, .v-select .vs__search {
+    margin-top: 0;
+    margin-bottom: 0;
+    line-height: 1.5;
+}
+</style>

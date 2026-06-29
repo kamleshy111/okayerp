@@ -41,12 +41,13 @@ const columns = [
     {
       data: null,
       render: function (data) {
-        const amount = parseFloat(data.due_amount || data.advance_amount || 0);
-        const status = data.status;
-        const formattedAmount = (amount % 1 !== 0) ? amount.toFixed(2) : amount.toString();
-        if (status === 'due') {
+        const advance = parseFloat(data.advance_amount) || 0;
+        const due = parseFloat(data.due_amount) || 0;
+        const net = advance - due;
+        const formattedAmount = (Math.abs(net) % 1 !== 0) ? Math.abs(net).toFixed(2) : Math.abs(net).toString();
+        if (net < 0) {
           return `<span style="color:red">- ₹${formattedAmount}</span>`;
-        } else if (status === 'advance') {
+        } else if (net > 0) {
           return `<span style="color:green">+ ₹${formattedAmount}</span>`;
         } else {
           return `<span style="color:green">₹0</span>`;

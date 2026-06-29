@@ -23,20 +23,43 @@ class SuppliersController extends Controller
                 if (session('private_ledger_unlocked') !== true) {
                     $q->where('accepted', 1);
                 }
-            }])->get();
+            }, 'purchases.purchaseReturns'])
+            ->get();
 
         $suppliers = $suppliers->map(function ($supplier) {
-            
-            $totalSaleAmount = $supplier->purchases->sum('grand_total');
-            $totalSalePaid = $supplier->purchases->sum('paid');
+            $dueAmount = 0;
+            $advanceAmount = 0;
+
+            foreach ($supplier->purchases as $purchase) {
+                $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $purchase->id);
+                if (session('private_ledger_unlocked') !== true) {
+                    $paymentsSum->where('accepted', 1);
+                }
+                $actualPaid = $paymentsSum->sum('amount');
+
+                // Sum of due_deduction for returns on this purchase
+                $dueDeductionsSum = (float)$purchase->purchaseReturns->sum('due_deduction');
+
+                // Sum of store credit refunds on this purchase
+                $storeCreditRefundsSum = (float)$purchase->purchaseReturns
+                    ->where('refund_method', 'Store Credit')
+                    ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+                $purchaseBalance = $actualPaid - (float)$purchase->grand_total + $dueDeductionsSum;
+                if ($purchaseBalance < 0) {
+                    $dueAmount += abs($purchaseBalance);
+                } elseif ($purchaseBalance > 0) {
+                    $advanceAmount += $purchaseBalance;
+                }
+
+                $advanceAmount += $storeCreditRefundsSum;
+            }
+
             $totalDirectPaid = $supplier->purchasePayments->where('purchase_id', null)->sum('amount');
+            $advanceAmount += $totalDirectPaid;
 
-            $totalReceived = $totalSalePaid + $totalDirectPaid;
-            $balance = $totalReceived - $totalSaleAmount;
-
-            $dueAmount = $balance < 0 ? abs($balance) : 0;
-            $advanceAmount = $balance > 0 ? $balance : 0;
-            $status = $balance === 0 ? 'clear' : ($balance < 0 ? 'due' : 'advance');
+            $netBalance = $advanceAmount - $dueAmount;
+            $status = $netBalance === 0 ? 'clear' : ($netBalance < 0 ? 'due' : 'advance');
 
             return [
                 'id' => $supplier->id,
