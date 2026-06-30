@@ -84,6 +84,7 @@ function handleEditClick(event) {
 function editPermission(id, oldName) {
   Swal.fire({
     title: 'Rename Permission',
+    html: '<div style="text-align: left; font-weight: 600; font-size: 14px; margin-bottom: 8px;">Permission Name <span style="color: red;">*</span></div>',
     input: 'text',
     inputValue: oldName,
     showCancelButton: true,
@@ -165,6 +166,7 @@ function deletePermission(id) {
         <h2 class="text-lg font-bold text-[#292688]">Quick Add Permission</h2>
         <form @submit.prevent="submitForm" class="flex flex-col sm:flex-row gap-4 items-end sm:items-center">
           <div class="flex-1 w-full">
+            <label class="block text-gray-700 font-semibold mb-2">Permission Name <span class="text-red-500">*</span></label>
             <input 
               type="text" 
               v-model="form.name" 

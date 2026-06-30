@@ -74,7 +74,7 @@ const submitForm = async () => {
 
       <form @submit.prevent="submitForm" class="space-y-6">
         <div>
-          <label class="block text-gray-700 font-semibold mb-2">Role Name</label>
+          <label class="block text-gray-700 font-semibold mb-2">Role Name <span class="text-red-500">*</span></label>
           <input 
             ref="nameInput" 
             type="text" 
