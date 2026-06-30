@@ -64,7 +64,7 @@ class StockMovementController extends Controller
             'product_id' => 'required|exists:products,id',
             'quantity' => 'required|integer|min:1',
             'type' => 'required|in:Addition,Deduction',
-            'reason' => 'required|in:Physical Count Correction,Damaged Goods,Expired Stock,Theft/Loss,Other',
+            'reason' => 'required|in:Physical Count Correction,Damaged Goods,Expired Stock,Theft/Loss,Restocking,Other',
             'remarks' => 'nullable|string|max:1000',
         ], [
             'product_id.required' => 'Please select a product.',

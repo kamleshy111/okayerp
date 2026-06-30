@@ -113,6 +113,23 @@ const onSupplierSearch = async (search, loading) => {
   }
 };
 
+const selectedSupplier = ref(
+  props.suppliers.find(s => s.id == purchases.supplier_id) || null
+);
+
+const isInterstate = computed(() => {
+  if (!selectedSupplier.value || !selectedSupplier.value.state) return false;
+  return storeState.value.trim().toLowerCase() !== selectedSupplier.value.state.trim().toLowerCase();
+});
+
+const filteredGstRates = computed(() => {
+  if (isInterstate.value) {
+    return props.gstRates.filter(r => r.name.toLowerCase().includes('igst'));
+  } else {
+    return props.gstRates.filter(r => !r.name.toLowerCase().includes('igst'));
+  }
+});
+
 const form = ref({
     id: purchases.id,
     supplier_id: purchases.supplier_id,
@@ -132,13 +149,12 @@ const form = ref({
     payment_method: purchases.payment_method,
     purchase_items: productItems.map(item => {
         const totalRate = (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0);
-        const initialSupplier = props.suppliers.find(s => s.id == purchases.supplier_id);
-        const initialIsInterstate = initialSupplier && initialSupplier.state
-          ? storeState.value.trim().toLowerCase() !== initialSupplier.state.trim().toLowerCase()
-          : false;
         const matchedRate = props.gstRates.find(r => 
           parseFloat(r.rate) === totalRate && 
-          (initialIsInterstate ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
+          (isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
+        );
+        const defaultRate = props.gstRates.find(r => 
+          isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst')
         );
         return {
             product_id: item.product_id,
@@ -147,13 +163,11 @@ const form = ref({
             unit_type: item.unit_type,
             sgst: item.sgst,
             cgst: item.cgst,
-            gst_rate_id: matchedRate ? matchedRate.id : (props.gstRates[0]?.id || ""),
+            gst_rate_id: matchedRate ? matchedRate.id : (defaultRate?.id || ""),
             last_product_id: item.product_id,
         };
     }),
 });
-
-const selectedSupplier = ref(null);
 
 watchEffect(() => {
   if (form.value.supplier_id && suppliers.value.length > 0) {
@@ -181,19 +195,6 @@ watch(
   },
   { immediate: true }
 );
-
-const isInterstate = computed(() => {
-  if (!selectedSupplier.value || !selectedSupplier.value.state) return false;
-  return storeState.value.trim().toLowerCase() !== selectedSupplier.value.state.trim().toLowerCase();
-});
-
-const filteredGstRates = computed(() => {
-  if (isInterstate.value) {
-    return props.gstRates.filter(r => r.name.toLowerCase().includes('igst'));
-  } else {
-    return props.gstRates.filter(r => !r.name.toLowerCase().includes('igst'));
-  }
-});
 
 // Watch isInterstate to update selected GST rates when supplier changes
 watch(isInterstate, (newVal) => {
@@ -451,6 +452,14 @@ const submitForm = async () => {
             <a :href="route('purchase')"><i style="font-size: 14px;" class="bi bi-chevron-left"></i><span style="margin-left: 5px;">Purchase</span></a>
         </div>
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Update Purchase</h2>
+            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4">
+                <strong>Debug Info:</strong>
+                isInterstate: {{ isInterstate }} |
+                storeState: "{{ storeState }}" |
+                customerState: "{{ selectedSupplier?.state }}" |
+                purchaseItems: {{ form.purchase_items.map(i => ({ pid: i.product_id, rate_id: i.gst_rate_id, sgst: i.sgst, cgst: i.cgst })) }} |
+                filteredRates: {{ filteredGstRates.map(r => ({ id: r.id, name: r.name })) }}
+            </div>
         <div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
