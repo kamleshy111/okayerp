@@ -193,6 +193,9 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         //downloadInvoice
         Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
 
+        // Sale Payment Information
+        Route::get('/sale/payment/{id}', [SaleController::class, 'payment'])->name('sale.payment');
+
         // Estimates (Quotations)
         Route::get('/estimate', [EstimateController::class, 'index'])->name('estimate.index');
         Route::get('/estimate/create', [EstimateController::class, 'create'])->name('estimate.create');
@@ -223,6 +226,9 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/purchase/update/{id}', [PurchasesController::class, 'update'])->name('purchase.update');
         Route::delete('/purchase/destroy/{id}', [PurchasesController::class, 'destroy'])->name('purchase.destroy');
 
+        // Purchase Payment Information
+        Route::get('/purchase/payment/{id}', [PurchasesController::class, 'payment'])->name('suppliers.payment');
+
         // Purchase Returns
         Route::get('/purchase-return', [PurchaseReturnController::class, 'index'])->name('purchase-return.index');
         Route::get('/purchase-return/create', [PurchaseReturnController::class, 'create'])->name('purchase-return.create');
@@ -230,10 +236,6 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/purchase-return/store', [PurchaseReturnController::class, 'store'])->name('purchase-return.store');
         Route::get('/purchase-return/{id}/download-pdf', [PurchaseReturnController::class, 'downloadReturnPdf'])->name('purchase-return.pdf');
     });
-
-    //payment Information
-    Route::get('/purchase/payment/{id}', [PurchasesController::class, 'payment'])->name('suppliers.payment');
-    Route::get('/sale/payment/{id}', [SaleController::class, 'payment'])->name('sale.payment');
 
     //supplier_payment
     Route::middleware('permission:payment supplier manage')->group(function () {

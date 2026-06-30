@@ -485,7 +485,7 @@ class SaleController extends Controller
 
         } catch (\Exception $e) {
             return response()->json([
-                'message' => 'Failed to update purchase.',
+                'message' => 'Failed to update sale.',
                 'error' => $e->getMessage(),
             ], 500);
         }
@@ -591,7 +591,7 @@ class SaleController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
 
-            return response()->json(['message' => 'Failed to delete purchase.', 'error' => $e->getMessage()], 500);
+            return response()->json(['message' => 'Failed to delete sale.', 'error' => $e->getMessage()], 500);
         }
     }
 
