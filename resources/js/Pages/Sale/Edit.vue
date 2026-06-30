@@ -124,6 +124,24 @@ const onCustomerSearch = async (search, loading) => {
 };
 
 
+const selectedCustomer = ref(
+  props.customers.find(c => c.id == sales.customer_id) || null
+);
+const showPaymentModal = ref(false);
+
+const isInterstate = computed(() => {
+  if (!selectedCustomer.value || !selectedCustomer.value.state) return false;
+  return storeState.value.trim().toLowerCase() !== selectedCustomer.value.state.trim().toLowerCase();
+});
+
+const filteredGstRates = computed(() => {
+  if (isInterstate.value) {
+    return props.gstRates.filter(r => r.name.toLowerCase().includes('igst'));
+  } else {
+    return props.gstRates.filter(r => !r.name.toLowerCase().includes('igst'));
+  }
+});
+
 const form = ref({
     id: sales.id,
     customer_id: sales.customer_id,
@@ -137,13 +155,20 @@ const form = ref({
                     const sgst = parseFloat(item.sgst) || 0;
                     const cgst = parseFloat(item.cgst) || 0;
                     const totalProductRate = sgst + cgst;
-                    const initialCustomer = props.customers.find(c => c.id == sales.customer_id);
-                    const initialIsInterstate = initialCustomer && initialCustomer.state
-                      ? storeState.value.trim().toLowerCase() !== initialCustomer.state.trim().toLowerCase()
-                      : false;
                     const matchedRate = props.gstRates.find(r => 
                       parseFloat(r.rate) === totalProductRate && 
-                      (initialIsInterstate ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
+                      (isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
+                    );
+                    console.log("GST Debug: ", {
+                      totalProductRate,
+                      isInterstate: isInterstate.value,
+                      storeState: storeState.value,
+                      customerState: selectedCustomer.value?.state,
+                      matchedRate,
+                      gstRates: props.gstRates
+                    });
+                    const defaultRate = props.gstRates.find(r => 
+                      isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst')
                     );
                     return {
                         product_id: item.product_id,
@@ -152,14 +177,11 @@ const form = ref({
                         unit_type: item.unit_type,
                         sgst: sgst,
                         cgst: cgst,
-                        gst_rate_id: matchedRate ? matchedRate.id : (props.gstRates[0]?.id || ""),
+                        gst_rate_id: matchedRate ? matchedRate.id : (defaultRate?.id || ""),
                         last_product_id: item.product_id,
                     };
     }),
 });
-
-const selectedCustomer = ref(null);
-const showPaymentModal = ref(false);
 
 watchEffect(() => {
   if (form.value.customer_id && customers.value.length > 0) {
@@ -187,19 +209,6 @@ watch(
   },
   { immediate: true }
 );
-
-const isInterstate = computed(() => {
-  if (!selectedCustomer.value || !selectedCustomer.value.state) return false;
-  return storeState.value.trim().toLowerCase() !== selectedCustomer.value.state.trim().toLowerCase();
-});
-
-const filteredGstRates = computed(() => {
-  if (isInterstate.value) {
-    return props.gstRates.filter(r => r.name.toLowerCase().includes('igst'));
-  } else {
-    return props.gstRates.filter(r => !r.name.toLowerCase().includes('igst'));
-  }
-});
 
 // Watch isInterstate to update selected GST rates when customer changes
 watch(isInterstate, (newVal) => {
@@ -483,6 +492,14 @@ const submitForm = async () => {
             <a :href="route('sale')"><i style="font-size: 14px;" class="bi bi-chevron-left"></i><span style="margin-left: 5px;">Sale</span></a>
         </div>
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Update Sale</h2>
+            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4">
+                <strong>Debug Info:</strong>
+                isInterstate: {{ isInterstate }} |
+                storeState: "{{ storeState }}" |
+                customerState: "{{ selectedCustomer?.state }}" |
+                saleItems: {{ form.sale_items.map(i => ({ pid: i.product_id, rate_id: i.gst_rate_id, sgst: i.sgst, cgst: i.cgst })) }} |
+                filteredRates: {{ filteredGstRates.map(r => ({ id: r.id, name: r.name })) }}
+            </div>
         <div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
