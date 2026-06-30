@@ -11,10 +11,12 @@ import "vue3-select/dist/vue3-select.css";
 const suppliers = ref([]);
 const supplierSearchQuery = ref("");
 
+const today = new Date().toISOString().split('T')[0];
+
 const form = ref({
     supplier_id: "",
     amount: "",
-    payment_date: "",
+    payment_date: today,
     payment_method: "",
     note: "",
 });
@@ -48,7 +50,7 @@ const submitForm = async () => {
     form.value = {
       supplier_id: "",
       amount: "",
-      payment_date: "",
+      payment_date: today,
       payment_method: "",
       note: "",
     };

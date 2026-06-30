@@ -993,7 +993,7 @@ const handleProductSuccess = (createdProduct) => {
                     <label class="text-gray-700 font-medium">Payment Method</label>
                     <select v-model="form.payment_method"
                             class="w-40 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
-                        <option value="Null">Select</option>
+                        <option value="">Select</option>
                         <option value="Cash">Cash</option>
                         <option value="Card">Card</option>
                         <option value="UPI">UPI</option>
