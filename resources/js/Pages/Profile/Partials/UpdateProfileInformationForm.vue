@@ -55,6 +55,9 @@ watch(() => form.state, (newVal, oldVal) => {
         form.district = "";
         form.city = "";
     }
+    if (newVal) {
+        form.country = "India";
+    }
 });
 
 // preview image
@@ -178,14 +181,13 @@ const handleFileUpload = (event) => {
 
                     <div>
                         <InputLabel for="city" value="City" />
-                        <v-select
+                        <TextInput
                             id="city"
-                            :options="availableDistricts"
+                            type="text"
+                            class="mt-1 block w-full"
                             v-model="form.city"
-                            placeholder="Search & Select City"
-                            class="w-full mt-1"
-                            :disabled="!form.state"
-                        ></v-select>
+                            placeholder="Enter city"
+                        />
                         <InputError class="mt-1" :message="form.errors.city" />
                     </div>
 
@@ -204,13 +206,16 @@ const handleFileUpload = (event) => {
 
                     <div class="col-span-2">
                         <InputLabel for="country" value="Country" />
-                        <TextInput
+                        <select
                             id="country"
-                            type="text"
-                            class="mt-1 block w-full"
+                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm bg-white text-black p-2"
                             v-model="form.country"
-                            placeholder="Enter country"
-                        />
+                        >
+                            <option value="" disabled>Select Country</option>
+                            <option v-for="c in $page.props.countries" :key="c" :value="c">
+                                {{ c }}
+                            </option>
+                        </select>
                         <InputError class="mt-1" :message="form.errors.country" />
                     </div>
 

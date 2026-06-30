@@ -67,6 +67,7 @@ class HandleInertiaRequests extends Middleware
                 'display' => $name
             ])->values()->all(),
             'state_cities' => config('state_cities'),
+            'countries' => config('countries'),
         ];
     }
 }

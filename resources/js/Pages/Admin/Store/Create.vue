@@ -46,6 +46,9 @@ watch(() => form.value.state, (newVal, oldVal) => {
         form.value.district = "";
         form.value.city = "";
     }
+    if (newVal) {
+        form.value.country = "India";
+    }
 });
 
 // name input ref
@@ -189,19 +192,19 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">City</label>
-                    <v-select
-                        :options="availableDistricts"
-                        v-model="form.city"
-                        placeholder="Search & Select City"
-                        class="w-full"
-                        :disabled="!form.state"
-                    ></v-select>
+                    <input type="text" name="city" v-model="form.city"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="Enter City" />
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">Country</label>
-                    <input type="text" name="country" v-model="form.country"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="Enter country" />
+                    <select name="country" v-model="form.country"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
+                        <option value="" disabled>Select Country</option>
+                        <option v-for="c in $page.props.countries" :key="c" :value="c">
+                            {{ c }}
+                        </option>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">PIN Code</label>
