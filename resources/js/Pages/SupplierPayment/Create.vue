@@ -22,7 +22,12 @@ const form = ref({
 const onSupplierSearch = async (search, loading) => {
   supplierSearchQuery.value = search;
   if (!search.trim()) {
-    suppliers.value = [];
+    if (form.value.supplier_id) {
+      const selected = suppliers.value.find(s => s.id === form.value.supplier_id);
+      suppliers.value = selected ? [selected] : [];
+    } else {
+      suppliers.value = [];
+    }
     return;
   }
   try {

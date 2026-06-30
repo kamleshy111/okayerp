@@ -288,14 +288,18 @@ class CustomerPaymentsController extends Controller
                 $paymentsSum->where('accepted', 1);
             }
             $actualPaid = $paymentsSum->sum('amount');
-            $saleBalance = $actualPaid - $sale->grand_total;
+
+            // Sum of due_deduction for returns on this sale
+            $dueDeductionsSum = (float)\App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+
+            $saleBalance = (float)$actualPaid - (float)$sale->grand_total + $dueDeductionsSum;
             if ($saleBalance < 0) {
                 $dueInvoices[] = [
                     'id' => $sale->id,
                     'invoice_no' => $sale->id,
                     'date' => $sale->created_at->format('Y-m-d'),
                     'grand_total' => $sale->grand_total,
-                    'due' => abs($saleBalance)
+                    'due' => round(abs($saleBalance), 2)
                 ];
             } elseif ($saleBalance > 0) {
                 $advanceAmount += $saleBalance;
@@ -308,7 +312,7 @@ class CustomerPaymentsController extends Controller
         $advanceAmount += $totalDirectPaid;
 
         return response()->json([
-            'advance_amount' => $advanceAmount,
+            'advance_amount' => round($advanceAmount, 2),
             'due_invoices' => $dueInvoices
         ]);
     }

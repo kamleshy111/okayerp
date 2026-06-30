@@ -117,12 +117,6 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
-                    <label class="block text-black font-medium mb-2">Address</label>
-                    <input type="text" name="address" v-model="form.address"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="Enter address" />
-                </div>
-                <div>
                     <label class="block text-black font-medium mb-2">State</label>
                     <v-select
                         :options="$page.props.gst_states"
@@ -133,9 +127,6 @@ const submitForm = async () => {
                         class="w-full"
                     ></v-select>
                 </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">District</label>
                     <v-select
@@ -146,6 +137,9 @@ const submitForm = async () => {
                         :disabled="!form.state"
                     ></v-select>
                 </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">City</label>
                     <v-select
@@ -156,9 +150,6 @@ const submitForm = async () => {
                         :disabled="!form.state"
                     ></v-select>
                 </div>
-            </div>
-
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">Country</label>
                     <input type="text" name="country" v-model="form.country"
