@@ -34,14 +34,27 @@ watch(() => form.value.product_id, (newVal) => {
     }
     selectedProduct.value = products.value.find(p => p.id === newVal) || null;
 });
+watch(() => form.value.type, () => {
+    form.value.reason = "";
+});
 
-const reasons = [
-    { value: 'Physical Count Correction', label: 'Physical Count Correction' },
-    { value: 'Damaged Goods', label: 'Damaged Goods' },
-    { value: 'Expired Stock', label: 'Expired Stock' },
-    { value: 'Theft/Loss', label: 'Theft / Loss' },
-    { value: 'Other', label: 'Other' }
-];
+const reasons = computed(() => {
+  if (form.value.type === 'Addition') {
+    return [
+      { value: 'Physical Count Correction', label: 'Physical Count Correction' },
+      { value: 'Restocking', label: 'Restocking' },
+      { value: 'Other', label: 'Other' }
+    ];
+  } else {
+    return [
+      { value: 'Physical Count Correction', label: 'Physical Count Correction' },
+      { value: 'Damaged Goods', label: 'Damaged Goods' },
+      { value: 'Expired Stock', label: 'Expired Stock' },
+      { value: 'Theft/Loss', label: 'Theft / Loss' },
+      { value: 'Other', label: 'Other' }
+    ];
+  }
+});
 
 // Calculate projected stock
 const projectedStock = computed(() => {
