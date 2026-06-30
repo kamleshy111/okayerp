@@ -23,7 +23,7 @@ use Carbon\Carbon;
 
 class DashboardController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $user = Auth::user();
         if (! $user) {
@@ -266,9 +266,14 @@ class DashboardController extends Controller
         }
         $percentageChangeSupplier = round($percentageChangeSupplier, 2);
 
-        // Get profit and loss data for the last 6 months
+        // Get profit and loss data for dynamic months
+        $monthsToFetch = (int) $request->input('months', 6);
+        if ($monthsToFetch < 1 || $monthsToFetch > 12) {
+            $monthsToFetch = 6;
+        }
+
         $profitLossData = [];
-        for ($i = 5; $i >= 0; $i--) {
+        for ($i = $monthsToFetch - 1; $i >= 0; $i--) {
             $date = Carbon::now()->subMonths($i);
             $month = $date->month;
             $year = $date->year;

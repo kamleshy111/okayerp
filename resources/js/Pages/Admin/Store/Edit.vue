@@ -107,7 +107,7 @@ const submitForm = async () => {
 </script>
 <template>
 
-    <Head title="Customer">
+    <Head title="Edit Store">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     </Head>
 
@@ -120,14 +120,14 @@ const submitForm = async () => {
         <form @submit.prevent="submitForm">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Name</label>
+                    <label class="block text-black font-medium mb-2">Name <span class="text-red-500">*</span></label>
                     <input type="text" v-model="form.name" name="name"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Name" />
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">Email</label>
-                    <input type="text" v-model="form.email" name="email"
+                    <label class="block text-black font-medium mb-2">Email <span class="text-red-500">*</span></label>
+                    <input type="email" v-model="form.email" name="email" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Email" />
                 </div>

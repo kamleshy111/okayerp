@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head, usePage } from '@inertiajs/vue3';
-import { computed, ref } from 'vue';
+import { Head, usePage, router } from '@inertiajs/vue3';
+import { computed, ref, onMounted } from 'vue';
 
 const page = usePage()
 
@@ -27,6 +27,19 @@ const profitLossData = computed(() => page.props.profitLossData ?? [])
 const hoveredIndex = ref(null);
 const tooltipX = ref(0);
 const tooltipY = ref(0);
+
+const selectedMonths = ref(6);
+
+onMounted(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('months')) {
+        selectedMonths.value = parseInt(urlParams.get('months'));
+    }
+});
+
+const updateMonths = () => {
+    router.get(route('dashboard'), { months: selectedMonths.value }, { preserveState: true, preserveScroll: true });
+};
 
 const handleMouseMove = (event, index) => {
     hoveredIndex.value = index;
@@ -367,10 +380,17 @@ const bars = computed(() => {
                 <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
                     <div>
                         <h3 class="text-lg font-bold text-gray-800">Financial Overview</h3>
-                        <p class="text-sm text-gray-500">Sales, Purchases, Expenses & Net Profit (Last 6 Months)</p>
+                        <p class="text-sm text-gray-500">Sales, Purchases, Expenses & Net Profit (Last {{ selectedMonths }} Months)</p>
                     </div>
-                    <!-- Legend -->
-                    <div class="flex flex-wrap gap-4 text-xs font-semibold">
+                    <!-- Controls and Legend -->
+                    <div class="flex flex-col items-end gap-3">
+                        <select v-model="selectedMonths" @change="updateMonths" class="text-sm border-gray-200 text-gray-600 rounded-lg shadow-sm focus:border-indigo-500 focus:ring-indigo-500 py-1.5 px-3">
+                            <option value="3">Last 3 Months</option>
+                            <option value="6">Last 6 Months</option>
+                            <option value="9">Last 9 Months</option>
+                            <option value="12">Last 12 Months</option>
+                        </select>
+                        <div class="flex flex-wrap gap-4 text-xs font-semibold">
                         <div class="flex items-center gap-1.5">
                             <span class="w-3.5 h-3.5 rounded bg-emerald-500 inline-block"></span>
                             <span class="text-gray-600">Sales</span>
@@ -391,6 +411,7 @@ const bars = computed(() => {
                             <span class="w-4 h-1 bg-blue-500 inline-block rounded"></span>
                             <span class="text-gray-600">Net Profit</span>
                         </div>
+                    </div>
                     </div>
                 </div>
 

@@ -10,7 +10,6 @@ use App\Models\Purchase;
 use App\Models\Supplier;
 use App\Models\Product;
 use App\Models\PurchaseItem;
-use App\Models\Payment;
 use App\Models\PurchasePayment;
 use App\Services\AccountingService;
 use Barryvdh\DomPDF\Facade\Pdf;

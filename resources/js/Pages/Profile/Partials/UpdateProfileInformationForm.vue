@@ -89,48 +89,59 @@ const handleFileUpload = (event) => {
         >
 
 
-            <div>
-                <InputLabel for="name" value="Name" />
-
-                <TextInput
-                    id="name"
-                    type="text"
-                    class="mt-1 block w-full"
-                    v-model="form.name"
-                    required
-                    autofocus
-                    autocomplete="name"
-                />
-
-                <InputError class="mt-2" :message="form.errors.name" />
-            </div>
-            <div>
-                <InputLabel for="phone" value="Phone" />
-
-                <TextInput
-                    id="phone"
-                    type="number"
-                    class="mt-1 block w-full"
-                    v-model="form.phone"
-                    autofocus
-                    autocomplete="phone"
-                />
-
-                <InputError class="mt-2" :message="form.errors.phone" />
-            </div>
-            <div>
-                <InputLabel for="address" value="Address" />
-
-                <TextInput
-                    id="address"
-                    type="text"
-                    class="mt-1 block w-full"
-                    v-model="form.address"
-                    autofocus
-                    autocomplete="address"
-                />
-
-                <InputError class="mt-2" :message="form.errors.address" />
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <InputLabel for="name" value="Name" required />
+                    <TextInput
+                        id="name"
+                        type="text"
+                        class="mt-1 block w-full"
+                        v-model="form.name"
+                        required
+                        autofocus
+                        autocomplete="name"
+                    />
+                    <InputError class="mt-2" :message="form.errors.name" />
+                </div>
+                
+                <div>
+                    <InputLabel for="email" value="Email" required />
+                    <TextInput
+                        id="email"
+                        type="email"
+                        class="mt-1 block w-full"
+                        v-model="form.email"
+                        required
+                        autocomplete="username"
+                    />
+                    <InputError class="mt-2" :message="form.errors.email" />
+                </div>
+                
+                <div>
+                    <InputLabel for="phone" value="Phone" />
+                    <TextInput
+                        id="phone"
+                        type="number"
+                        class="mt-1 block w-full"
+                        v-model="form.phone"
+                        autofocus
+                        autocomplete="phone"
+                    />
+                    <InputError class="mt-2" :message="form.errors.phone" />
+                </div>
+                
+                <div>
+                    <InputLabel for="address" value="Address" />
+                    <TextInput
+                        id="address"
+                        type="text"
+                        class="mt-1 block w-full"
+                        v-model="form.address"
+                        autofocus
+                        autocomplete="address"
+                    />
+                    <InputError class="mt-2" :message="form.errors.address" />
+                </div>
             </div>
 
             <!-- Address Details -->
@@ -206,21 +217,6 @@ const handleFileUpload = (event) => {
                 </div>
             </div>
 
-            <div>
-                <InputLabel for="email" value="Email" />
-
-                <TextInput
-                    id="email"
-                    type="email"
-                    class="mt-1 block w-full"
-                    v-model="form.email"
-                    required
-                    autocomplete="username"
-                />
-
-                <InputError class="mt-2" :message="form.errors.email" />
-            </div>
-
             <div v-if="user.role === 'store'">
                 <InputLabel for="ledger_pin" value="Private Ledger PIN (4-digit numeric)" />
 
@@ -243,72 +239,74 @@ const handleFileUpload = (event) => {
             </div>
 
             <!-- Bank Details -->
-            <div v-if="user.role === 'store'" class="border-t border-gray-200 pt-6 space-y-6">
-                <h3 class="text-md font-semibold text-gray-800">Bank Details</h3>
+            <div v-if="user.role === 'store'" class="border-t border-gray-200 pt-6">
+                <h3 class="text-md font-semibold text-gray-800 mb-4">Bank Details</h3>
 
-                <div>
-                    <InputLabel for="bank_name" value="Bank Name" />
-                    <TextInput
-                        id="bank_name"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.bank_name"
-                        autocomplete="bank_name"
-                        placeholder="Enter Bank Name"
-                    />
-                    <InputError class="mt-2" :message="form.errors.bank_name" />
-                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <InputLabel for="bank_name" value="Bank Name" />
+                        <TextInput
+                            id="bank_name"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.bank_name"
+                            autocomplete="bank_name"
+                            placeholder="Enter Bank Name"
+                        />
+                        <InputError class="mt-2" :message="form.errors.bank_name" />
+                    </div>
 
-                <div>
-                    <InputLabel for="account_number" value="Account Number" />
-                    <TextInput
-                        id="account_number"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.account_number"
-                        autocomplete="account_number"
-                        placeholder="Enter Account Number"
-                    />
-                    <InputError class="mt-2" :message="form.errors.account_number" />
-                </div>
+                    <div>
+                        <InputLabel for="account_number" value="Account Number" />
+                        <TextInput
+                            id="account_number"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.account_number"
+                            autocomplete="account_number"
+                            placeholder="Enter Account Number"
+                        />
+                        <InputError class="mt-2" :message="form.errors.account_number" />
+                    </div>
 
-                <div>
-                    <InputLabel for="ifsc_code" value="IFSC Code" />
-                    <TextInput
-                        id="ifsc_code"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.ifsc_code"
-                        autocomplete="ifsc_code"
-                        placeholder="Enter IFSC Code"
-                    />
-                    <InputError class="mt-2" :message="form.errors.ifsc_code" />
-                </div>
+                    <div>
+                        <InputLabel for="ifsc_code" value="IFSC Code" />
+                        <TextInput
+                            id="ifsc_code"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.ifsc_code"
+                            autocomplete="ifsc_code"
+                            placeholder="Enter IFSC Code"
+                        />
+                        <InputError class="mt-2" :message="form.errors.ifsc_code" />
+                    </div>
 
-                <div>
-                    <InputLabel for="branch_name" value="Branch Name" />
-                    <TextInput
-                        id="branch_name"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.branch_name"
-                        autocomplete="branch_name"
-                        placeholder="Enter Branch Name"
-                    />
-                    <InputError class="mt-2" :message="form.errors.branch_name" />
-                </div>
+                    <div>
+                        <InputLabel for="branch_name" value="Branch Name" />
+                        <TextInput
+                            id="branch_name"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.branch_name"
+                            autocomplete="branch_name"
+                            placeholder="Enter Branch Name"
+                        />
+                        <InputError class="mt-2" :message="form.errors.branch_name" />
+                    </div>
 
-                <div>
-                    <InputLabel for="gstin" value="GSTIN" />
-                    <TextInput
-                        id="gstin"
-                        type="text"
-                        class="mt-1 block w-full"
-                        v-model="form.gstin"
-                        autocomplete="gstin"
-                        placeholder="Enter GSTIN"
-                    />
-                    <InputError class="mt-2" :message="form.errors.gstin" />
+                    <div class="md:col-span-2">
+                        <InputLabel for="gstin" value="GSTIN" />
+                        <TextInput
+                            id="gstin"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.gstin"
+                            autocomplete="gstin"
+                            placeholder="Enter GSTIN"
+                        />
+                        <InputError class="mt-2" :message="form.errors.gstin" />
+                    </div>
                 </div>
             </div>
 
