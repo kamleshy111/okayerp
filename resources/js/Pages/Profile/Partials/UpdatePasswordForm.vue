@@ -48,7 +48,7 @@ const updatePassword = () => {
 
         <form @submit.prevent="updatePassword" class="mt-6 space-y-6">
             <div>
-                <InputLabel for="current_password" value="Current Password" />
+                <InputLabel for="current_password" value="Current Password" required />
 
                 <TextInput
                     id="current_password"
@@ -66,7 +66,7 @@ const updatePassword = () => {
             </div>
 
             <div>
-                <InputLabel for="password" value="New Password" />
+                <InputLabel for="password" value="New Password" required />
 
                 <TextInput
                     id="password"
@@ -84,6 +84,7 @@ const updatePassword = () => {
                 <InputLabel
                     for="password_confirmation"
                     value="Confirm Password"
+                    required
                 />
 
                 <TextInput
