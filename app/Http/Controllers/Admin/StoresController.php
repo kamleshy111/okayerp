@@ -45,7 +45,9 @@ class StoresController extends Controller
     {
         // Validate input
         $request->validate([
+            'name'           => ['required', 'string', 'max:255'],
             'email'          => ['required', 'string', 'email', 'max:255', 'unique:users,email'],
+            'password'       => ['required', 'string', 'min:8', 'confirmed'],
             'bank_name'      => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string', 'max:255'],
             'ifsc_code'      => ['nullable', 'string', 'max:255'],
@@ -58,6 +60,13 @@ class StoresController extends Controller
             'pin_code'       => ['nullable', 'string', 'max:255'],
             'pan_number'     => ['nullable', 'string', 'max:255'],
             'cin_number'     => ['nullable', 'string', 'max:255'],
+        ], [
+            'name.required'          => 'Store name is required.',
+            'email.required'         => 'Email is required.',
+            'email.unique'           => 'This email is already registered.',
+            'password.required'      => 'Password is required.',
+            'password.min'           => 'Password must be at least 8 characters.',
+            'password.confirmed'     => 'Password confirmation does not match.',
         ]);
 
         // Create User

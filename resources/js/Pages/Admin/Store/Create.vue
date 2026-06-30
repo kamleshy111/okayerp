@@ -105,7 +105,7 @@ const submitForm = async () => {
 </script>
 <template>
 
-    <Head title="Customer">
+    <Head title="Add Store">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     </Head>
 
@@ -119,14 +119,14 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Name</label>
+                    <label class="block text-black font-medium mb-2">Name <span class="text-red-500">*</span></label>
                     <input  ref="nameInput" type="text" name="name" v-model="form.name" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter full name" />
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">Email</label>
-                    <input type="text" name="email" v-model="form.email" required
+                    <label class="block text-black font-medium mb-2">Email <span class="text-red-500">*</span></label>
+                    <input type="email" name="email" v-model="form.email" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter email" />
                 </div>
@@ -134,13 +134,13 @@ const submitForm = async () => {
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
-                    <label class="block text-black font-medium mb-2">Password</label>
+                    <label class="block text-black font-medium mb-2">Password <span class="text-red-500">*</span></label>
                     <input type="password" name="password" v-model="form.password" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter password" />
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">Confirm Password</label>
+                    <label class="block text-black font-medium mb-2">Confirm Password <span class="text-red-500">*</span></label>
                     <input type="password" name="password_confirmation" v-model="form.password_confirmation" required
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter confirm password" />
@@ -150,13 +150,13 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">Phone No</label>
-                    <input type="number" name="phone" v-model="form.phone" required
+                    <input type="number" name="phone" v-model="form.phone"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter phone number" />
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">Address</label>
-                    <input type="text" name="address" v-model="form.address" required
+                    <input type="text" name="address" v-model="form.address"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter address" />
                 </div>
