@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Models\Sale;
 use App\Models\Purchase;
+use App\Models\SaleReturn;
+use App\Models\PurchaseReturn;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Inertia\Inertia;
@@ -38,6 +40,24 @@ class GstReportController extends Controller
 
         $sales = $salesQuery->orderBy('created_at', 'desc')->get();
 
+        // 1b. Fetch Sales Returns
+        $saleReturnsQuery = SaleReturn::where('user_id', $userId)
+            ->whereHas('sale', function($q) {
+                if (session('private_ledger_unlocked') !== true) {
+                    $q->where('accepted', 1);
+                }
+            })
+            ->with(['sale.saleItems', 'sale.customer', 'items']);
+
+        if ($startDate) {
+            $saleReturnsQuery->whereDate('return_date', '>=', Carbon::parse($startDate));
+        }
+        if ($endDate) {
+            $saleReturnsQuery->whereDate('return_date', '<=', Carbon::parse($endDate));
+        }
+
+        $saleReturns = $saleReturnsQuery->orderBy('return_date', 'desc')->get();
+
         // 2. Fetch Purchases (Input GST)
         $purchasesQuery = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
             ->with(['items.product', 'supplier']);
@@ -54,6 +74,24 @@ class GstReportController extends Controller
         }
 
         $purchases = $purchasesQuery->orderBy('purchase_date', 'desc')->get();
+
+        // 2b. Fetch Purchase Returns
+        $purchaseReturnsQuery = PurchaseReturn::where('user_id', $userId)
+            ->whereHas('purchase', function($q) {
+                if (session('private_ledger_unlocked') !== true) {
+                    $q->where('accepted', 1);
+                }
+            })
+            ->with(['purchase.items', 'purchase.supplier', 'items']);
+
+        if ($startDate) {
+            $purchaseReturnsQuery->whereDate('return_date', '>=', Carbon::parse($startDate));
+        }
+        if ($endDate) {
+            $purchaseReturnsQuery->whereDate('return_date', '<=', Carbon::parse($endDate));
+        }
+
+        $purchaseReturns = $purchaseReturnsQuery->orderBy('return_date', 'desc')->get();
 
         // 3. Process Sales GST data
         $salesReport = [];
@@ -108,6 +146,58 @@ class GstReportController extends Controller
             $totalOutputIgst += $igstAmt;
             $totalOutputGst += $totalItemGst;
             $totalSalesTaxable += $taxableAmt;
+        }
+
+        foreach ($saleReturns as $return) {
+            $sale = $return->sale;
+            if (!$sale) continue;
+
+            $custState = $sale->customer && !empty($sale->customer->state) ? trim($sale->customer->state) : '';
+            $isInterstate = $storeState && $custState && (strtolower($storeState) !== strtolower($custState));
+
+            $taxableAmt = 0.0;
+            $cgstAmt = 0.0;
+            $sgstAmt = 0.0;
+            $igstAmt = 0.0;
+
+            foreach ($return->items as $item) {
+                $base = (double)$item->quantity * (double)$item->price;
+                $taxableAmt += $base;
+
+                $saleItem = $sale->saleItems->firstWhere('product_id', $item->product_id);
+                $itemCgst = $saleItem ? (double)$saleItem->cgst : 0.0;
+                $itemSgst = $saleItem ? (double)$saleItem->sgst : 0.0;
+
+                if ($isInterstate) {
+                    $igstAmt += $base * ($itemCgst + $itemSgst) / 100;
+                } else {
+                    $cgstAmt += $base * $itemCgst / 100;
+                    $sgstAmt += $base * $itemSgst / 100;
+                }
+            }
+
+            $totalItemGst = $cgstAmt + $sgstAmt + $igstAmt;
+
+            $salesReport[] = [
+                'id' => 'return_' . $return->id,
+                'invoice_no' => $return->return_no,
+                'date' => Carbon::parse($return->return_date)->format('Y-m-d'),
+                'customer_name' => $sale->customer->name ?? 'N/A',
+                'gstin' => $sale->customer->gst_number ?? 'N/A',
+                'taxable_amount' => -round($taxableAmt, 2),
+                'cgst' => -round($cgstAmt, 2),
+                'sgst' => -round($sgstAmt, 2),
+                'igst' => -round($igstAmt, 2),
+                'total_gst' => -round($totalItemGst, 2),
+                'grand_total' => -round($taxableAmt + $totalItemGst, 2),
+                'is_return' => true,
+            ];
+
+            $totalOutputCgst -= $cgstAmt;
+            $totalOutputSgst -= $sgstAmt;
+            $totalOutputIgst -= $igstAmt;
+            $totalOutputGst -= $totalItemGst;
+            $totalSalesTaxable -= $taxableAmt;
         }
 
         // 4. Process Purchases GST data
@@ -173,6 +263,66 @@ class GstReportController extends Controller
                 $totalRefundableGst += $totalItemGst;
             } else {
                 $totalNonRefundableGst += $totalItemGst;
+            }
+        }
+
+        foreach ($purchaseReturns as $return) {
+            $purchase = $return->purchase;
+            if (!$purchase) continue;
+
+            $suppState = $purchase->supplier && !empty($purchase->supplier->state) ? trim($purchase->supplier->state) : '';
+            $isInterstate = $storeState && $suppState && (strtolower($storeState) !== strtolower($suppState));
+
+            $taxableAmt = 0.0;
+            $cgstAmt = 0.0;
+            $sgstAmt = 0.0;
+            $igstAmt = 0.0;
+
+            foreach ($return->items as $item) {
+                $base = (double)$item->quantity * (double)$item->price;
+                $taxableAmt += $base;
+
+                $purchaseItem = $purchase->items->firstWhere('product_id', $item->product_id);
+                $itemCgst = $purchaseItem ? (double)$purchaseItem->cgst : 0.0;
+                $itemSgst = $purchaseItem ? (double)$purchaseItem->sgst : 0.0;
+
+                if ($isInterstate) {
+                    $igstAmt += $base * ($itemCgst + $itemSgst) / 100;
+                } else {
+                    $cgstAmt += $base * $itemCgst / 100;
+                    $sgstAmt += $base * $itemSgst / 100;
+                }
+            }
+
+            $totalItemGst = $cgstAmt + $sgstAmt + $igstAmt;
+            $isRefundable = (bool)$purchase->is_refundable;
+
+            $purchasesReport[] = [
+                'id' => 'return_' . $return->id,
+                'invoice_no' => $return->return_no,
+                'date' => Carbon::parse($return->return_date)->format('Y-m-d'),
+                'supplier_name' => $purchase->supplier->name ?? 'N/A',
+                'gstin' => $purchase->supplier->gstin ?? 'N/A',
+                'taxable_amount' => -round($taxableAmt, 2),
+                'cgst' => -round($cgstAmt, 2),
+                'sgst' => -round($sgstAmt, 2),
+                'igst' => -round($igstAmt, 2),
+                'total_gst' => -round($totalItemGst, 2),
+                'is_refundable' => $isRefundable,
+                'grand_total' => -round($taxableAmt + $totalItemGst, 2),
+                'is_return' => true,
+            ];
+
+            $totalInputCgst -= $cgstAmt;
+            $totalInputSgst -= $sgstAmt;
+            $totalInputIgst -= $igstAmt;
+            $totalInputGst -= $totalItemGst;
+            $totalPurchasesTaxable -= $taxableAmt;
+
+            if ($isRefundable) {
+                $totalRefundableGst -= $totalItemGst;
+            } else {
+                $totalNonRefundableGst -= $totalItemGst;
             }
         }
 

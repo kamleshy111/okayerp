@@ -19,7 +19,7 @@ const form = ref({
   return_date: new Date().toISOString().substring(0, 10),
   refund_method: "Cash",
   reason: "",
-  due_deduction: 0,
+  due_deductions: {},
   items: [],
 });
 
@@ -150,6 +150,71 @@ const grandRefundTotal = computed(() => {
   return baseRefundTotal.value + gstRefundTotal.value;
 });
 
+const affectedSales = computed(() => {
+  const salesMap = {};
+  
+  form.value.items.forEach(item => {
+    if (!salesMap[item.sale_id]) {
+      salesMap[item.sale_id] = {
+        sale_id: item.sale_id,
+        invoice_label: item.invoice_label,
+        due_amount: parseFloat(item.sale_due_amount) || 0,
+        accepted: item.accepted,
+        base_refund: 0,
+        gst_refund: 0,
+      };
+    }
+    
+    const qty = parseInt(item.quantity) || 0;
+    const base = qty * item.price;
+    salesMap[item.sale_id].base_refund += base;
+    
+    if (item.accepted == 1) {
+      const gstRate = (item.sgst + item.cgst) / 100;
+      salesMap[item.sale_id].gst_refund += base * gstRate;
+    }
+  });
+
+  return Object.values(salesMap).map(sale => {
+    const totalRefund = sale.base_refund + sale.gst_refund;
+    return {
+      ...sale,
+      total_refund: totalRefund,
+      max_deduction: Math.min(totalRefund, sale.due_amount),
+    };
+  });
+});
+
+watch(affectedSales, (newSales) => {
+  const activeIds = newSales.map(s => s.sale_id.toString());
+  
+  // Clear keys for sales that are no longer in the list
+  Object.keys(form.value.due_deductions).forEach(saleId => {
+    if (!activeIds.includes(saleId.toString())) {
+      delete form.value.due_deductions[saleId];
+    }
+  });
+
+  // Suggest default/max due deduction for any new active sale
+  newSales.forEach(sale => {
+    if (form.value.due_deductions[sale.sale_id] === undefined) {
+      form.value.due_deductions[sale.sale_id] = parseFloat(sale.max_deduction.toFixed(2));
+    } else {
+      if (form.value.due_deductions[sale.sale_id] > sale.max_deduction) {
+        form.value.due_deductions[sale.sale_id] = parseFloat(sale.max_deduction.toFixed(2));
+      }
+    }
+  });
+}, { deep: true });
+
+const totalDueDeductions = computed(() => {
+  return Object.values(form.value.due_deductions).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+});
+
+const netRefundCashToPay = computed(() => {
+  return Math.max(0, grandRefundTotal.value - totalDueDeductions.value);
+});
+
 const submitReturn = async () => {
   const payloadItems = form.value.items.filter(item => item.quantity > 0);
 
@@ -162,6 +227,15 @@ const submitReturn = async () => {
   for (const item of payloadItems) {
     if (item.quantity > item.available_qty) {
       toast.error(`Returned quantity for ${item.product_name} exceeds the maximum returnable limit of ${item.available_qty}.`);
+      return;
+    }
+  }
+
+  // Validate due deduction amounts
+  for (const sale of affectedSales.value) {
+    const deduct = parseFloat(form.value.due_deductions[sale.sale_id]) || 0;
+    if (deduct < 0 || deduct > sale.max_deduction) {
+      toast.error(`Due deduction amount for ${sale.invoice_label} must be between 0 and ₹ ${sale.max_deduction.toFixed(2)}.`);
       return;
     }
   }
@@ -184,7 +258,7 @@ const submitReturn = async () => {
         return_date: form.value.return_date,
         refund_method: form.value.refund_method,
         reason: form.value.reason,
-        due_deduction: 0,
+        due_deduction: parseFloat(form.value.due_deductions[saleId]) || 0,
         items: saleItems.map(item => ({
           product_id: item.product_id,
           quantity: item.quantity,
@@ -285,9 +359,7 @@ const submitReturn = async () => {
               <thead class="bg-[#292688] text-white">
                 <tr>
                   <th class="px-4 py-2 text-left">Product</th>
-                  <th class="px-4 py-2 text-left">Original Qty</th>
-                  <th class="px-4 py-2 text-left">Already Returned</th>
-                  <th class="px-4 py-2 text-left">Available to Return</th>
+                  <th class="px-4 py-2 text-left">QTY</th>
                   <th class="px-4 py-2 text-left">Price (Excl. GST)</th>
                   <th class="px-4 py-2 text-left w-32">Return Qty</th>
                   <th class="px-4 py-2 text-left">Refund Amount</th>
@@ -297,8 +369,6 @@ const submitReturn = async () => {
               <tbody>
                 <tr v-for="(item, index) in form.items" :key="index">
                   <td class="border-t px-4 py-3 font-semibold text-gray-800">{{ item.product_name }}</td>
-                  <td class="border-t px-4 py-3 text-gray-600">{{ item.sold_qty }}</td>
-                  <td class="border-t px-4 py-3 text-gray-500">{{ item.returned_qty }}</td>
                   <td class="border-t px-4 py-3 font-bold text-indigo-600">{{ item.available_qty }}</td>
                   <td class="border-t px-4 py-3 text-gray-600">₹ {{ item.price.toFixed(2) }}</td>
                   <td class="border-t px-4 py-3">
@@ -344,19 +414,9 @@ const submitReturn = async () => {
                   </button>
                 </div>
 
-                <div class="grid grid-cols-3 gap-2 text-center bg-white p-3 rounded-lg border border-gray-100 text-xs font-semibold text-gray-600">
-                  <div>
-                    <span class="block text-gray-400 font-medium">Original</span>
-                    <span>{{ item.sold_qty }}</span>
-                  </div>
-                  <div>
-                    <span class="block text-gray-400 font-medium">Returned</span>
-                    <span>{{ item.returned_qty }}</span>
-                  </div>
-                  <div>
-                    <span class="block text-gray-400 font-medium">Available</span>
-                    <span class="text-indigo-600 font-bold">{{ item.available_qty }}</span>
-                  </div>
+                <div class="bg-white p-3 rounded-lg border border-gray-100 text-xs font-semibold text-gray-600 text-center">
+                  <span class="text-gray-400 font-medium">QTY:</span>
+                  <span class="text-indigo-600 font-bold ml-1">{{ item.available_qty }}</span>
                 </div>
 
                 <div class="flex items-center justify-between gap-4 pt-2">
@@ -439,9 +499,32 @@ const submitReturn = async () => {
                   <span class="text-gray-600">GST Refund Total:</span>
                   <span class="font-mono font-bold text-gray-800">₹ {{ gstRefundTotal.toFixed(2) }}</span>
                 </div>
+                <div class="flex justify-between border-t pt-3 font-semibold">
+                  <span class="text-gray-800">Total Refund Value:</span>
+                  <span class="font-mono text-indigo-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
+                </div>
+
+                <!-- Due Deductions per Affected Invoice -->
+                <div v-if="affectedSales.length > 0" class="border-t pt-3 space-y-3">
+                  <span class="block text-sm font-semibold text-gray-700">Deduct from Invoice Dues:</span>
+                  <div v-for="sale in affectedSales" :key="sale.sale_id" class="space-y-1">
+                    <label class="block text-xs text-gray-500">
+                      Invoice #{{ sale.sale_id }} (Max: ₹ {{ sale.max_deduction.toFixed(2) }})
+                    </label>
+                    <input
+                      type="number"
+                      step="0.01"
+                      v-model.number="form.due_deductions[sale.sale_id]"
+                      :min="0"
+                      :max="sale.max_deduction"
+                      class="w-full border border-gray-300 px-3 py-1.5 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold text-sm"
+                    />
+                  </div>
+                </div>
+
                 <div class="flex justify-between border-t pt-3 font-semibold text-lg">
-                  <span class="text-gray-800">Total Refund:</span>
-                  <span class="font-mono text-emerald-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
+                  <span class="text-gray-800">Net Refund (Cash/UPI/Card):</span>
+                  <span class="font-mono text-emerald-700">₹ {{ netRefundCashToPay.toFixed(2) }}</span>
                 </div>
               </div>
 
