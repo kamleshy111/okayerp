@@ -33,5 +33,10 @@ class Purchase extends Model
     {
         return $this->hasMany(PurchaseReturn::class);
     }
+
+    public function purchaseReturnItems()
+    {
+        return $this->hasMany(PurchaseReturnItem::class);
+    }
 }
 

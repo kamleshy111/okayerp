@@ -90,7 +90,7 @@ const grandRefundTotal = computed(() => {
 // Watch grandRefundTotal to suggest the maximum due deduction
 watch(grandRefundTotal, (newVal) => {
   if (selectedPurchaseDetails.value) {
-    const dueAmount = parseFloat(selectedPurchaseDetails.value.due_amount) || 0;
+    const dueAmount = parseFloat(selectedPurchaseDetails.value.supplier_total_due) || 0;
     const maxDeduct = Math.min(newVal, dueAmount);
     form.value.due_deduction = parseFloat(maxDeduct.toFixed(2));
   } else {
@@ -124,7 +124,7 @@ const submitReturn = async () => {
   }
 
   // Validate due deduction amount
-  const dueAmount = parseFloat(selectedPurchaseDetails.value.due_amount) || 0;
+  const dueAmount = parseFloat(selectedPurchaseDetails.value.supplier_total_due) || 0;
   const maxDeduct = Math.min(grandRefundTotal.value, dueAmount);
   if (form.value.due_deduction < 0 || form.value.due_deduction > maxDeduct) {
     toast.error(`Due deduction amount must be between 0 and ₹ ${maxDeduct.toFixed(2)}.`);
@@ -330,13 +330,13 @@ const submitReturn = async () => {
                 </div>
 
                 <div class="border-t pt-3 space-y-2">
-                  <label class="block text-sm font-semibold text-gray-700">Deduct from Bill Due (Max: ₹ {{ Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.due_amount) || 0).toFixed(2) }})</label>
+                  <label class="block text-sm font-semibold text-gray-700">Deduct from Supplier Due (Max: ₹ {{ Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.supplier_total_due) || 0).toFixed(2) }})</label>
                   <input
                     type="number"
                     step="0.01"
                     v-model.number="form.due_deduction"
                     :min="0"
-                    :max="Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.due_amount) || 0)"
+                    :max="Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.supplier_total_due) || 0)"
                     class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold"
                   />
                 </div>

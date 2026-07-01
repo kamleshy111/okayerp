@@ -38,8 +38,7 @@ class CustomersController extends Controller
                 }
                 $actualPaid = $paymentsSum->sum('amount');
 
-                // Sum of due_deduction for returns on this sale
-                $dueDeductionsSum = (float)$sale->saleReturns->sum('due_deduction');
+                $dueDeductionsSum = (float)$sale->saleReturnItems->sum('due_deduction');
 
                 // Sum of store credit refunds on this sale
                 $storeCreditRefundsSum = (float)$sale->saleReturns

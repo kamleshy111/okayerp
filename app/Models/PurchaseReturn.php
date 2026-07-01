@@ -12,6 +12,7 @@ class PurchaseReturn extends Model
     protected $fillable = [
         'user_id',
         'purchase_id',
+        'supplier_id',
         'return_no',
         'return_date',
         'refund_amount',
@@ -29,6 +30,11 @@ class PurchaseReturn extends Model
     public function purchase()
     {
         return $this->belongsTo(Purchase::class);
+    }
+
+    public function supplier()
+    {
+        return $this->belongsTo(Supplier::class);
     }
 
     public function items()

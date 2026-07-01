@@ -203,12 +203,12 @@
       }
   }
 
-  $store = $return->sale->customer && $return->sale->customer->user ? $return->sale->customer->user : null;
+  $store = $return->customer && $return->customer->user ? $return->customer->user : null;
   $storeGst = $store && !empty($store->gstin) ? trim($store->gstin) : '';
-  $custGst = $return->sale->customer && !empty($return->sale->customer->gst_number) ? trim($return->sale->customer->gst_number) : '';
+  $custGst = $return->customer && !empty($return->customer->gst_number) ? trim($return->customer->gst_number) : '';
   
   $storeStateName = $store && !empty($store->state) ? trim($store->state) : '';
-  $custStateName = $return->sale->customer && !empty($return->sale->customer->state) ? trim($return->sale->customer->state) : '';
+  $custStateName = $return->customer && !empty($return->customer->state) ? trim($return->customer->state) : '';
 
   $isInterstate = true;
   if ($storeStateName && $custStateName) {
@@ -280,7 +280,7 @@
           <tr>
             <td class="bold">Original Invoice ID</td>
             <td>:</td>
-            <td>#{{ $return->sale_id }}</td>
+            <td>{{ $return->items->pluck('sale_id')->filter()->unique()->map(fn($id) => "#{$id}")->implode(', ') ?: 'N/A' }}</td>
           </tr>
         </table>
       </td>
@@ -322,13 +322,13 @@
       </td>
       <td>
         <div class="bold border-bottom" style="margin-bottom: 4px; padding-bottom: 2px;">Refund To (Customer) :</div>
-        <div class="bold">{{ $return->sale->customer->name ?? 'N/A' }}</div>
-        <div>{{ $return->sale->customer->address ?? 'N/A' }}</div>
-        @if($return->sale->customer && $return->sale->customer->phone)
-          <div>Phone: {{ $return->sale->customer->phone }}</div>
+        <div class="bold">{{ $return->customer->name ?? 'N/A' }}</div>
+        <div>{{ $return->customer->address ?? 'N/A' }}</div>
+        @if($return->customer && $return->customer->phone)
+          <div>Phone: {{ $return->customer->phone }}</div>
         @endif
-        @if($return->sale->customer && $return->sale->customer->gst_number)
-          <div class="bold" style="margin-top: 4px;">GSTIN / UIN : {{ $return->sale->customer->gst_number }}</div>
+        @if($return->customer && $return->customer->gst_number)
+          <div class="bold" style="margin-top: 4px;">GSTIN / UIN : {{ $return->customer->gst_number }}</div>
         @endif
       </td>
     </tr>

@@ -139,6 +139,7 @@ class GstReportController extends Controller
                 'igst' => round($igstAmt, 2),
                 'total_gst' => round($totalItemGst, 2),
                 'grand_total' => round($sale->grand_total, 2),
+                'created_at' => $sale->created_at,
             ];
 
             $totalOutputCgst += $cgstAmt;
@@ -149,10 +150,13 @@ class GstReportController extends Controller
         }
 
         foreach ($saleReturns as $return) {
-            $sale = $return->sale;
-            if (!$sale) continue;
+            $customer = $return->customer;
+            if (!$customer) {
+                $customer = $return->sale ? $return->sale->customer : null;
+            }
+            if (!$customer) continue;
 
-            $custState = $sale->customer && !empty($sale->customer->state) ? trim($sale->customer->state) : '';
+            $custState = $customer->state && !empty($customer->state) ? trim($customer->state) : '';
             $isInterstate = $storeState && $custState && (strtolower($storeState) !== strtolower($custState));
 
             $taxableAmt = 0.0;
@@ -164,7 +168,18 @@ class GstReportController extends Controller
                 $base = (double)$item->quantity * (double)$item->price;
                 $taxableAmt += $base;
 
-                $saleItem = $sale->saleItems->firstWhere('product_id', $item->product_id);
+                $itemSale = $item->sale;
+                if (!$itemSale) {
+                    $itemSale = $return->sale;
+                }
+
+                $saleItem = null;
+                if ($itemSale) {
+                    $saleItem = \App\Models\SaleItem::where('sale_id', $itemSale->id)
+                        ->where('product_id', $item->product_id)
+                        ->first();
+                }
+
                 $itemCgst = $saleItem ? (double)$saleItem->cgst : 0.0;
                 $itemSgst = $saleItem ? (double)$saleItem->sgst : 0.0;
 
@@ -182,8 +197,8 @@ class GstReportController extends Controller
                 'id' => 'return_' . $return->id,
                 'invoice_no' => $return->return_no,
                 'date' => Carbon::parse($return->return_date)->format('Y-m-d'),
-                'customer_name' => $sale->customer->name ?? 'N/A',
-                'gstin' => $sale->customer->gst_number ?? 'N/A',
+                'customer_name' => $customer->name ?? 'N/A',
+                'gstin' => $customer->gst_number ?? 'N/A',
                 'taxable_amount' => -round($taxableAmt, 2),
                 'cgst' => -round($cgstAmt, 2),
                 'sgst' => -round($sgstAmt, 2),
@@ -191,6 +206,7 @@ class GstReportController extends Controller
                 'total_gst' => -round($totalItemGst, 2),
                 'grand_total' => -round($taxableAmt + $totalItemGst, 2),
                 'is_return' => true,
+                'created_at' => $return->created_at,
             ];
 
             $totalOutputCgst -= $cgstAmt;
@@ -251,6 +267,7 @@ class GstReportController extends Controller
                 'total_gst' => round($totalItemGst, 2),
                 'is_refundable' => $isRefundable,
                 'grand_total' => round($purchase->grand_total, 2),
+                'created_at' => $purchase->created_at,
             ];
 
             $totalInputCgst += $cgstAmt;
@@ -311,6 +328,7 @@ class GstReportController extends Controller
                 'is_refundable' => $isRefundable,
                 'grand_total' => -round($taxableAmt + $totalItemGst, 2),
                 'is_return' => true,
+                'created_at' => $return->created_at,
             ];
 
             $totalInputCgst -= $cgstAmt;
@@ -325,6 +343,15 @@ class GstReportController extends Controller
                 $totalNonRefundableGst -= $totalItemGst;
             }
         }
+
+        // Sort reports by created_at desc
+        usort($salesReport, function ($a, $b) {
+            return $b['created_at'] <=> $a['created_at'];
+        });
+
+        usort($purchasesReport, function ($a, $b) {
+            return $b['created_at'] <=> $a['created_at'];
+        });
 
         // 5. Calculate net payable or receivable
         $netTaxAmount = $totalOutputGst - $totalRefundableGst;

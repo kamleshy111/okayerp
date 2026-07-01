@@ -19,9 +19,12 @@ const form = ref({
   return_date: new Date().toISOString().substring(0, 10),
   refund_method: "Cash",
   reason: "",
+  customer_due_deduction: 0,
   due_deductions: {},
   items: [],
 });
+
+const customerTotalDue = ref(0);
 
 const selectedCustomerId = ref(null);
 const customerSearchQuery = ref("");
@@ -67,6 +70,8 @@ watch(selectedCustomerId, async (newVal) => {
   purchasedItems.value = [];
   selectedItemToAdd.value = null;
   form.value.items = [];
+  customerTotalDue.value = 0;
+  form.value.customer_due_deduction = 0;
 
   if (!newVal) {
     return;
@@ -75,10 +80,11 @@ watch(selectedCustomerId, async (newVal) => {
   isLoadingItems.value = true;
   try {
     const response = await axios.get(`/sale-return/customer/${newVal}/purchased-items`);
-    purchasedItems.value = response.data.map(item => ({
+    purchasedItems.value = response.data.items.map(item => ({
       ...item,
       display_label: `${item.product_name} [Available: ${item.available_qty}]`,
     }));
+    customerTotalDue.value = parseFloat(response.data.customer_total_due) || 0;
   } catch (error) {
     console.error("Error fetching purchased items:", error);
     toast.error("Failed to load customer purchased items.");
@@ -152,7 +158,7 @@ const grandRefundTotal = computed(() => {
 
 const affectedSales = computed(() => {
   const salesMap = {};
-  
+
   form.value.items.forEach(item => {
     if (!salesMap[item.sale_id]) {
       salesMap[item.sale_id] = {
@@ -164,11 +170,11 @@ const affectedSales = computed(() => {
         gst_refund: 0,
       };
     }
-    
+
     const qty = parseInt(item.quantity) || 0;
     const base = qty * item.price;
     salesMap[item.sale_id].base_refund += base;
-    
+
     if (item.accepted == 1) {
       const gstRate = (item.sgst + item.cgst) / 100;
       salesMap[item.sale_id].gst_refund += base * gstRate;
@@ -185,30 +191,29 @@ const affectedSales = computed(() => {
   });
 });
 
-watch(affectedSales, (newSales) => {
-  const activeIds = newSales.map(s => s.sale_id.toString());
-  
-  // Clear keys for sales that are no longer in the list
-  Object.keys(form.value.due_deductions).forEach(saleId => {
-    if (!activeIds.includes(saleId.toString())) {
-      delete form.value.due_deductions[saleId];
-    }
-  });
+const maxAllowedDeduction = computed(() => {
+  return Math.min(grandRefundTotal.value, customerTotalDue.value);
+});
 
-  // Suggest default/max due deduction for any new active sale
-  newSales.forEach(sale => {
-    if (form.value.due_deductions[sale.sale_id] === undefined) {
-      form.value.due_deductions[sale.sale_id] = parseFloat(sale.max_deduction.toFixed(2));
-    } else {
-      if (form.value.due_deductions[sale.sale_id] > sale.max_deduction) {
-        form.value.due_deductions[sale.sale_id] = parseFloat(sale.max_deduction.toFixed(2));
-      }
-    }
-  });
-}, { deep: true });
+const distributeDeduction = () => {
+  let remaining = parseFloat(form.value.customer_due_deduction) || 0;
+
+  const maxLimit = maxAllowedDeduction.value;
+  if (remaining > maxLimit) {
+    remaining = maxLimit;
+    form.value.customer_due_deduction = parseFloat(maxLimit.toFixed(2));
+  }
+};
+
+watch([grandRefundTotal, customerTotalDue], () => {
+  const maxLimit = maxAllowedDeduction.value;
+  form.value.customer_due_deduction = parseFloat(maxLimit.toFixed(2));
+}, { immediate: true });
+
+watch(() => form.value.customer_due_deduction, distributeDeduction);
 
 const totalDueDeductions = computed(() => {
-  return Object.values(form.value.due_deductions).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  return parseFloat(form.value.customer_due_deduction) || 0;
 });
 
 const netRefundCashToPay = computed(() => {
@@ -231,51 +236,26 @@ const submitReturn = async () => {
     }
   }
 
-  // Validate due deduction amounts
-  for (const sale of affectedSales.value) {
-    const deduct = parseFloat(form.value.due_deductions[sale.sale_id]) || 0;
-    if (deduct < 0 || deduct > sale.max_deduction) {
-      toast.error(`Due deduction amount for ${sale.invoice_label} must be between 0 and ₹ ${sale.max_deduction.toFixed(2)}.`);
-      return;
-    }
-  }
-
-  // Group items by sale_id since returns are created per invoice
-  const itemsBySale = {};
-  payloadItems.forEach(item => {
-    if (!itemsBySale[item.sale_id]) {
-      itemsBySale[item.sale_id] = [];
-    }
-    itemsBySale[item.sale_id].push(item);
-  });
+  const payload = {
+    customer_id: selectedCustomerId.value,
+    return_date: form.value.return_date,
+    refund_method: form.value.refund_method,
+    reason: form.value.reason,
+    due_deduction: parseFloat(form.value.customer_due_deduction) || 0,
+    items: payloadItems.map(item => ({
+      sale_id: item.sale_id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+    })),
+  };
 
   try {
-    const invoiceUrls = [];
-
-    for (const [saleId, saleItems] of Object.entries(itemsBySale)) {
-      const payload = {
-        sale_id: saleId,
-        return_date: form.value.return_date,
-        refund_method: form.value.refund_method,
-        reason: form.value.reason,
-        due_deduction: parseFloat(form.value.due_deductions[saleId]) || 0,
-        items: saleItems.map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        })),
-      };
-
-      const response = await axios.post('/sale-return/store', payload);
-      if (response.data.invoice_url) {
-        invoiceUrls.push(response.data.invoice_url);
-      }
-    }
-
+    const response = await axios.post('/sale-return/store', payload);
     toast.success("Sales return processed successfully!");
 
-    invoiceUrls.forEach(url => {
-      window.open(url, '_blank');
-    });
+    if (response.data.invoice_url) {
+      window.open(response.data.invoice_url, '_blank');
+    }
 
     router.visit(route('sale-return.index'));
   } catch (error) {
@@ -504,19 +484,19 @@ const submitReturn = async () => {
                   <span class="font-mono text-indigo-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
                 </div>
 
-                <!-- Due Deductions per Affected Invoice -->
+                <!-- Due Deductions for Customer Total Due -->
                 <div v-if="affectedSales.length > 0" class="border-t pt-3 space-y-3">
-                  <span class="block text-sm font-semibold text-gray-700">Deduct from Invoice Dues:</span>
-                  <div v-for="sale in affectedSales" :key="sale.sale_id" class="space-y-1">
+
+                  <div class="space-y-1">
                     <label class="block text-xs text-gray-500">
-                      Invoice #{{ sale.sale_id }} (Max: ₹ {{ sale.max_deduction.toFixed(2) }})
+                      Deduct from Customer Due (Max: ₹ {{ maxAllowedDeduction.toFixed(2) }})
                     </label>
                     <input
                       type="number"
                       step="0.01"
-                      v-model.number="form.due_deductions[sale.sale_id]"
+                      v-model.number="form.customer_due_deduction"
                       :min="0"
-                      :max="sale.max_deduction"
+                      :max="maxAllowedDeduction"
                       class="w-full border border-gray-300 px-3 py-1.5 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold text-sm"
                     />
                   </div>

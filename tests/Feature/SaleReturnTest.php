@@ -525,8 +525,8 @@ class SaleReturnTest extends TestCase
         $response->assertOk();
 
         // Should return 1 item with available_qty = 3 (5 sold - 2 returned)
-        $response->assertJsonCount(1);
-        $response->assertJsonPath('0.product_id', $product->id);
-        $response->assertJsonPath('0.available_qty', 3);
+        $response->assertJsonCount(1, 'items');
+        $response->assertJsonPath('items.0.product_id', $product->id);
+        $response->assertJsonPath('items.0.available_qty', 3);
     }
 }
