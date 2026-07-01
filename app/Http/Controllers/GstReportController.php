@@ -139,6 +139,7 @@ class GstReportController extends Controller
                 'igst' => round($igstAmt, 2),
                 'total_gst' => round($totalItemGst, 2),
                 'grand_total' => round($sale->grand_total, 2),
+                'created_at' => $sale->created_at,
             ];
 
             $totalOutputCgst += $cgstAmt;
@@ -191,6 +192,7 @@ class GstReportController extends Controller
                 'total_gst' => -round($totalItemGst, 2),
                 'grand_total' => -round($taxableAmt + $totalItemGst, 2),
                 'is_return' => true,
+                'created_at' => $return->created_at,
             ];
 
             $totalOutputCgst -= $cgstAmt;
@@ -251,6 +253,7 @@ class GstReportController extends Controller
                 'total_gst' => round($totalItemGst, 2),
                 'is_refundable' => $isRefundable,
                 'grand_total' => round($purchase->grand_total, 2),
+                'created_at' => $purchase->created_at,
             ];
 
             $totalInputCgst += $cgstAmt;
@@ -311,6 +314,7 @@ class GstReportController extends Controller
                 'is_refundable' => $isRefundable,
                 'grand_total' => -round($taxableAmt + $totalItemGst, 2),
                 'is_return' => true,
+                'created_at' => $return->created_at,
             ];
 
             $totalInputCgst -= $cgstAmt;
@@ -325,6 +329,15 @@ class GstReportController extends Controller
                 $totalNonRefundableGst -= $totalItemGst;
             }
         }
+
+        // Sort reports by created_at desc
+        usort($salesReport, function ($a, $b) {
+            return $b['created_at'] <=> $a['created_at'];
+        });
+
+        usort($purchasesReport, function ($a, $b) {
+            return $b['created_at'] <=> $a['created_at'];
+        });
 
         // 5. Calculate net payable or receivable
         $netTaxAmount = $totalOutputGst - $totalRefundableGst;

@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import axios from 'axios';
 import { toast } from 'vue3-toastify';
 import "vue3-toastify/dist/index.css";
@@ -168,6 +168,45 @@ const clearFilters = () => {
   filterEndDate.value = '';
   router.get(route('reports.gst'), {}, { preserveState: true });
 };
+
+// Pagination State
+const salesCurrentPage = ref(1);
+const purchasesCurrentPage = ref(1);
+const itemsPerPage = ref(10);
+
+const paginatedSales = computed(() => {
+  const start = (salesCurrentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredSales.value.slice(start, end);
+});
+
+const totalSalesPages = computed(() => {
+  return Math.ceil(filteredSales.value.length / itemsPerPage.value) || 1;
+});
+
+const paginatedPurchases = computed(() => {
+  const start = (purchasesCurrentPage.value - 1) * itemsPerPage.value;
+  const end = start + itemsPerPage.value;
+  return filteredPurchases.value.slice(start, end);
+});
+
+const totalPurchasesPages = computed(() => {
+  return Math.ceil(filteredPurchases.value.length / itemsPerPage.value) || 1;
+});
+
+// Reset page on search or active tab switch
+watch(salesSearch, () => {
+  salesCurrentPage.value = 1;
+});
+
+watch(purchasesSearch, () => {
+  purchasesCurrentPage.value = 1;
+});
+
+watch(activeTab, () => {
+  salesCurrentPage.value = 1;
+  purchasesCurrentPage.value = 1;
+});
 
 // Print page handler
 const printReport = () => {
@@ -348,7 +387,137 @@ const printReport = () => {
             />
           </div>
 
-          <div class="overflow-x-auto table-wrapper">
+          <!-- Screen-only Sales Table with Pagination -->
+          <div class="overflow-x-auto table-wrapper print:hidden">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="bg-[#2e2c92] text-white text-xs uppercase tracking-wider text-left">
+                  <th class="p-3 font-semibold rounded-l-lg text-center">S.N.</th>
+                  <th class="p-3 font-semibold">Invoice No</th>
+                  <th class="p-3 font-semibold">Date</th>
+                  <th class="p-3 font-semibold">Customer</th>
+                  <th class="p-3 font-semibold">GSTIN</th>
+                  <th class="p-3 font-semibold text-right">Taxable Amt</th>
+                  <th class="p-3 font-semibold text-right">CGST</th>
+                  <th class="p-3 font-semibold text-right">SGST</th>
+                  <th class="p-3 font-semibold text-right">IGST</th>
+                  <th class="p-3 font-semibold text-right rounded-r-lg">Total Tax</th>
+                </tr>
+              </thead>
+              <tbody class="text-xs text-gray-700 divide-y divide-gray-100">
+                <tr v-if="filteredSales.length === 0">
+                  <td colspan="10" class="p-6 text-center text-gray-400 font-medium bg-gray-50 rounded-lg">
+                    No sales GST records found matching your filters.
+                  </td>
+                </tr>
+                <tr
+                  v-for="(row, idx) in paginatedSales"
+                  :key="row.id"
+                  :class="[
+                    'transition',
+                    row.is_return ? 'bg-amber-50/20 hover:bg-amber-50/40 text-amber-900' : 'hover:bg-gray-50/50'
+                  ]"
+                >
+                  <td class="p-3 text-center border-b border-gray-100 font-medium text-gray-400">{{ (salesCurrentPage - 1) * itemsPerPage + idx + 1 }}</td>
+                  <td class="p-3 border-b border-gray-100 font-semibold text-gray-900">
+                    <div class="flex items-center gap-1.5 justify-start">
+                      <span>{{ row.invoice_no }}</span>
+                      <span v-if="row.is_return" class="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 rounded uppercase">Return</span>
+                    </div>
+                  </td>
+                  <td class="p-3 border-b border-gray-100 whitespace-nowrap">{{ row.date }}</td>
+                  <td class="p-3 border-b border-gray-100 font-medium">{{ row.customer_name }}</td>
+                  <td class="p-3 border-b border-gray-100 whitespace-nowrap font-mono text-gray-500">{{ row.gstin }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right font-medium">{{ formatCurrency(row.taxable_amount) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right text-gray-500">{{ formatCurrency(row.cgst) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right text-gray-500">{{ formatCurrency(row.sgst) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right text-gray-500">{{ formatCurrency(row.igst) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right font-bold text-gray-900">{{ formatCurrency(row.total_gst) }}</td>
+                </tr>
+              </tbody>
+              <tfoot v-if="filteredSales.length > 0" class="bg-gray-50/70 border-t-2 border-gray-200">
+                <tr class="font-bold text-gray-900 text-right text-xs">
+                  <td colspan="5" class="p-3 text-left">Total Sales Summary</td>
+                  <td class="p-3">{{ formatCurrency(dynamicSummary.total_sales_taxable) }}</td>
+                  <td class="p-3 text-gray-600">{{ formatCurrency(dynamicSummary.total_output_cgst) }}</td>
+                  <td class="p-3 text-gray-600">{{ formatCurrency(dynamicSummary.total_output_sgst) }}</td>
+                  <td class="p-3 text-gray-600">{{ formatCurrency(dynamicSummary.total_output_igst) }}</td>
+                  <td class="p-3 text-[#2e2c92] font-extrabold">{{ formatCurrency(dynamicSummary.total_output_gst) }}</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <!-- Pagination controls for Sales -->
+            <div v-if="totalSalesPages > 1" class="flex items-center justify-between border-t border-gray-100 bg-white px-4 py-3 sm:px-6 mt-4 rounded-b-xl no-print">
+              <div class="flex flex-1 justify-between sm:hidden">
+                <button
+                  @click="salesCurrentPage = Math.max(1, salesCurrentPage - 1)"
+                  :disabled="salesCurrentPage === 1"
+                  class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  @click="salesCurrentPage = Math.min(totalSalesPages, salesCurrentPage + 1)"
+                  :disabled="salesCurrentPage === totalSalesPages"
+                  class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+              <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm text-gray-700">
+                    Showing
+                    <span class="font-medium">{{ (salesCurrentPage - 1) * itemsPerPage + 1 }}</span>
+                    to
+                    <span class="font-medium">{{ Math.min(salesCurrentPage * itemsPerPage, filteredSales.length) }}</span>
+                    of
+                    <span class="font-medium">{{ filteredSales.length }}</span>
+                    results
+                  </p>
+                </div>
+                <div>
+                  <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                    <button
+                      @click="salesCurrentPage = Math.max(1, salesCurrentPage - 1)"
+                      :disabled="salesCurrentPage === 1"
+                      class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span class="sr-only">Previous</span>
+                      <i class="bi bi-chevron-left text-sm"></i>
+                    </button>
+                    
+                    <button
+                      v-for="page in totalSalesPages"
+                      :key="page"
+                      @click="salesCurrentPage = page"
+                      :class="[
+                        page === salesCurrentPage
+                          ? 'z-10 bg-[#2e2c92] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2e2c92]'
+                          : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0',
+                        'relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20'
+                      ]"
+                    >
+                      {{ page }}
+                    </button>
+
+                    <button
+                      @click="salesCurrentPage = Math.min(totalSalesPages, salesCurrentPage + 1)"
+                      :disabled="salesCurrentPage === totalSalesPages"
+                      class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span class="sr-only">Next</span>
+                      <i class="bi bi-chevron-right text-sm"></i>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Print-only Sales Table (unpaginated, visible on print only) -->
+          <div class="overflow-x-auto table-wrapper hidden print:block">
             <table class="w-full text-sm border-collapse">
               <thead>
                 <tr class="bg-[#2e2c92] text-white text-xs uppercase tracking-wider text-left">
@@ -375,7 +544,7 @@ const printReport = () => {
                   :key="row.id"
                   :class="[
                     'transition',
-                    row.is_return ? 'bg-amber-50/20 hover:bg-amber-50/40 text-amber-900' : 'hover:bg-gray-50/50'
+                    row.is_return ? 'bg-amber-50/20 text-amber-900' : ''
                   ]"
                 >
                   <td class="p-3 text-center border-b border-gray-100 font-medium text-gray-400">{{ idx + 1 }}</td>
@@ -443,7 +612,8 @@ const printReport = () => {
             />
           </div>
 
-          <div class="overflow-x-auto table-wrapper">
+          <!-- Screen-only Purchases Table with Pagination -->
+          <div class="overflow-x-auto table-wrapper print:hidden">
             <table class="w-full text-sm border-collapse">
               <thead>
                 <tr class="bg-gray-800 text-white text-xs uppercase tracking-wider text-left">
@@ -467,14 +637,14 @@ const printReport = () => {
                   </td>
                 </tr>
                 <tr
-                  v-for="(row, idx) in filteredPurchases"
+                  v-for="(row, idx) in paginatedPurchases"
                   :key="row.id"
                   :class="[
                     'transition',
                     row.is_return ? 'bg-amber-50/20 hover:bg-amber-50/40 text-amber-900' : (row.is_refundable ? 'hover:bg-gray-50/50' : 'bg-rose-50/20 hover:bg-rose-50/40')
                   ]"
                 >
-                  <td class="p-3 text-center border-b border-gray-100 font-medium text-gray-400">{{ idx + 1 }}</td>
+                  <td class="p-3 text-center border-b border-gray-100 font-medium text-gray-400">{{ (purchasesCurrentPage - 1) * itemsPerPage + idx + 1 }}</td>
                   <td class="p-3 border-b border-gray-100 font-semibold text-gray-900">
                     <div class="flex items-center gap-1.5 justify-start">
                       <span>{{ row.invoice_no }}</span>
@@ -523,6 +693,153 @@ const printReport = () => {
                       ></span>
                       {{ row.is_refundable ? 'Refundable (ITC)' : 'Non-Refundable' }}
                     </button>
+                  </td>
+                </tr>
+              </tbody>
+              <tfoot v-if="filteredPurchases.length > 0" class="bg-gray-50/70 border-t-2 border-gray-200">
+                <tr class="font-bold text-gray-900 text-right text-xs">
+                  <td colspan="5" class="p-3 text-left">Total Purchase Summary</td>
+                  <td class="p-3">{{ formatCurrency(dynamicSummary.total_purchases_taxable) }}</td>
+                  <td class="p-3 text-gray-600">{{ formatCurrency(dynamicSummary.total_input_cgst) }}</td>
+                  <td class="p-3 text-gray-600">{{ formatCurrency(dynamicSummary.total_input_sgst) }}</td>
+                  <td class="p-3 text-gray-600">{{ formatCurrency(dynamicSummary.total_input_igst) }}</td>
+                  <td class="p-3 text-gray-800 font-extrabold">{{ formatCurrency(dynamicSummary.total_input_gst) }}</td>
+                  <td class="p-3 border-b border-gray-100 print:hidden">&nbsp;</td>
+                </tr>
+              </tfoot>
+            </table>
+
+            <!-- Pagination controls for Purchases -->
+            <div v-if="totalPurchasesPages > 1" class="flex items-center justify-between border-t border-gray-100 bg-white px-4 py-3 sm:px-6 mt-4 rounded-b-xl no-print">
+              <div class="flex flex-1 justify-between sm:hidden">
+                <button
+                  @click="purchasesCurrentPage = Math.max(1, purchasesCurrentPage - 1)"
+                  :disabled="purchasesCurrentPage === 1"
+                  class="relative inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <button
+                  @click="purchasesCurrentPage = Math.min(totalPurchasesPages, purchasesCurrentPage + 1)"
+                  :disabled="purchasesCurrentPage === totalPurchasesPages"
+                  class="relative ml-3 inline-flex items-center rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+              <div class="hidden sm:flex sm:flex-1 sm:items-center sm:justify-between">
+                <div>
+                  <p class="text-sm text-gray-700">
+                    Showing
+                    <span class="font-medium">{{ (purchasesCurrentPage - 1) * itemsPerPage + 1 }}</span>
+                    to
+                    <span class="font-medium">{{ Math.min(purchasesCurrentPage * itemsPerPage, filteredPurchases.length) }}</span>
+                    of
+                    <span class="font-medium">{{ filteredPurchases.length }}</span>
+                    results
+                  </p>
+                </div>
+                <div>
+                  <nav class="isolate inline-flex -space-x-px rounded-md shadow-sm" aria-label="Pagination">
+                    <button
+                      @click="purchasesCurrentPage = Math.max(1, purchasesCurrentPage - 1)"
+                      :disabled="purchasesCurrentPage === 1"
+                      class="relative inline-flex items-center rounded-l-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span class="sr-only">Previous</span>
+                      <i class="bi bi-chevron-left text-sm"></i>
+                    </button>
+                    
+                    <button
+                      v-for="page in totalPurchasesPages"
+                      :key="page"
+                      @click="purchasesCurrentPage = page"
+                      :class="[
+                        page === purchasesCurrentPage
+                          ? 'z-10 bg-[#2e2c92] text-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#2e2c92]'
+                          : 'text-gray-900 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:outline-offset-0',
+                        'relative inline-flex items-center px-4 py-2 text-sm font-semibold focus:z-20'
+                      ]"
+                    >
+                      {{ page }}
+                    </button>
+
+                    <button
+                      @click="purchasesCurrentPage = Math.min(totalPurchasesPages, purchasesCurrentPage + 1)"
+                      :disabled="purchasesCurrentPage === totalPurchasesPages"
+                      class="relative inline-flex items-center rounded-r-md px-2 py-2 text-gray-400 ring-1 ring-inset ring-gray-300 hover:bg-gray-50 focus:z-20 focus:outline-offset-0 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <span class="sr-only">Next</span>
+                      <i class="bi bi-chevron-right text-sm"></i>
+                    </button>
+                  </nav>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Print-only Purchases Table (unpaginated, visible on print only) -->
+          <div class="overflow-x-auto table-wrapper hidden print:block">
+            <table class="w-full text-sm border-collapse">
+              <thead>
+                <tr class="bg-gray-800 text-white text-xs uppercase tracking-wider text-left">
+                  <th class="p-3 font-semibold rounded-l-lg text-center">S.N.</th>
+                  <th class="p-3 font-semibold">Purchase No</th>
+                  <th class="p-3 font-semibold">Date</th>
+                  <th class="p-3 font-semibold">Supplier</th>
+                  <th class="p-3 font-semibold">GSTIN</th>
+                  <th class="p-3 font-semibold text-right">Taxable Amt</th>
+                  <th class="p-3 font-semibold text-right">CGST</th>
+                  <th class="p-3 font-semibold text-right">SGST</th>
+                  <th class="p-3 font-semibold text-right">IGST</th>
+                  <th class="p-3 font-semibold text-right">Total Tax</th>
+                  <th class="p-3 font-semibold text-center rounded-r-lg print:hidden">Refundable Status</th>
+                </tr>
+              </thead>
+              <tbody class="text-xs text-gray-700 divide-y divide-gray-100">
+                <tr v-if="filteredPurchases.length === 0">
+                  <td colspan="11" class="p-6 text-center text-gray-400 font-medium bg-gray-50 rounded-lg">
+                    No purchase GST records found matching your filters.
+                  </td>
+                </tr>
+                <tr
+                  v-for="(row, idx) in filteredPurchases"
+                  :key="row.id"
+                  :class="[
+                    'transition',
+                    row.is_return ? 'bg-amber-50/20 text-amber-900' : (row.is_refundable ? '' : 'bg-rose-50/20')
+                  ]"
+                >
+                  <td class="p-3 text-center border-b border-gray-100 font-medium text-gray-400">{{ idx + 1 }}</td>
+                  <td class="p-3 border-b border-gray-100 font-semibold text-gray-900">
+                    <div class="flex items-center gap-1.5 justify-start">
+                      <span>{{ row.invoice_no }}</span>
+                      <span v-if="row.is_return" class="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 rounded uppercase">Return</span>
+                    </div>
+                  </td>
+                  <td class="p-3 border-b border-gray-100 whitespace-nowrap">{{ row.date }}</td>
+                  <td class="p-3 border-b border-gray-100 font-medium">{{ row.supplier_name }}</td>
+                  <td class="p-3 border-b border-gray-100 whitespace-nowrap font-mono text-gray-500">{{ row.gstin }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right font-medium">{{ formatCurrency(row.taxable_amount) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right text-gray-500">{{ formatCurrency(row.cgst) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right text-gray-500">{{ formatCurrency(row.sgst) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right text-gray-500">{{ formatCurrency(row.igst) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-right font-bold text-gray-900">{{ formatCurrency(row.total_gst) }}</td>
+                  <td class="p-3 border-b border-gray-100 text-center print:hidden">
+                    <span
+                      :class="[
+                        'px-3 py-1 rounded-full text-[10px] font-bold uppercase inline-flex items-center gap-1.5 border mx-auto',
+                        row.is_refundable
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                          : 'bg-rose-50 text-rose-700 border-rose-200'
+                      ]"
+                    >
+                      <span
+                        class="w-1.5 h-1.5 rounded-full"
+                        :class="row.is_refundable ? 'bg-emerald-500' : 'bg-rose-500'"
+                      ></span>
+                      {{ row.is_refundable ? 'Refundable (ITC)' : 'Non-Refundable' }}
+                    </span>
                   </td>
                 </tr>
               </tbody>

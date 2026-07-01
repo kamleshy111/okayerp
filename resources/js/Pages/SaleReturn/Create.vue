@@ -19,9 +19,12 @@ const form = ref({
   return_date: new Date().toISOString().substring(0, 10),
   refund_method: "Cash",
   reason: "",
+  customer_due_deduction: 0,
   due_deductions: {},
   items: [],
 });
+
+const customerTotalDue = ref(0);
 
 const selectedCustomerId = ref(null);
 const customerSearchQuery = ref("");
@@ -67,6 +70,8 @@ watch(selectedCustomerId, async (newVal) => {
   purchasedItems.value = [];
   selectedItemToAdd.value = null;
   form.value.items = [];
+  customerTotalDue.value = 0;
+  form.value.customer_due_deduction = 0;
 
   if (!newVal) {
     return;
@@ -75,10 +80,11 @@ watch(selectedCustomerId, async (newVal) => {
   isLoadingItems.value = true;
   try {
     const response = await axios.get(`/sale-return/customer/${newVal}/purchased-items`);
-    purchasedItems.value = response.data.map(item => ({
+    purchasedItems.value = response.data.items.map(item => ({
       ...item,
       display_label: `${item.product_name} [Available: ${item.available_qty}]`,
     }));
+    customerTotalDue.value = parseFloat(response.data.customer_total_due) || 0;
   } catch (error) {
     console.error("Error fetching purchased items:", error);
     toast.error("Failed to load customer purchased items.");
@@ -185,30 +191,43 @@ const affectedSales = computed(() => {
   });
 });
 
-watch(affectedSales, (newSales) => {
-  const activeIds = newSales.map(s => s.sale_id.toString());
+const maxAllowedDeduction = computed(() => {
+  return affectedSales.value.reduce((sum, s) => sum + s.max_deduction, 0);
+});
+
+const distributeDeduction = () => {
+  let remaining = parseFloat(form.value.customer_due_deduction) || 0;
   
-  // Clear keys for sales that are no longer in the list
+  const maxLimit = maxAllowedDeduction.value;
+  if (remaining > maxLimit) {
+    remaining = maxLimit;
+    form.value.customer_due_deduction = parseFloat(maxLimit.toFixed(2));
+  }
+
+  const activeIds = affectedSales.value.map(s => s.sale_id.toString());
   Object.keys(form.value.due_deductions).forEach(saleId => {
     if (!activeIds.includes(saleId.toString())) {
       delete form.value.due_deductions[saleId];
     }
   });
 
-  // Suggest default/max due deduction for any new active sale
-  newSales.forEach(sale => {
-    if (form.value.due_deductions[sale.sale_id] === undefined) {
-      form.value.due_deductions[sale.sale_id] = parseFloat(sale.max_deduction.toFixed(2));
-    } else {
-      if (form.value.due_deductions[sale.sale_id] > sale.max_deduction) {
-        form.value.due_deductions[sale.sale_id] = parseFloat(sale.max_deduction.toFixed(2));
-      }
-    }
+  affectedSales.value.forEach(sale => {
+    const alloc = Math.min(remaining, sale.max_deduction);
+    form.value.due_deductions[sale.sale_id] = parseFloat(alloc.toFixed(2));
+    remaining -= alloc;
   });
-}, { deep: true });
+};
+
+watch([grandRefundTotal, customerTotalDue], () => {
+  const maxLimit = maxAllowedDeduction.value;
+  form.value.customer_due_deduction = parseFloat(maxLimit.toFixed(2));
+}, { immediate: true });
+
+watch(() => form.value.customer_due_deduction, distributeDeduction);
+watch(affectedSales, distributeDeduction, { deep: true });
 
 const totalDueDeductions = computed(() => {
-  return Object.values(form.value.due_deductions).reduce((sum, val) => sum + (parseFloat(val) || 0), 0);
+  return parseFloat(form.value.customer_due_deduction) || 0;
 });
 
 const netRefundCashToPay = computed(() => {
@@ -504,19 +523,23 @@ const submitReturn = async () => {
                   <span class="font-mono text-indigo-700">₹ {{ grandRefundTotal.toFixed(2) }}</span>
                 </div>
 
-                <!-- Due Deductions per Affected Invoice -->
+                <!-- Due Deductions for Customer Total Due -->
                 <div v-if="affectedSales.length > 0" class="border-t pt-3 space-y-3">
-                  <span class="block text-sm font-semibold text-gray-700">Deduct from Invoice Dues:</span>
-                  <div v-for="sale in affectedSales" :key="sale.sale_id" class="space-y-1">
+                  <div class="flex justify-between text-sm font-semibold text-gray-700">
+                    <span>Customer Total Due:</span>
+                    <span class="font-mono text-indigo-700">₹ {{ customerTotalDue.toFixed(2) }}</span>
+                  </div>
+                  
+                  <div class="space-y-1">
                     <label class="block text-xs text-gray-500">
-                      Invoice #{{ sale.sale_id }} (Max: ₹ {{ sale.max_deduction.toFixed(2) }})
+                      Deduct from Customer Due (Max: ₹ {{ maxAllowedDeduction.toFixed(2) }})
                     </label>
                     <input
                       type="number"
                       step="0.01"
-                      v-model.number="form.due_deductions[sale.sale_id]"
+                      v-model.number="form.customer_due_deduction"
                       :min="0"
-                      :max="sale.max_deduction"
+                      :max="maxAllowedDeduction"
                       class="w-full border border-gray-300 px-3 py-1.5 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold text-sm"
                     />
                   </div>

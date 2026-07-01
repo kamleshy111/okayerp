@@ -117,10 +117,14 @@ class SaleReturnController extends Controller
             })
             ->toArray();
 
+        $customerTotalDue = 0.0;
         $items = [];
         foreach ($sales as $sale) {
             $previousDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
             $dueAmount = max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions);
+
+            // Add to customer's total outstanding due
+            $customerTotalDue += $dueAmount;
 
             foreach ($sale->saleItems as $saleItem) {
                 if (!$saleItem->product) {
@@ -151,7 +155,10 @@ class SaleReturnController extends Controller
             }
         }
 
-        return response()->json($items);
+        return response()->json([
+            'items' => $items,
+            'customer_total_due' => round($customerTotalDue, 2),
+        ]);
     }
 
     public function getSaleDetails($id)
