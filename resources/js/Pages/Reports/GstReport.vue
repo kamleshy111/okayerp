@@ -280,7 +280,7 @@ const printReport = () => {
         <div class="bg-white border border-gray-100 p-5 rounded-2xl shadow-md flex flex-col justify-between h-32 border-l-4 border-l-emerald-500">
           <span class="text-xs font-bold text-gray-400 uppercase tracking-wider">Refundable GST (ITC)</span>
           <span class="text-2xl font-extrabold text-emerald-600">{{ formatCurrency(dynamicSummary.refundable_input_gst) }}</span>
-          <span class="text-[10px] text-emerald-600/80 font-medium">Claimable from Govt</span>
+          <span class="text-[10px] text-emerald-600/80 font-medium">Claimable GST</span>
         </div>
 
         <!-- Card 4: Non-Refundable ITC -->
@@ -370,9 +370,21 @@ const printReport = () => {
                     No sales GST records found matching your filters.
                   </td>
                 </tr>
-                <tr v-for="(row, idx) in filteredSales" :key="row.id" class="hover:bg-gray-50/50 transition">
+                <tr
+                  v-for="(row, idx) in filteredSales"
+                  :key="row.id"
+                  :class="[
+                    'transition',
+                    row.is_return ? 'bg-amber-50/20 hover:bg-amber-50/40 text-amber-900' : 'hover:bg-gray-50/50'
+                  ]"
+                >
                   <td class="p-3 text-center border-b border-gray-100 font-medium text-gray-400">{{ idx + 1 }}</td>
-                  <td class="p-3 border-b border-gray-100 font-semibold text-gray-900">{{ row.invoice_no }}</td>
+                  <td class="p-3 border-b border-gray-100 font-semibold text-gray-900">
+                    <div class="flex items-center gap-1.5 justify-start">
+                      <span>{{ row.invoice_no }}</span>
+                      <span v-if="row.is_return" class="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 rounded uppercase">Return</span>
+                    </div>
+                  </td>
                   <td class="p-3 border-b border-gray-100 whitespace-nowrap">{{ row.date }}</td>
                   <td class="p-3 border-b border-gray-100 font-medium">{{ row.customer_name }}</td>
                   <td class="p-3 border-b border-gray-100 whitespace-nowrap font-mono text-gray-500">{{ row.gstin }}</td>
@@ -459,11 +471,16 @@ const printReport = () => {
                   :key="row.id"
                   :class="[
                     'transition',
-                    row.is_refundable ? 'hover:bg-gray-50/50' : 'bg-rose-50/20 hover:bg-rose-50/40'
+                    row.is_return ? 'bg-amber-50/20 hover:bg-amber-50/40 text-amber-900' : (row.is_refundable ? 'hover:bg-gray-50/50' : 'bg-rose-50/20 hover:bg-rose-50/40')
                   ]"
                 >
                   <td class="p-3 text-center border-b border-gray-100 font-medium text-gray-400">{{ idx + 1 }}</td>
-                  <td class="p-3 border-b border-gray-100 font-semibold text-gray-900">{{ row.invoice_no }}</td>
+                  <td class="p-3 border-b border-gray-100 font-semibold text-gray-900">
+                    <div class="flex items-center gap-1.5 justify-start">
+                      <span>{{ row.invoice_no }}</span>
+                      <span v-if="row.is_return" class="px-1.5 py-0.5 text-[9px] font-bold bg-amber-100 text-amber-800 rounded uppercase">Return</span>
+                    </div>
+                  </td>
                   <td class="p-3 border-b border-gray-100 whitespace-nowrap">{{ row.date }}</td>
                   <td class="p-3 border-b border-gray-100 font-medium">{{ row.supplier_name }}</td>
                   <td class="p-3 border-b border-gray-100 whitespace-nowrap font-mono text-gray-500">{{ row.gstin }}</td>
@@ -473,7 +490,24 @@ const printReport = () => {
                   <td class="p-3 border-b border-gray-100 text-right text-gray-500">{{ formatCurrency(row.igst) }}</td>
                   <td class="p-3 border-b border-gray-100 text-right font-bold text-gray-900">{{ formatCurrency(row.total_gst) }}</td>
                   <td class="p-3 border-b border-gray-100 text-center print:hidden">
+                    <template v-if="row.is_return">
+                      <span
+                        :class="[
+                          'px-3 py-1 rounded-full text-[10px] font-bold uppercase inline-flex items-center gap-1.5 border mx-auto',
+                          row.is_refundable
+                            ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                            : 'bg-rose-50 text-rose-700 border-rose-200'
+                        ]"
+                      >
+                        <span
+                          class="w-1.5 h-1.5 rounded-full"
+                          :class="row.is_refundable ? 'bg-emerald-500' : 'bg-rose-500'"
+                        ></span>
+                        {{ row.is_refundable ? 'Refundable (ITC)' : 'Non-Refundable' }}
+                      </span>
+                    </template>
                     <button
+                      v-else
                       @click="toggleRefundableStatus(row)"
                       :disabled="isToggling[row.id]"
                       :class="[

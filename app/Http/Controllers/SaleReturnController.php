@@ -119,6 +119,9 @@ class SaleReturnController extends Controller
 
         $items = [];
         foreach ($sales as $sale) {
+            $previousDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+            $dueAmount = max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions);
+
             foreach ($sale->saleItems as $saleItem) {
                 if (!$saleItem->product) {
                     continue;
@@ -142,6 +145,7 @@ class SaleReturnController extends Controller
                         'available_qty' => $availableQty,
                         'invoice_label' => "Invoice #{$sale->id} - Date: " . $sale->created_at->format('d-M-Y'),
                         'accepted' => $sale->accepted,
+                        'sale_due_amount' => $dueAmount,
                     ];
                 }
             }
