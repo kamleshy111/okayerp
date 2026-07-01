@@ -96,7 +96,7 @@ class CustomerPaymentsController extends Controller
             'sale_returns.refund_method',
             'sale_returns.return_no'
         )->get()->map(function ($item) {
-            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount + (float)$item->due_deduction;
+            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
             return [
                 'transaction_id' => $item->transaction_id,
                 'created_at' => $item->created_at,
@@ -289,8 +289,7 @@ class CustomerPaymentsController extends Controller
             }
             $actualPaid = $paymentsSum->sum('amount');
 
-            // Sum of due_deduction for returns on this sale
-            $dueDeductionsSum = (float)\App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+            $dueDeductionsSum = (float)\App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
 
             $saleBalance = (float)$actualPaid - (float)$sale->grand_total + $dueDeductionsSum;
             if ($saleBalance < 0) {

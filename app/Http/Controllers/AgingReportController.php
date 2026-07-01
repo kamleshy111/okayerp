@@ -58,8 +58,7 @@ class AgingReportController extends Controller
                 }
                 $actualPaid = $paymentsSum->sum('amount');
 
-                // Sum of due_deduction for returns on this sale
-                $dueDeductionsSum = (float)$sale->saleReturns->sum('due_deduction');
+                $dueDeductionsSum = (float)$sale->saleReturnItems->sum('due_deduction');
 
                 $outstanding = (double)$sale->grand_total - (double)max($sale->paid, $actualPaid) - $dueDeductionsSum;
                 if ($outstanding < 0) {
@@ -174,7 +173,7 @@ class AgingReportController extends Controller
                 $actualPaid = $paymentsSum->sum('amount');
 
                 // Sum of due_deduction for returns on this purchase
-                $dueDeductionsSum = (float)$purchase->purchaseReturns->sum('due_deduction');
+                $dueDeductionsSum = (float)$purchase->purchaseReturnItems->sum('due_deduction');
 
                 $outstanding = (double)$purchase->grand_total - (double)max($purchase->paid, $actualPaid) - $dueDeductionsSum;
                 if ($outstanding < 0) {

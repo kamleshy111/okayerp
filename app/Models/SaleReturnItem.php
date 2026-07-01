@@ -11,14 +11,21 @@ class SaleReturnItem extends Model
 
     protected $fillable = [
         'sale_return_id',
+        'sale_id',
         'product_id',
         'quantity',
         'price',
+        'due_deduction',
     ];
 
     public function saleReturn()
     {
         return $this->belongsTo(SaleReturn::class);
+    }
+
+    public function sale()
+    {
+        return $this->belongsTo(Sale::class);
     }
 
     public function product()

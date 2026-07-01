@@ -38,7 +38,7 @@ class SuppliersController extends Controller
                 $actualPaid = $paymentsSum->sum('amount');
 
                 // Sum of due_deduction for returns on this purchase
-                $dueDeductionsSum = (float)$purchase->purchaseReturns->sum('due_deduction');
+                $dueDeductionsSum = (float)$purchase->purchaseReturnItems->sum('due_deduction');
 
                 // Sum of store credit refunds on this purchase
                 $storeCreditRefundsSum = (float)$purchase->purchaseReturns

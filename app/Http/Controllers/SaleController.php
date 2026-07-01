@@ -28,10 +28,10 @@ class SaleController extends Controller
             $q->where('user_id', $userId);
         })
         ->where('accepted', 1)
-        ->with(['customer', 'saleReturns'])
+        ->with(['customer', 'saleReturns', 'saleReturnItems'])
         ->get()
         ->map(function ($item) {
-            $dueDeductions = $item->saleReturns ? $item->saleReturns->sum('due_deduction') : 0;
+            $dueDeductions = $item->saleReturnItems ? $item->saleReturnItems->sum('due_deduction') : 0;
             $effectiveGrandTotal = max(0, $item->grand_total - $dueDeductions);
 
             return [
@@ -281,7 +281,7 @@ class SaleController extends Controller
             ->get();
 
         foreach ($allSales as $s) {
-            $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $s->id)->sum('due_deduction');
+            $returnDueDeduction = \App\Models\SaleReturnItem::where('sale_id', $s->id)->sum('due_deduction');
             $outstanding = (double)$s->grand_total - (double)$s->paid - (double)$returnDueDeduction;
             if ($outstanding <= 0) {
                 continue;
@@ -518,7 +518,7 @@ class SaleController extends Controller
                 ->get();
 
             foreach ($allSales as $s) {
-                $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $s->id)->sum('due_deduction');
+                $returnDueDeduction = \App\Models\SaleReturnItem::where('sale_id', $s->id)->sum('due_deduction');
                 $outstanding = (double)$s->grand_total - (double)$s->paid - (double)$returnDueDeduction;
                 if ($outstanding <= 0) {
                     continue;
@@ -542,7 +542,7 @@ class SaleController extends Controller
             }
         }
         $allocatedPayment = round($allocatedPayment, 2);
-        $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+        $returnDueDeduction = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
 
         $pdf = Pdf::loadView('invoice', compact('sale', 'allocatedPayment', 'returnDueDeduction'))->setPaper('a4');
 
@@ -611,7 +611,7 @@ class SaleController extends Controller
 
 
         $allocatedPayment = 0.0;
-        $returnDueDeduction = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+        $returnDueDeduction = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
         $payments = \App\Models\SalePayment::where('sale_id', $sale->id)->whereNotIn('payment_method', ['Wallet', 'Advance Deduction'])->orderBy('payment_date', 'asc')->get();
 
         // Keep the original down payment amount on the invoice details page as requested.

@@ -158,7 +158,7 @@ const grandRefundTotal = computed(() => {
 
 const affectedSales = computed(() => {
   const salesMap = {};
-  
+
   form.value.items.forEach(item => {
     if (!salesMap[item.sale_id]) {
       salesMap[item.sale_id] = {
@@ -170,11 +170,11 @@ const affectedSales = computed(() => {
         gst_refund: 0,
       };
     }
-    
+
     const qty = parseInt(item.quantity) || 0;
     const base = qty * item.price;
     salesMap[item.sale_id].base_refund += base;
-    
+
     if (item.accepted == 1) {
       const gstRate = (item.sgst + item.cgst) / 100;
       salesMap[item.sale_id].gst_refund += base * gstRate;
@@ -192,30 +192,17 @@ const affectedSales = computed(() => {
 });
 
 const maxAllowedDeduction = computed(() => {
-  return affectedSales.value.reduce((sum, s) => sum + s.max_deduction, 0);
+  return Math.min(grandRefundTotal.value, customerTotalDue.value);
 });
 
 const distributeDeduction = () => {
   let remaining = parseFloat(form.value.customer_due_deduction) || 0;
-  
+
   const maxLimit = maxAllowedDeduction.value;
   if (remaining > maxLimit) {
     remaining = maxLimit;
     form.value.customer_due_deduction = parseFloat(maxLimit.toFixed(2));
   }
-
-  const activeIds = affectedSales.value.map(s => s.sale_id.toString());
-  Object.keys(form.value.due_deductions).forEach(saleId => {
-    if (!activeIds.includes(saleId.toString())) {
-      delete form.value.due_deductions[saleId];
-    }
-  });
-
-  affectedSales.value.forEach(sale => {
-    const alloc = Math.min(remaining, sale.max_deduction);
-    form.value.due_deductions[sale.sale_id] = parseFloat(alloc.toFixed(2));
-    remaining -= alloc;
-  });
 };
 
 watch([grandRefundTotal, customerTotalDue], () => {
@@ -224,7 +211,6 @@ watch([grandRefundTotal, customerTotalDue], () => {
 }, { immediate: true });
 
 watch(() => form.value.customer_due_deduction, distributeDeduction);
-watch(affectedSales, distributeDeduction, { deep: true });
 
 const totalDueDeductions = computed(() => {
   return parseFloat(form.value.customer_due_deduction) || 0;
@@ -250,51 +236,26 @@ const submitReturn = async () => {
     }
   }
 
-  // Validate due deduction amounts
-  for (const sale of affectedSales.value) {
-    const deduct = parseFloat(form.value.due_deductions[sale.sale_id]) || 0;
-    if (deduct < 0 || deduct > sale.max_deduction) {
-      toast.error(`Due deduction amount for ${sale.invoice_label} must be between 0 and ₹ ${sale.max_deduction.toFixed(2)}.`);
-      return;
-    }
-  }
-
-  // Group items by sale_id since returns are created per invoice
-  const itemsBySale = {};
-  payloadItems.forEach(item => {
-    if (!itemsBySale[item.sale_id]) {
-      itemsBySale[item.sale_id] = [];
-    }
-    itemsBySale[item.sale_id].push(item);
-  });
+  const payload = {
+    customer_id: selectedCustomerId.value,
+    return_date: form.value.return_date,
+    refund_method: form.value.refund_method,
+    reason: form.value.reason,
+    due_deduction: parseFloat(form.value.customer_due_deduction) || 0,
+    items: payloadItems.map(item => ({
+      sale_id: item.sale_id,
+      product_id: item.product_id,
+      quantity: item.quantity,
+    })),
+  };
 
   try {
-    const invoiceUrls = [];
-
-    for (const [saleId, saleItems] of Object.entries(itemsBySale)) {
-      const payload = {
-        sale_id: saleId,
-        return_date: form.value.return_date,
-        refund_method: form.value.refund_method,
-        reason: form.value.reason,
-        due_deduction: parseFloat(form.value.due_deductions[saleId]) || 0,
-        items: saleItems.map(item => ({
-          product_id: item.product_id,
-          quantity: item.quantity,
-        })),
-      };
-
-      const response = await axios.post('/sale-return/store', payload);
-      if (response.data.invoice_url) {
-        invoiceUrls.push(response.data.invoice_url);
-      }
-    }
-
+    const response = await axios.post('/sale-return/store', payload);
     toast.success("Sales return processed successfully!");
 
-    invoiceUrls.forEach(url => {
-      window.open(url, '_blank');
-    });
+    if (response.data.invoice_url) {
+      window.open(response.data.invoice_url, '_blank');
+    }
 
     router.visit(route('sale-return.index'));
   } catch (error) {
@@ -525,11 +486,7 @@ const submitReturn = async () => {
 
                 <!-- Due Deductions for Customer Total Due -->
                 <div v-if="affectedSales.length > 0" class="border-t pt-3 space-y-3">
-                  <div class="flex justify-between text-sm font-semibold text-gray-700">
-                    <span>Customer Total Due:</span>
-                    <span class="font-mono text-indigo-700">₹ {{ customerTotalDue.toFixed(2) }}</span>
-                  </div>
-                  
+
                   <div class="space-y-1">
                     <label class="block text-xs text-gray-500">
                       Deduct from Customer Due (Max: ₹ {{ maxAllowedDeduction.toFixed(2) }})

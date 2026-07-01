@@ -105,11 +105,52 @@ class PurchaseReturnController extends Controller
             ];
         });
 
+        $supplierTotalDue = 0.0;
+        if ($purchase->supplier) {
+            $dueAmount = 0;
+            $advanceAmount = 0;
+
+            $supplierPurchases = Purchase::where('supplier_id', $purchase->supplier->id)->get();
+            foreach ($supplierPurchases as $p) {
+                $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $p->id);
+                if (session('private_ledger_unlocked') !== true) {
+                    $paymentsSum->where('accepted', 1);
+                }
+                $actualPaid = $paymentsSum->sum('amount');
+
+                $dueDeductionsSum = (float)\App\Models\PurchaseReturnItem::where('purchase_id', $p->id)->sum('due_deduction');
+
+                $storeCreditRefundsSum = (float)\App\Models\PurchaseReturn::where('purchase_id', $p->id)
+                    ->where('refund_method', 'Store Credit')
+                    ->get()
+                    ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+                $purchaseBalance = $actualPaid - (float)$p->grand_total + $dueDeductionsSum;
+                if ($purchaseBalance < 0) {
+                    $dueAmount += abs($purchaseBalance);
+                } elseif ($purchaseBalance > 0) {
+                    $advanceAmount += $purchaseBalance;
+                }
+
+                $advanceAmount += $storeCreditRefundsSum;
+            }
+
+            $totalDirectPaid = \App\Models\PurchasePayment::where('supplier_id', $purchase->supplier->id)
+                ->whereNull('purchase_id');
+            if (session('private_ledger_unlocked') !== true) {
+                $totalDirectPaid->where('accepted', 1);
+            }
+            $advanceAmount += $totalDirectPaid->sum('amount');
+
+            $supplierTotalDue = max(0, $dueAmount - $advanceAmount);
+        }
+
         return response()->json([
             'purchase_id' => $purchase->id,
             'supplier_name' => $purchase->supplier->name ?? '',
             'accepted' => $purchase->accepted,
             'due_amount' => max(0, (float)$purchase->grand_total - (float)$purchase->paid),
+            'supplier_total_due' => round($supplierTotalDue, 2),
             'items' => $items,
         ]);
     }
@@ -168,24 +209,35 @@ class PurchaseReturnController extends Controller
             $refundAmount = 0;
             $gstRefundAmount = 0;
 
+            // Generate unique return number
+            $lastReturn = PurchaseReturn::where('user_id', $userId)->orderBy('id', 'desc')->first();
+            if ($lastReturn) {
+                $parts = explode('-', $lastReturn->return_no);
+                $nextNumber = ((int) end($parts)) + 1;
+            } else {
+                $nextNumber = 1;
+            }
+            $returnNo = 'PRET-' . $userId . '-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
+
             // Create return record first
             $purchaseReturn = PurchaseReturn::create([
                 'user_id' => $userId,
                 'purchase_id' => $purchase->id,
+                'supplier_id' => $purchase->supplier_id,
                 'return_no' => $returnNo,
                 'return_date' => $request->input('return_date'),
                 'refund_method' => $request->input('refund_method'),
                 'reason' => $request->input('reason'),
                 'refund_amount' => 0,
                 'gst_refund_amount' => 0,
-                'due_deduction' => (float)$request->input('due_deduction', 0),
+                'due_deduction' => 0,
             ]);
 
+            $itemsToSave = [];
             foreach ($request->input('items') as $item) {
                 $productId = $item['product_id'];
                 $returnQty = (int) $item['quantity'];
 
-                // Check matches in original items
                 $purchaseItem = $purchase->items->firstWhere('product_id', $productId);
                 if (!$purchaseItem) {
                     throw new \Exception("Product was not part of original purchase.");
@@ -198,10 +250,8 @@ class PurchaseReturnController extends Controller
                     throw new \Exception("Returned quantity for product {$productId} exceeds allowed maximum of {$maxReturnable}.");
                 }
 
-                // Calculate base and GST refund values
                 $itemBaseRefund = $returnQty * $purchaseItem->price;
                 $itemGstRefund = 0;
-
                 if ($purchase->accepted == 1) {
                     $gstRate = ($purchaseItem->sgst + $purchaseItem->cgst) / 100;
                     $itemGstRefund = $itemBaseRefund * $gstRate;
@@ -210,15 +260,16 @@ class PurchaseReturnController extends Controller
                 $refundAmount += $itemBaseRefund;
                 $gstRefundAmount += $itemGstRefund;
 
-                // Create PurchaseReturnItem
-                PurchaseReturnItem::create([
-                    'purchase_return_id' => $purchaseReturn->id,
+                $itemsToSave[] = [
                     'product_id' => $productId,
                     'quantity' => $returnQty,
                     'price' => $purchaseItem->price,
-                ]);
+                    'refund_total' => $itemBaseRefund + $itemGstRefund,
+                    'purchase_id' => $purchase->id,
+                    'due_deduction' => 0.00,
+                ];
 
-                // Decrement Product stock (we are sending it back, so stock goes down)
+                // Decrement Product stock
                 $product = Product::where('user_id', $userId)->find($productId);
                 if ($product) {
                     $product->stock_quantity -= $returnQty;
@@ -237,37 +288,94 @@ class PurchaseReturnController extends Controller
                 }
             }
 
-            // Calculate due reduction vs cash refund based on the purchase's original state and request
+            // Calculate supplier-level due deductions
             $totalRefund = $refundAmount + $gstRefundAmount;
-            $previousDueDeductions = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->where('id', '!=', $purchaseReturn->id)->sum('due_deduction');
-            $dueOnPurchase = max(0, (float)$purchase->grand_total - (float)$purchase->paid - $previousDueDeductions);
             $requestedDueDeduction = (float)$request->input('due_deduction', 0);
-            $dueReduction = min($requestedDueDeduction, min($totalRefund, $dueOnPurchase));
-            $remainingRefund = max(0, $totalRefund - $dueReduction);
+            $remainingDeduction = min($requestedDueDeduction, $totalRefund);
+            $deductionsByPurchase = [];
 
-            // Update refund totals and actual due deduction
+            // Find all purchases for this supplier to greedily allocate the due deduction
+            $supplierPurchases = Purchase::where('supplier_id', $purchase->supplier_id)
+                ->orderBy('purchase_date', 'asc')
+                ->orderBy('id', 'asc')
+                ->get();
+
+            foreach ($supplierPurchases as $sp) {
+                if ($remainingDeduction <= 0) {
+                    break;
+                }
+
+                $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $sp->id);
+                if (session('private_ledger_unlocked') !== true) {
+                    $paymentsSum->where('accepted', 1);
+                }
+                $actualPaid = $paymentsSum->sum('amount');
+
+                $prevDeductions = \App\Models\PurchaseReturnItem::where('purchase_id', $sp->id)->sum('due_deduction');
+                $dueOnSp = max(0, (float)$sp->grand_total - $actualPaid - $prevDeductions);
+
+                if ($dueOnSp > 0) {
+                    $allocated = min($remainingDeduction, $dueOnSp);
+                    $deductionsByPurchase[$sp->id] = $allocated;
+                    $remainingDeduction -= $allocated;
+                }
+            }
+
+            $actualDueDeduction = $requestedDueDeduction - $remainingDeduction;
+
+            // Save items without splitting
+            $finalItemsToSave = [];
+
+            $remainingDueDeduction = $actualDueDeduction;
+
+            foreach ($itemsToSave as $index => $itemInfo) {
+
+                if ($index == 0) {
+                    $itemInfo['due_deduction'] = $remainingDueDeduction;
+                } else {
+                    $itemInfo['due_deduction'] = 0;
+                }
+
+                $finalItemsToSave[] = $itemInfo;
+            }
+
+            // Save items to database
+            foreach ($finalItemsToSave as $itemData) {
+                PurchaseReturnItem::create([
+                    'purchase_return_id' => $purchaseReturn->id,
+                    'product_id' => $itemData['product_id'],
+                    'purchase_id' => $itemData['purchase_id'],
+                    'quantity' => $itemData['quantity'],
+                    'price' => $itemData['price'],
+                    'due_deduction' => $itemData['due_deduction'],
+                ]);
+            }
+
+            // Update return totals
             $purchaseReturn->update([
                 'refund_amount' => $refundAmount,
                 'gst_refund_amount' => $gstRefundAmount,
-                'due_deduction' => $dueReduction,
+                'due_deduction' => $actualDueDeduction,
             ]);
 
             // Post to double-entry accounting ledger
             $accountingService = new AccountingService($userId);
             $accountingService->postPurchaseReturn($purchaseReturn);
 
-            // Calculate effective balance due to update payment status
-            $totalDueDeductions = \App\Models\PurchaseReturn::where('purchase_id', $purchase->id)->sum('due_deduction');
-            $effectiveBalance = max(0, (float)$purchase->grand_total - (float)$purchase->paid - $totalDueDeductions);
+            // Update payment status for all affected purchases
+            foreach ($supplierPurchases as $sp) {
+                $totalDueDeductions = \App\Models\PurchaseReturnItem::where('purchase_id', $sp->id)->sum('due_deduction');
+                $effectiveBalance = max(0, (float)$sp->grand_total - (float)$sp->paid - $totalDueDeductions);
 
-            if ($effectiveBalance <= 0) {
-                $purchase->payment_status = 'Paid';
-            } elseif ((float)$purchase->paid + $totalDueDeductions <= 0) {
-                $purchase->payment_status = 'Unpaid';
-            } else {
-                $purchase->payment_status = 'Partial';
+                if ($effectiveBalance <= 0) {
+                    $sp->payment_status = 'Paid';
+                } elseif ((float)$sp->paid + $totalDueDeductions <= 0) {
+                    $sp->payment_status = 'Unpaid';
+                } else {
+                    $sp->payment_status = 'Partial';
+                }
+                $sp->save();
             }
-            $purchase->save();
 
             DB::commit();
 

@@ -105,7 +105,7 @@ class SaleReturnController extends Controller
 
         // For each sale item, calculate previously returned quantities
         $saleIds = $sales->pluck('id')->toArray();
-        
+
         $previousReturns = DB::table('sale_return_items')
             ->join('sale_returns', 'sale_return_items.sale_return_id', '=', 'sale_returns.id')
             ->whereIn('sale_returns.sale_id', $saleIds)
@@ -117,20 +117,58 @@ class SaleReturnController extends Controller
             })
             ->toArray();
 
-        $customerTotalDue = 0.0;
+        // Calculate customer's Net Balance (due) just like in CustomersController
+        $dueAmountSum = 0;
+        $advanceAmountSum = 0;
+
+        $customerSales = Sale::where('customer_id', $customerId);
+        if (session('private_ledger_unlocked') !== true) {
+            $customerSales->where('accepted', 1);
+        }
+        $customerSales = $customerSales->get();
+
+        foreach ($customerSales as $s) {
+            $paymentsSum = \App\Models\SalePayment::where('sale_id', $s->id);
+            if (session('private_ledger_unlocked') !== true) {
+                $paymentsSum->where('accepted', 1);
+            }
+            $actualPaid = $paymentsSum->sum('amount');
+
+            $dueDeductionsSum = (float)\App\Models\SaleReturnItem::where('sale_id', $s->id)->sum('due_deduction');
+
+            $storeCreditRefundsSum = (float)\App\Models\SaleReturn::where('sale_id', $s->id)
+                ->where('refund_method', 'Store Credit')
+                ->get()
+                ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+            $saleBalance = $actualPaid - (float)$s->grand_total + $dueDeductionsSum;
+            if ($saleBalance < 0) {
+                $dueAmountSum += abs($saleBalance);
+            } elseif ($saleBalance > 0) {
+                $advanceAmountSum += $saleBalance;
+            }
+
+            $advanceAmountSum += $storeCreditRefundsSum;
+        }
+
+        $totalDirectPaid = \App\Models\SalePayment::where('customer_id', $customerId)->whereNull('sale_id');
+        if (session('private_ledger_unlocked') !== true) {
+            $totalDirectPaid->where('accepted', 1);
+        }
+        $advanceAmountSum += $totalDirectPaid->sum('amount');
+
+        $customerTotalDue = max(0, $dueAmountSum - $advanceAmountSum);
+
         $items = [];
         foreach ($sales as $sale) {
-            $previousDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
+            $previousDueDeductions = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
             $dueAmount = max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions);
-
-            // Add to customer's total outstanding due
-            $customerTotalDue += $dueAmount;
 
             foreach ($sale->saleItems as $saleItem) {
                 if (!$saleItem->product) {
                     continue;
                 }
-                
+
                 $key = $sale->id . '-' . $saleItem->product_id;
                 $prevReturned = isset($previousReturns[$key]) ? (int)$previousReturns[$key]->total_returned : 0;
                 $availableQty = max(0, $saleItem->quantity - $prevReturned);
@@ -199,8 +237,8 @@ class SaleReturnController extends Controller
             ];
         });
 
-        $previousDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
-        
+        $previousDueDeductions = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
+
         return response()->json([
             'sale_id' => $sale->id,
             'customer_name' => $sale->customer->name ?? '',
@@ -213,7 +251,8 @@ class SaleReturnController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'sale_id' => 'required|exists:sales,id',
+            'sale_id' => 'required_without:customer_id|exists:sales,id',
+            'customer_id' => 'required_without:sale_id|exists:customers,id',
             'return_date' => 'required|date',
             'refund_method' => 'required|string',
             'reason' => 'nullable|string',
@@ -223,35 +262,39 @@ class SaleReturnController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
         ]);
 
+
         $userId = Auth::id();
+        $saleId = $request->input('sale_id');
+        $customerId = $request->input('customer_id');
 
-        // Load Sale and verify ownership
-        $sale = Sale::whereHas('customer', function ($q) use ($userId) {
-            $q->where('user_id', $userId);
-        })
-        ->with('saleItems')
-        ->find($request->input('sale_id'));
-
-        if (!$sale) {
-            return response()->json(['message' => 'Unauthorized or invalid sale.'], 403);
+        if (!$customerId && $saleId) {
+            $sale = Sale::find($saleId);
+            $customerId = $sale ? $sale->customer_id : null;
         }
 
-        // Get previously returned quantities
-        $previousReturns = SaleReturnItem::whereHas('saleReturn', function ($q) use ($sale) {
-            $q->where('sale_id', $sale->id);
-        })
-        ->groupBy('product_id')
-        ->select('product_id', DB::raw('SUM(quantity) as total_returned'))
-        ->pluck('total_returned', 'product_id')
-        ->toArray();
+        $customer = Customer::where('user_id', $userId)->find($customerId);
+        if (!$customer) {
+            return response()->json(['message' => 'Unauthorized or invalid customer.'], 403);
+        }
+
+        // Group items by sale_id, resolving item sale_id from parent fallback if missing
+        $itemsBySale = [];
+        $resolvedItems = [];
+        foreach ($request->input('items') as $item) {
+            $itemSaleId = $item['sale_id'] ?? $saleId;
+            if (!$itemSaleId) {
+                return response()->json(['message' => 'Missing sale_id for returned products.'], 422);
+            }
+            $item['sale_id'] = $itemSaleId;
+            $resolvedItems[] = $item;
+            $itemsBySale[$itemSaleId][] = $item;
+        }
 
         DB::beginTransaction();
 
         try {
             // Generate Return Number RET-XXXXX
-            $lastReturn = SaleReturn::whereHas('sale.customer', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
-            })->orderBy('id', 'desc')->first();
+            $lastReturn = SaleReturn::where('user_id', $userId)->orderBy('id', 'desc')->first();
 
             if ($lastReturn) {
                 $parts = explode('-', $lastReturn->return_no);
@@ -261,109 +304,167 @@ class SaleReturnController extends Controller
             }
             $returnNo = 'RET-' . $userId . '-' . str_pad($nextNumber, 5, '0', STR_PAD_LEFT);
 
-            $refundAmount = 0;
-            $gstRefundAmount = 0;
+            // Fetch all involved sales
+            $salesList = Sale::whereIn('id', array_keys($itemsBySale))
+                ->with('saleItems')
+                ->get()
+                ->keyBy('id');
 
-            // Create return record first
+            $firstItem = collect($resolvedItems)->first();
+            $firstSaleId = $firstItem ? $firstItem['sale_id'] : null;
+
+            // Create single return record
             $saleReturn = SaleReturn::create([
                 'user_id' => $userId,
-                'sale_id' => $sale->id,
+                'sale_id' => $firstSaleId, // For database schema backwards compatibility
+                'customer_id' => $customer->id,
                 'return_no' => $returnNo,
                 'return_date' => $request->input('return_date'),
                 'refund_method' => $request->input('refund_method'),
                 'reason' => $request->input('reason'),
                 'refund_amount' => 0,
                 'gst_refund_amount' => 0,
-                'due_deduction' => (float)$request->input('due_deduction', 0),
+                'due_deduction' => 0,
             ]);
 
-            foreach ($request->input('items') as $item) {
-                $productId = $item['product_id'];
-                $returnQty = (int) $item['quantity'];
+            // Calculate due deductions per sale
+            $requestedDueDeduction = (float)$request->input('due_deduction', 0);
+            $remainingDeduction = $requestedDueDeduction;
+            $deductionsBySale = [];
 
-                // Check matches in original sale items
-                $saleItem = $sale->saleItems->firstWhere('product_id', $productId);
-                if (!$saleItem) {
-                    throw new \Exception("Product was not part of original sale.");
+            // Compute total refunds per sale and allocate due deduction
+            foreach ($itemsBySale as $saleId => $saleItems) {
+                $sale = $salesList[$saleId] ?? null;
+                if (!$sale) {
+                    throw new \Exception("Invalid sale invoice #{$saleId}");
                 }
 
-                $prevReturned = $previousReturns[$productId] ?? 0;
-                $maxReturnable = $saleItem->quantity - $prevReturned;
+                $previousDueDeductions = \App\Models\SaleReturnItem::where('sale_id', $saleId)->sum('due_deduction');
+                $dueOnSale = max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions);
 
-                if ($returnQty > $maxReturnable) {
-                    throw new \Exception("Returned quantity for product {$productId} exceeds allowed maximum of {$maxReturnable}.");
+                $saleRefundTotal = 0.0;
+                foreach ($saleItems as $item) {
+                    $saleItem = $sale->saleItems->firstWhere('product_id', $item['product_id']);
+                    if (!$saleItem) {
+                        throw new \Exception("Product {$item['product_id']} was not part of original sale #{$saleId}.");
+                    }
+                    $itemBase = $item['quantity'] * $saleItem->price;
+                    $itemGst = 0.0;
+                    if ($sale->accepted == 1) {
+                        $gstRate = ($saleItem->sgst + $saleItem->cgst) / 100;
+                        $itemGst = $itemBase * $gstRate;
+                    }
+                    $saleRefundTotal += $itemBase + $itemGst;
                 }
 
-                // Calculate base and GST refund values
-                $itemBaseRefund = $returnQty * $saleItem->price;
-                $itemGstRefund = 0;
+                $allocated = min($remainingDeduction, $dueOnSale);
 
-                if ($sale->accepted == 1) {
-                    $gstRate = ($saleItem->sgst + $saleItem->cgst) / 100;
-                    $itemGstRefund = $itemBaseRefund * $gstRate;
-                }
+                $deductionsBySale[$saleId] = $allocated;
+                $remainingDeduction -= $allocated;
+            }
 
-                $refundAmount += $itemBaseRefund;
-                $gstRefundAmount += $itemGstRefund;
+            $refundAmount = 0;
+            $gstRefundAmount = 0;
+            $actualDueDeduction = 0;
 
-                // Create SaleReturnItem
-                SaleReturnItem::create([
-                    'sale_return_id' => $saleReturn->id,
-                    'product_id' => $productId,
-                    'quantity' => $returnQty,
-                    'price' => $saleItem->price,
-                ]);
+            // Process returned products
+            foreach ($itemsBySale as $saleId => $saleItems) {
+                $sale = $salesList[$saleId];
 
-                // Increment Product stock
-                $product = Product::where('user_id', $userId)->find($productId);
-                if ($product) {
-                    $product->stock_quantity += $returnQty;
-                    $product->save();
+                // Get previously returned quantities specifically for this sale
+                $previousReturns = SaleReturnItem::where('sale_id', $saleId)
+                    ->groupBy('product_id')
+                    ->select('product_id', DB::raw('SUM(quantity) as total_returned'))
+                    ->pluck('total_returned', 'product_id')
+                    ->toArray();
 
-                    // Log StockMovement
-                    StockMovement::create([
-                        'user_id' => $userId,
+                foreach ($saleItems as $item) {
+                    $productId = $item['product_id'];
+                    $returnQty = (int) $item['quantity'];
+
+                    $saleItem = $sale->saleItems->firstWhere('product_id', $productId);
+                    $prevReturned = $previousReturns[$productId] ?? 0;
+                    $maxReturnable = $saleItem->quantity - $prevReturned;
+
+                    if ($returnQty > $maxReturnable) {
+                        throw new \Exception("Returned quantity for product {$productId} exceeds allowed maximum of {$maxReturnable}.");
+                    }
+
+                    $itemBaseRefund = $returnQty * $saleItem->price;
+                    $itemGstRefund = 0;
+
+                    if ($sale->accepted == 1) {
+                        $gstRate = ($saleItem->sgst + $saleItem->cgst) / 100;
+                        $itemGstRefund = $itemBaseRefund * $gstRate;
+                    }
+
+                    $refundAmount += $itemBaseRefund;
+                    $gstRefundAmount += $itemGstRefund;
+
+                    // Allocate due deduction to the item
+                    $itemDueDeduction = 0.0;
+                    if (isset($deductionsBySale[$saleId]) && $deductionsBySale[$saleId] > 0) {
+                        $itemDueDeduction = $deductionsBySale[$saleId];
+                        $actualDueDeduction += $itemDueDeduction;
+                        $deductionsBySale[$saleId] = 0; // Clear after allocation
+                    }
+
+                    // Create SaleReturnItem
+                    SaleReturnItem::create([
+                        'sale_return_id' => $saleReturn->id,
+                        'sale_id' => $saleId,
                         'product_id' => $productId,
                         'quantity' => $returnQty,
-                        'type' => 'Addition',
-                        'reference_type' => 'SaleReturn',
-                        'reference_id' => $saleReturn->id,
-                        'reason' => "Sale Return #{$returnNo}",
+                        'price' => $saleItem->price,
+                        'due_deduction' => $itemDueDeduction,
                     ]);
+
+                    // Increment Product stock
+                    $product = Product::where('user_id', $userId)->find($productId);
+                    if ($product) {
+                        $product->stock_quantity += $returnQty;
+                        $product->save();
+
+                        // Log StockMovement
+                        StockMovement::create([
+                            'user_id' => $userId,
+                            'product_id' => $productId,
+                            'quantity' => $returnQty,
+                            'type' => 'Addition',
+                            'reference_type' => 'SaleReturn',
+                            'reference_id' => $saleReturn->id,
+                            'reason' => "Sale Return #{$returnNo}",
+                        ]);
+                    }
                 }
             }
 
-            // Calculate due reduction vs cash refund based on the sale's original state and request
-            $totalRefund = $refundAmount + $gstRefundAmount;
-            $previousDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->where('id', '!=', $saleReturn->id)->sum('due_deduction');
-            $dueOnSale = max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions);
-            $requestedDueDeduction = (float)$request->input('due_deduction', 0);
-            $dueReduction = min($requestedDueDeduction, min($totalRefund, $dueOnSale));
-            $remainingRefund = max(0, $totalRefund - $dueReduction);
-
-            // Update refund totals and actual due deduction
+            // Update final return values
             $saleReturn->update([
                 'refund_amount' => $refundAmount,
                 'gst_refund_amount' => $gstRefundAmount,
-                'due_deduction' => $dueReduction,
+                'due_deduction' => $actualDueDeduction,
             ]);
 
             // Post to double-entry accounting ledger
             $accountingService = new AccountingService($userId);
             $accountingService->postSaleReturn($saleReturn);
 
-            // Calculate effective balance due to update payment status
-            $totalDueDeductions = \App\Models\SaleReturn::where('sale_id', $sale->id)->sum('due_deduction');
-            $effectiveBalance = max(0, (float)$sale->grand_total - (float)$sale->paid - $totalDueDeductions);
+            // Update payment status for each sale
+            foreach (array_keys($itemsBySale) as $saleId) {
+                $sale = $salesList[$saleId];
+                $totalDueDeductions = \App\Models\SaleReturnItem::where('sale_id', $saleId)->sum('due_deduction');
+                $effectiveBalance = max(0, (float)$sale->grand_total - (float)$sale->paid - $totalDueDeductions);
 
-            if ($effectiveBalance <= 0) {
-                $sale->payment_status = 'Paid';
-            } elseif ((float)$sale->paid + $totalDueDeductions <= 0) {
-                $sale->payment_status = 'Unpaid';
-            } else {
-                $sale->payment_status = 'Partial';
+                if ($effectiveBalance <= 0) {
+                    $sale->payment_status = 'Paid';
+                } elseif ((float)$sale->paid + $totalDueDeductions <= 0) {
+                    $sale->payment_status = 'Unpaid';
+                } else {
+                    $sale->payment_status = 'Partial';
+                }
+                $sale->save();
             }
-            $sale->save();
 
             DB::commit();
 
@@ -384,10 +485,8 @@ class SaleReturnController extends Controller
     {
         $userId = Auth::id();
 
-        $return = SaleReturn::whereHas('sale.customer', function ($q) use ($userId) {
-            $q->where('user_id', $userId);
-        })
-        ->with(['sale.customer.user', 'items.product'])
+        $return = SaleReturn::where('user_id', $userId)
+        ->with(['customer.user', 'items.product'])
         ->find($id);
 
         if (!$return) {

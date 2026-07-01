@@ -81,9 +81,9 @@ class SupplierPaymentController extends Controller
             ];
         });
 
-        // Merge both arrays and sort by payment_date descending
+        // Merge both arrays and sort by created_at descending
         $detailedHistory = $payments->concat($returns)
-            ->sortByDesc('payment_date')
+            ->sortByDesc('created_at') // Sort by created_at descending
             ->values()
             ->all();
 
@@ -94,7 +94,7 @@ class SupplierPaymentController extends Controller
 
     public function history($id) {
         $userId = Auth::id();
-        
+
         $supplier = Supplier::where('user_id', $userId)->findOrFail($id);
 
         // Fetch payments for this supplier
@@ -112,12 +112,17 @@ class SupplierPaymentController extends Controller
         });
 
         // Fetch returns for this supplier
-        $returnsQuery = PurchaseReturn::whereHas('purchase', function ($q) use ($id) {
-            $q->where('supplier_id', $id);
+        $returnsQuery = PurchaseReturn::where(function ($q) use ($id) {
+            $q->where('supplier_id', $id)
+              ->orWhereHas('purchase', function ($p) use ($id) {
+                  $p->where('supplier_id', $id);
+              });
         })->where('user_id', $userId);
         if (session('private_ledger_unlocked') !== true) {
-            $returnsQuery->whereHas('purchase', function ($q) {
-                $q->where('accepted', 1);
+            $returnsQuery->where(function ($q) {
+                $q->whereNull('purchase_id')->orWhereHas('purchase', function ($pQ) {
+                    $pQ->where('accepted', 1);
+                });
             });
         }
         $returns = $returnsQuery->get()->map(function ($item) {
@@ -130,7 +135,7 @@ class SupplierPaymentController extends Controller
             ];
         });
 
-        $history = $payments->concat($returns)->sortByDesc('payment_date')->values()->all();
+        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
 
         return Inertia::render('SupplierPayment/History', [
             'supplier' => $supplier,
@@ -140,7 +145,7 @@ class SupplierPaymentController extends Controller
 
     public function downloadHistoryPdf($id) {
         $userId = Auth::id();
-        
+
         $supplier = Supplier::with('user')->where('user_id', $userId)->findOrFail($id);
 
         // Fetch payments for this supplier
@@ -158,12 +163,17 @@ class SupplierPaymentController extends Controller
         });
 
         // Fetch returns for this supplier
-        $returnsQuery = PurchaseReturn::whereHas('purchase', function ($q) use ($id) {
-            $q->where('supplier_id', $id);
+        $returnsQuery = PurchaseReturn::where(function ($q) use ($id) {
+            $q->where('supplier_id', $id)
+              ->orWhereHas('purchase', function ($p) use ($id) {
+                  $p->where('supplier_id', $id);
+              });
         })->where('user_id', $userId);
         if (session('private_ledger_unlocked') !== true) {
-            $returnsQuery->whereHas('purchase', function ($q) {
-                $q->where('accepted', 1);
+            $returnsQuery->where(function ($q) {
+                $q->whereNull('purchase_id')->orWhereHas('purchase', function ($pQ) {
+                    $pQ->where('accepted', 1);
+                });
             });
         }
         $returns = $returnsQuery->get()->map(function ($item) {
@@ -176,7 +186,7 @@ class SupplierPaymentController extends Controller
             ];
         });
 
-        $history = $payments->concat($returns)->sortByDesc('payment_date')->values()->all();
+        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
 
         // Calculate summary stats
         $totalPaid = 0.0;

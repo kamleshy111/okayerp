@@ -12,6 +12,7 @@ class SaleReturn extends Model
     protected $fillable = [
         'user_id',
         'sale_id',
+        'customer_id',
         'return_no',
         'return_date',
         'refund_amount',
@@ -24,6 +25,11 @@ class SaleReturn extends Model
     public function user()
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function customer()
+    {
+        return $this->belongsTo(Customer::class);
     }
 
     public function sale()
