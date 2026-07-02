@@ -270,14 +270,14 @@ const submitCustomer = async () => {
       toast.error("Customer name is required!");
       return;
     }
-    if (!newCustomer.value.phone) {
-      toast.error("Customer phone is required!");
-      return;
-    }
-    if (!newCustomer.value.email) {
-      toast.error("Customer email is required!");
-      return;
-    }
+    // if (!newCustomer.value.phone) {
+    //   toast.error("Customer phone is required!");
+    //   return;
+    // }
+    // if (!newCustomer.value.email) {
+    //   toast.error("Customer email is required!");
+    //   return;
+    // }
 
     const response = await axios.post('/customer/store', newCustomer.value);
     const createdCustomer = response.data;
@@ -338,8 +338,8 @@ watch(isInterstate, (newVal) => {
     if (!item.gst_rate_id) return;
     const currentRate = props.gstRates.find(r => r.id === item.gst_rate_id);
     if (currentRate) {
-      const targetRate = props.gstRates.find(r => 
-        parseFloat(r.rate) === parseFloat(currentRate.rate) && 
+      const targetRate = props.gstRates.find(r =>
+        parseFloat(r.rate) === parseFloat(currentRate.rate) &&
         (newVal ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
       );
       if (targetRate) {
@@ -956,13 +956,13 @@ const submitForm = async () => {
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newCustomer.phone" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input type="text" v-model="newCustomer.phone" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
-                    <input type="email" v-model="newCustomer.email" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" v-model="newCustomer.email" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
