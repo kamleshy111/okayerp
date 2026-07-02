@@ -573,6 +573,20 @@ class SaleController extends Controller
         DB::beginTransaction();
 
         try {
+            // Restore product stock quantities (since items are no longer sold)
+            $saleItems = SaleItem::where('sale_id', $id)->get();
+            foreach ($saleItems as $sItem) {
+                $product = Product::find($sItem->product_id);
+                if ($product) {
+                    $product->stock_quantity += $sItem->quantity;
+                    $product->save();
+                }
+            }
+
+            // Delete associated stock movements
+            \App\Models\StockMovement::where('reference_type', 'Sale')
+                ->where('reference_id', $id)
+                ->delete();
 
             $accountingService = new AccountingService(Auth::id());
 

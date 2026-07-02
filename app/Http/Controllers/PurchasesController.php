@@ -485,7 +485,22 @@ class PurchasesController extends Controller
         DB::beginTransaction();
 
         try {
+            // Revert product stock quantities
+            $purchaseItems = PurchaseItem::where('purchase_id', $id)->get();
+            foreach ($purchaseItems as $pItem) {
+                $product = Product::find($pItem->product_id);
+                if ($product) {
+                    $product->stock_quantity -= $pItem->quantity;
+                    $product->save();
+                }
+            }
 
+            // Delete associated stock movements
+            \App\Models\StockMovement::where('reference_type', 'Purchase')
+                ->where('reference_id', $id)
+                ->delete();
+
+            // Delete purchase items
             PurchaseItem::where('purchase_id', $id)->delete();
 
             $accountingService = new AccountingService(Auth::id());
