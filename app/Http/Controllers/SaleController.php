@@ -39,7 +39,7 @@ class SaleController extends Controller
                 'customerName' => $item->customer->name ?? '',
                 'email' => $item->customer->email ?? '',
                 'phone' => $item->customer->phone ?? '',
-                'grand_total' => $effectiveGrandTotal,
+                'grand_total' => number_format($effectiveGrandTotal, 2, '.', ''),
                 'sale_date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->paid >= $effectiveGrandTotal ? 'Paid' : $item->payment_status,
             ];

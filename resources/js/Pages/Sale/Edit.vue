@@ -112,7 +112,7 @@ const onCustomerSearch = async (search, loading) => {
   try {
     const response = await axios.get(`/customer/search?query=${encodeURIComponent(search)}`);
     customers.value = response.data;
-    
+
     // Ensure selected customer is always in options list
     const selected = selectedCustomer.value || props.customers.find(c => c.id == form.value.customer_id) || customers.value.find(c => c.id == form.value.customer_id);
     if (selected && !customers.value.some(c => c.id == selected.id)) {
@@ -155,8 +155,8 @@ const form = ref({
                     const sgst = parseFloat(item.sgst) || 0;
                     const cgst = parseFloat(item.cgst) || 0;
                     const totalProductRate = sgst + cgst;
-                    const matchedRate = props.gstRates.find(r => 
-                      parseFloat(r.rate) === totalProductRate && 
+                    const matchedRate = props.gstRates.find(r =>
+                      parseFloat(r.rate) === totalProductRate &&
                       (isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
                     );
                     console.log("GST Debug: ", {
@@ -167,7 +167,7 @@ const form = ref({
                       matchedRate,
                       gstRates: props.gstRates
                     });
-                    const defaultRate = props.gstRates.find(r => 
+                    const defaultRate = props.gstRates.find(r =>
                       isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst')
                     );
                     return {
@@ -216,8 +216,8 @@ watch(isInterstate, (newVal) => {
     if (!item.gst_rate_id) return;
     const currentRate = props.gstRates.find(r => r.id === item.gst_rate_id);
     if (currentRate) {
-      const targetRate = props.gstRates.find(r => 
-        parseFloat(r.rate) === parseFloat(currentRate.rate) && 
+      const targetRate = props.gstRates.find(r =>
+        parseFloat(r.rate) === parseFloat(currentRate.rate) &&
         (newVal ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
       );
       if (targetRate) {
@@ -492,14 +492,6 @@ const submitForm = async () => {
             <a :href="route('sale')"><i style="font-size: 14px;" class="bi bi-chevron-left"></i><span style="margin-left: 5px;">Sale</span></a>
         </div>
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Update Sale</h2>
-            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4">
-                <strong>Debug Info:</strong>
-                isInterstate: {{ isInterstate }} |
-                storeState: "{{ storeState }}" |
-                customerState: "{{ selectedCustomer?.state }}" |
-                saleItems: {{ form.sale_items.map(i => ({ pid: i.product_id, rate_id: i.gst_rate_id, sgst: i.sgst, cgst: i.cgst })) }} |
-                filteredRates: {{ filteredGstRates.map(r => ({ id: r.id, name: r.name })) }}
-            </div>
         <div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">

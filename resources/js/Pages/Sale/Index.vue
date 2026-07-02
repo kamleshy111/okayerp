@@ -14,7 +14,7 @@ defineProps({
 // Column definitions for DataTable
 const columns = [
 //   { data: 'id', title: 'S No' },
-    { 
+    {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
@@ -22,13 +22,17 @@ const columns = [
     { data: 'customerName'},
     { data: 'phone'},
     { data: 'email'},
-    { data: 'grand_total' },
+    { data: 'grand_total',
+        render: function (data) {
+            return data ? parseFloat(data).toFixed(2) : '0.00';
+        }
+    },
     { data: 'sale_date'},
     {
         title: 'Actions',
         data: null,
         orderable: false,
-        searchable: false, 
+        searchable: false,
         render: (data, type, row) => {
             return `
             <div class="icon-all-dflex">
@@ -87,7 +91,7 @@ function deleteSale(saleId) {
 
     <Head title="Sale">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
-    </Head>  
+    </Head>
 
     <AuthenticatedLayout>
       <div class="p-6">
