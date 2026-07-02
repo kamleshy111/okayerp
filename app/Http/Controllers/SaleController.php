@@ -55,9 +55,13 @@ class SaleController extends Controller
         $userId = Auth::id();
 
         $products = [];
+        $categories = \App\Models\Category::where('user_id', $userId)->select('id', 'name')->get();
+        $unitTypes = config('units.types') ?? [];
         $gstRates = \App\Models\GstRate::where('is_active', true)->get();
         return Inertia::render('Sale/Create',[
             'products' => $products,
+            'categories' => $categories,
+            'unitTypes' => $unitTypes,
             'gstRates' => $gstRates,
         ]);
     }

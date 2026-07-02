@@ -8,6 +8,8 @@ import axios from 'axios';
 import vSelect from "vue3-select";
 import "vue3-select/dist/vue3-select.css";
 
+import AddProductModal from '@/Components/AddProductModal.vue';
+
 const props = defineProps({
   customers: {
     type: Array,
@@ -17,6 +19,14 @@ const props = defineProps({
   products: {
     type: Array,
     required: true,
+  },
+  categories: {
+    type: Array,
+    default: () => [],
+  },
+  unitTypes: {
+    type: Object,
+    default: () => ({}),
   },
   gstRates: {
     type: Array,
@@ -614,6 +624,24 @@ const submitForm = async () => {
   }
 };
 
+// Add Product Modal State
+const showProductModal = ref(false);
+const activeProductRowIndex = ref(null);
+
+const openProductModal = (rowIndex, search) => {
+  activeProductRowIndex.value = rowIndex;
+  productSearchQuery.value = search || '';
+  showProductModal.value = true;
+};
+
+const handleProductSuccess = (createdProduct) => {
+  productRegistry.value[createdProduct.id] = createdProduct;
+  products.value.push(createdProduct);
+  if (activeProductRowIndex.value !== null) {
+    form.value.sale_items[activeProductRowIndex.value].product_id = createdProduct.id;
+  }
+  showProductModal.value = false;
+};
 </script>
 <template>
 
@@ -705,7 +733,20 @@ const submitForm = async () => {
                                 class="w-full text-black bg-white"
                                 append-to-body
                                 @search="onProductSearch"
-                            />
+                            >
+                                <template #no-options="{ search, searching, loading }">
+                                    <div class="px-3 py-2 text-gray-500">
+                                        <span v-if="!search">Type to search product...</span>
+                                        <span v-else>No products found.</span>
+                                        <button
+                                            @click.stop="openProductModal(index, search)"
+                                            class="mt-2 block text-blue-600 hover:underline text-sm"
+                                        >
+                                            ➕ Add New Product
+                                        </button>
+                                    </div>
+                                </template>
+                            </vSelect>
                         </td>
                         <td class="border-t px-4 py-3 min-w-[140px]">
                             <select
@@ -772,7 +813,20 @@ const submitForm = async () => {
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
                                 @search="onProductSearch"
-                            />
+                            >
+                                <template #no-options="{ search, searching, loading }">
+                                    <div class="px-3 py-2 text-gray-500">
+                                        <span v-if="!search">Type to search product...</span>
+                                        <span v-else>No products found.</span>
+                                        <button
+                                            @click.stop="openProductModal(index, search)"
+                                            class="mt-2 block text-blue-600 hover:underline text-sm"
+                                        >
+                                            ➕ Add New Product
+                                        </button>
+                                    </div>
+                                </template>
+                            </vSelect>
                         </div>
 
                         <div class="grid grid-cols-3 gap-2">
@@ -1021,5 +1075,14 @@ const submitForm = async () => {
             </div>
         </div>
     </div>
+    <!-- Add Product Modal -->
+    <AddProductModal
+        :show="showProductModal"
+        :initialName="productSearchQuery"
+        :categories="categories"
+        :unitTypes="unitTypes"
+        @close="showProductModal = false"
+        @success="handleProductSuccess"
+    />
     </AuthenticatedLayout>
 </template>
