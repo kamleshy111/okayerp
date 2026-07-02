@@ -549,10 +549,10 @@ const openPaymentModal = () => {
             return;
         }
 
-        if (quantity > selectedProduct.stock_quantity) {
-            toast.error(`Item ${i + 1}: Only ${selectedProduct.stock_quantity} quantity are available in stock.`);
-            return;
-        }
+        // if (quantity > selectedProduct.stock_quantity) {
+        //     toast.error(`Item ${i + 1}: Only ${selectedProduct.stock_quantity} quantity are available in stock.`);
+        //     return;
+        // }
 
     }
 
