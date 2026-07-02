@@ -118,7 +118,7 @@ const form = ref({
     estimate_id: "",
     grand_total: "",
     GstAmount: "",
-    accepted: true,
+    accepted: false,
     total_amount: "",
     paid: 0,
     discount: 0,
@@ -370,6 +370,10 @@ const hasGstSelected = computed(() => {
   return form.value.sale_items.some(item => !!item.gst_rate_id);
 });
 
+watch(hasGstSelected, (newVal) => {
+  form.value.accepted = newVal;
+});
+
 // Watch sale items
 watch(() => form.value.sale_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
@@ -377,33 +381,10 @@ watch(() => form.value.sale_items, (newSaleItems) => {
     if (selectedProduct) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = selectedProduct.unit_type;
-        item.sgst = selectedProduct.sgst;
-        item.cgst = selectedProduct.cgst;
         item.last_product_id = item.product_id;
-
-        // Auto-match gst_rate_id from product's default tax rates
-        const totalProductRate = (parseFloat(selectedProduct.sgst) || 0) + (parseFloat(selectedProduct.cgst) || 0);
-        const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
-        if (matchedRate) {
-          item.gst_rate_id = matchedRate.id;
-          if (parseFloat(matchedRate.igst) > 0) {
-            item.cgst = parseFloat(matchedRate.igst) / 2;
-            item.sgst = parseFloat(matchedRate.igst) / 2;
-          } else {
-            item.cgst = parseFloat(matchedRate.cgst) || 0;
-            item.sgst = parseFloat(matchedRate.sgst) || 0;
-          }
-        } else {
-          const defaultRate = filteredGstRates.value[0];
-          item.gst_rate_id = defaultRate?.id || "";
-          if (defaultRate && parseFloat(defaultRate.igst) > 0) {
-            item.cgst = parseFloat(defaultRate.igst) / 2;
-            item.sgst = parseFloat(defaultRate.igst) / 2;
-          } else {
-            item.cgst = defaultRate ? parseFloat(defaultRate.cgst) || 0 : 0;
-            item.sgst = defaultRate ? parseFloat(defaultRate.sgst) || 0 : 0;
-          }
-        }
+        item.gst_rate_id = "";
+        item.cgst = 0;
+        item.sgst = 0;
       }
 
       const quantity = parseFloat(item.quantity) || 0;
@@ -424,6 +405,9 @@ const onGstRateChange = (item) => {
       item.cgst = parseFloat(selectedRate.cgst) || 0;
       item.sgst = parseFloat(selectedRate.sgst) || 0;
     }
+  } else {
+    item.cgst = 0;
+    item.sgst = 0;
   }
 };
 
@@ -602,7 +586,7 @@ const submitForm = async () => {
       customer_id: "",
       grand_total: "",
       GstAmount: "",
-      accepted: true,
+      accepted: false,
       total_amount: "",
       paid: 0,
       discount: 0,

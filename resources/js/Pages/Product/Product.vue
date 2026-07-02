@@ -154,6 +154,7 @@ const columns = [
         data: null,
         orderable: false,
         searchable: false,
+        sortable: false,
         render: (data, type, row) => {
             return `
             <div class="icon-all-dflex">
