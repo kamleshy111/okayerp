@@ -149,11 +149,11 @@ const form = ref({
     payment_method: purchases.payment_method,
     purchase_items: productItems.map(item => {
         const totalRate = (parseFloat(item.sgst) || 0) + (parseFloat(item.cgst) || 0);
-        const matchedRate = props.gstRates.find(r => 
-          parseFloat(r.rate) === totalRate && 
+        const matchedRate = props.gstRates.find(r =>
+          parseFloat(r.rate) === totalRate &&
           (isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
         );
-        const defaultRate = props.gstRates.find(r => 
+        const defaultRate = props.gstRates.find(r =>
           isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst')
         );
         return {
@@ -202,8 +202,8 @@ watch(isInterstate, (newVal) => {
     if (!item.gst_rate_id) return;
     const currentRate = props.gstRates.find(r => r.id === item.gst_rate_id);
     if (currentRate) {
-      const targetRate = props.gstRates.find(r => 
-        parseFloat(r.rate) === parseFloat(currentRate.rate) && 
+      const targetRate = props.gstRates.find(r =>
+        parseFloat(r.rate) === parseFloat(currentRate.rate) &&
         (newVal ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
       );
       if (targetRate) {
@@ -452,14 +452,6 @@ const submitForm = async () => {
             <a :href="route('purchase')"><i style="font-size: 14px;" class="bi bi-chevron-left"></i><span style="margin-left: 5px;">Purchase</span></a>
         </div>
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Update Purchase</h2>
-            <div class="bg-yellow-100 border border-yellow-400 text-yellow-700 px-4 py-3 rounded relative mb-4">
-                <strong>Debug Info:</strong>
-                isInterstate: {{ isInterstate }} |
-                storeState: "{{ storeState }}" |
-                customerState: "{{ selectedSupplier?.state }}" |
-                purchaseItems: {{ form.purchase_items.map(i => ({ pid: i.product_id, rate_id: i.gst_rate_id, sgst: i.sgst, cgst: i.cgst })) }} |
-                filteredRates: {{ filteredGstRates.map(r => ({ id: r.id, name: r.name })) }}
-            </div>
         <div>
 
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
@@ -575,7 +567,7 @@ const submitForm = async () => {
                         </td>
 
                         <td class="border-t px-4 py-3 min-w-[140px]">
-                            <select 
+                            <select
                                 v-model="item.gst_rate_id"
                                 @change="onGstRateChange(item)"
                                 class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
@@ -645,7 +637,7 @@ const submitForm = async () => {
                         <div class="grid grid-cols-3 gap-2">
                             <div class="col-span-2">
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">GST Rate</label>
-                                <select 
+                                <select
                                     v-model="item.gst_rate_id"
                                     @change="onGstRateChange(item)"
                                     class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm bg-white"
