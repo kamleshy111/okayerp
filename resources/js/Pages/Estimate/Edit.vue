@@ -207,14 +207,14 @@ const submitCustomer = async () => {
       toast.error("Customer name is required!");
       return;
     }
-    if (!newCustomer.value.phone) {
-      toast.error("Customer phone is required!");
-      return;
-    }
-    if (!newCustomer.value.email) {
-      toast.error("Customer email is required!");
-      return;
-    }
+    // if (!newCustomer.value.phone) {
+    //   toast.error("Customer phone is required!");
+    //   return;
+    // }
+    // if (!newCustomer.value.email) {
+    //   toast.error("Customer email is required!");
+    //   return;
+    // }
 
     const response = await axios.post('/customer/store', newCustomer.value);
     const createdCustomer = response.data;

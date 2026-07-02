@@ -101,7 +101,7 @@ const onCustomerSearch = async (search, loading) => {
   try {
     const response = await axios.get(`/customer/search?query=${encodeURIComponent(search)}`);
     customers.value = response.data;
-    
+
     // Ensure selected customer is always in options list
     const selected = selectedCustomer.value || props.customers.find(c => c.id == form.value.customer_id) || customers.value.find(c => c.id == form.value.customer_id);
     if (selected && !customers.value.some(c => c.id == selected.id)) {
@@ -191,14 +191,14 @@ const submitCustomer = async () => {
       toast.error("Customer name is required!");
       return;
     }
-    if (!newCustomer.value.phone) {
-      toast.error("Customer phone is required!");
-      return;
-    }
-    if (!newCustomer.value.email) {
-      toast.error("Customer email is required!");
-      return;
-    }
+    // if (!newCustomer.value.phone) {
+    //   toast.error("Customer phone is required!");
+    //   return;
+    // }
+    // if (!newCustomer.value.email) {
+    //   toast.error("Customer email is required!");
+    //   return;
+    // }
 
     const response = await axios.post('/customer/store', newCustomer.value);
     const createdCustomer = response.data;
@@ -443,7 +443,7 @@ const submitForm = async () => {
 
     const response = await axios.post(`/estimate/store`, payload);
     toast.success(response.data.message || "Quotation added successfully!");
-    
+
     // Redirect to list page
     router.visit(route('estimate.index'));
   } catch (error) {
@@ -466,9 +466,9 @@ const submitForm = async () => {
                 <i class="bi bi-chevron-left"></i><span>Back to Quotations</span>
             </a>
         </div>
-        
+
         <h2 class="text-2xl font-bold text-[#292688]">Create Quotation / Estimate</h2>
-        
+
         <div class="space-y-6">
             <!-- Customer and Dates Selection -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -520,7 +520,7 @@ const submitForm = async () => {
             <!-- Line Items Table -->
             <div class="mt-6">
                 <h3 class="text-lg font-bold mb-3 text-[#292688]">Quotation Items</h3>
-                
+
                 <!-- Desktop view: Table layout -->
                 <div class="hidden md:block overflow-x-auto">
                     <table class="w-full table-auto border border-gray-200 rounded-lg overflow-hidden">
@@ -675,7 +675,7 @@ const submitForm = async () => {
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500 font-semibold">
+                            <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs text-gray-500 font-semibold">
                                 <div>
                                     <span class="block text-gray-400">GST</span>
                                     <span class="text-gray-800 font-semibold">
@@ -733,7 +733,7 @@ const submitForm = async () => {
                 <!-- Totals Calculation Box -->
                 <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 space-y-3 max-w-md ml-auto w-full">
                     <h3 class="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2">Calculation Summary</h3>
-                    
+
                     <div class="flex justify-between items-center text-sm text-gray-600">
                         <span>Total Net (Subtotal):</span>
                         <span class="font-medium">₹ {{ totalAmount.toFixed(2) }}</span>
@@ -768,8 +768,8 @@ const submitForm = async () => {
     </div>
 
     <!-- Quick Add Customer Modal -->
-    <div v-if="showCustomerModal" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="showCustomerModal"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 99999;"
          @click.self="showCustomerModal = false">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
@@ -787,13 +787,13 @@ const submitForm = async () => {
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newCustomer.phone" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Phone</label>
+                    <input type="text" v-model="newCustomer.phone" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Email <span class="text-red-500">*</span></label>
-                    <input type="email" v-model="newCustomer.email" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                    <input type="email" v-model="newCustomer.email" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>

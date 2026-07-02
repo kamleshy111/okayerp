@@ -88,22 +88,19 @@ class CustomersController extends Controller
         $validated = $request->validate([
             'name' => 'required',
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 'max:255',
                 Rule::unique('customers', 'email')->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
-            'phone' => 'required',
-            'gst_number' => 'required_without:pan_number|nullable|string|max:255',
-            'pan_number' => 'required_without:gst_number|nullable|string|max:255',
+            'phone' => 'nullable',
+            'gst_number' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|string|max:255',
             'cin_number' => 'nullable|string|max:255',
         ], [
 
             'name.required' => 'Name is required.',
             'email.unique' => 'The customer email ID must be unique. Please choose a different email ID.',
-            'phone.required' => 'Phone Number is required.',
-            'gst_number.required_without' => 'Either GST Number or PAN Number is required.',
-            'pan_number.required_without' => 'Either GST Number or PAN Number is required.',
         ]);
 
         if (!$validated) {
@@ -209,23 +206,20 @@ class CustomersController extends Controller
         $validated = $request->validate([
             'name' => 'required',
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 Rule::unique('customers', 'email')
                     ->ignore($id)
                     ->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
-            'phone' => 'required',
-            'gst_number' => 'required_without:pan_number|nullable|string|max:255',
-            'pan_number' => 'required_without:gst_number|nullable|string|max:255',
+            'phone' => 'nullable',
+            'gst_number' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|string|max:255',
             'cin_number' => 'nullable|string|max:255',
         ], [
 
             'name.required' => 'Name is required.',
             'email.unique' => 'The customer email ID must be unique. Please choose a different email ID.',
-            'phone.required' => 'Phone Number is required.',
-            'gst_number.required_without' => 'Either GST Number or PAN Number is required.',
-            'pan_number.required_without' => 'Either GST Number or PAN Number is required.',
         ]);
 
         if (!$validated) {
