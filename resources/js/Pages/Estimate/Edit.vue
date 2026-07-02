@@ -107,7 +107,7 @@ const onCustomerSearch = async (search, loading) => {
   try {
     const response = await axios.get(`/customer/search?query=${encodeURIComponent(search)}`);
     customers.value = response.data;
-    
+
     // Ensure selected customer is always in options list
     const selected = selectedCustomer.value || props.customers.find(c => c.id == form.value.customer_id) || customers.value.find(c => c.id == form.value.customer_id);
     if (selected && !customers.value.some(c => c.id == selected.id)) {
@@ -443,7 +443,7 @@ const submitForm = async () => {
 
     const response = await axios.post(`/estimate/update/${estimate.id}`, payload);
     toast.success(response.data.message || "Quotation updated successfully!");
-    
+
     // Redirect to list page
     router.visit(route('estimate.index'));
   } catch (error) {
@@ -466,12 +466,12 @@ const submitForm = async () => {
                 <i class="bi bi-chevron-left"></i><span>Back to Quotations</span>
             </a>
         </div>
-        
+
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-bold text-[#292688]">Edit Quotation / Estimate</h2>
             <span class="px-3 py-1 bg-[#2e2c92] text-white rounded-lg text-sm font-semibold">{{ estimate.estimate_no }}</span>
         </div>
-        
+
         <div class="space-y-6">
             <!-- Customer and Dates Selection -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -523,7 +523,7 @@ const submitForm = async () => {
             <!-- Line Items Table -->
             <div class="mt-6">
                 <h3 class="text-lg font-bold mb-3 text-[#292688]">Quotation Items</h3>
-                
+
                 <!-- Desktop view: Table layout -->
                 <div class="hidden md:block overflow-x-auto">
                     <table class="w-full table-auto border border-gray-200 rounded-lg overflow-hidden">
@@ -600,11 +600,11 @@ const submitForm = async () => {
                                 <td class="px-4 py-3 text-center space-x-1">
                                     <button @click="removeRow(index)" type="button"
                                         class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded transition font-medium text-xs border border-red-200">
-                                        Remove
+                                        <i class="bi bi-trash-fill"></i>
                                     </button>
                                     <button v-if="index === form.estimate_items.length - 1" @click="addRow" type="button"
                                         class="bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1.5 rounded transition font-medium text-xs border border-green-200">
-                                        + Add Item
+                                        <i class="bi bi-plus-lg"></i>
                                     </button>
                                 </td>
                             </tr>
@@ -678,7 +678,7 @@ const submitForm = async () => {
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500 font-semibold">
+                            <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs text-gray-500 font-semibold">
                                 <div>
                                     <span class="block text-gray-400">GST</span>
                                     <span class="text-gray-800 font-semibold">
@@ -736,7 +736,7 @@ const submitForm = async () => {
                 <!-- Totals Calculation Box -->
                 <div class="bg-gray-50 p-6 rounded-xl border border-gray-100 space-y-3 max-w-md ml-auto w-full">
                     <h3 class="text-lg font-bold text-gray-800 border-b border-gray-200 pb-2">Calculation Summary</h3>
-                    
+
                     <div class="flex justify-between items-center text-sm text-gray-600">
                         <span>Total Net (Subtotal):</span>
                         <span class="font-medium">₹ {{ totalAmount.toFixed(2) }}</span>
@@ -771,8 +771,8 @@ const submitForm = async () => {
     </div>
 
     <!-- Quick Add Customer Modal -->
-    <div v-if="showCustomerModal" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="showCustomerModal"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 99999;"
          @click.self="showCustomerModal = false">
         <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">

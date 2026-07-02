@@ -246,7 +246,7 @@ const submitReturn = async () => {
 
               <div class="grid grid-cols-1 gap-2 text-center text-xs bg-white p-3 rounded-lg border border-gray-100 font-medium text-gray-500">
                 <div>
-                  <span class="block text-gray-400 mb-0.5 text-indigo-600 font-semibold">Available to Return</span>
+                  <span class="block mb-0.5 text-indigo-600 font-semibold">Available to Return</span>
                   <span class="text-indigo-700 font-bold text-sm">{{ item.available_qty }}</span>
                 </div>
               </div>

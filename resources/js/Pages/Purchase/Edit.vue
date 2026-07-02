@@ -581,13 +581,13 @@ const submitForm = async () => {
 
                         <td class="border-t px-4 py-2">
                             <button @click="removeRow(index)" type="button"
-                                class="bg-red-600 text-white px-4 py-1.5 rounded-md shadow hover:bg-red-700 transition mr-2 mt-2">
-                                Remove
+                                class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition mr-2 mt-2">
+                                <i class="bi bi-trash"></i>
                             </button>
 
                             <button v-if="index === form.purchase_items.length - 1" @click="addRow" type="button"
-                                class="bg-green-600 text-white px-4 py-1.5 rounded-md shadow hover:bg-green-700 transition mt-2">
-                                Add Items
+                                class="bg-green-600 text-white px-3 py-1 rounded-md shadow hover:bg-green-700 transition mt-2">
+                                <i class="bi bi-plus-lg"></i>
                             </button>
                         </td>
                     </tr>

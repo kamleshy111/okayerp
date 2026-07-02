@@ -581,11 +581,11 @@ const submitForm = async () => {
                                 <td class="px-4 py-3 text-center space-x-1">
                                     <button @click="removeRow(index)" type="button"
                                         class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded transition font-medium text-xs border border-red-200">
-                                        Remove
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                     <button v-if="index === form.estimate_items.length - 1" @click="addRow" type="button"
                                         class="bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1.5 rounded transition font-medium text-xs border border-green-200">
-                                        + Add Item
+                                        <i class="bi bi-plus-lg"></i>
                                     </button>
                                 </td>
                             </tr>

@@ -761,15 +761,16 @@ const handleProductSuccess = (createdProduct) => {
                             ₹  {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}
                         </td>
 
-                        <td class="border-t px-4 py-2">
+                        <td class="border-t px-4 py-2 flex items-center gap-2">
                             <button @click="removeRow(index)" type="button"
-                                class="bg-red-600 text-white px-6 py-2 rounded-md shadow hover:bg-red-700 transition mr-2">
-                                Remove
+                                class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition flex items-center justify-center">
+                                <i class="bi bi-trash"></i>
                             </button>
 
                             <button v-if="index === form.sale_items.length - 1" @click="addRow" type="button"
-                                class="bg-green-600 text-white px-6 py-2 rounded-md shadow hover:bg-green-700 transition">
-                                Add Items
+                                class="bg-green-600 text-white px-3 py-1 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2"
+                            >
+                                <i class="bi bi-plus-lg"></i>
                             </button>
                         </td>
                     </tr>
@@ -782,7 +783,7 @@ const handleProductSuccess = (createdProduct) => {
                     <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                         <span class="font-bold text-sm text-[#292688]">Item #{{ index + 1 }}</span>
                         <button @click="removeRow(index)" type="button" class="text-red-600 hover:text-red-800 text-sm font-semibold flex items-center gap-1">
-                            <i class="fa fa-trash"></i> Remove
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
 
