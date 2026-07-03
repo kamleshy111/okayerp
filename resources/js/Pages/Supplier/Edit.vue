@@ -85,8 +85,8 @@ const submitForm = async () => {
                             placeholder="Name" />
                     </div>
                     <div>
-                        <label class="block text-black font-medium mb-2">Email <span class="text-red-500">*</span></label>
-                        <input type="email" v-model="form.email" name="email" required
+                        <label class="block text-black font-medium mb-2">Email</label>
+                        <input type="email" v-model="form.email" name="email"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="email" />
                     </div>
@@ -94,8 +94,8 @@ const submitForm = async () => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                     <div>
-                        <label class="block text-black font-medium mb-2">Phone <span class="text-red-500">*</span></label>
-                        <input type="text" v-model="form.phone" name="phone" required
+                        <label class="block text-black font-medium mb-2">Phone</label>
+                        <input type="text" v-model="form.phone" name="phone"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Phone" />
                     </div>
@@ -158,8 +158,8 @@ const submitForm = async () => {
                             placeholder="PIN Code" />
                     </div>
                     <div>
-                        <label class="block text-black font-medium mb-2">GSTIN <span v-if="!form.pan_number" class="text-red-500">*</span></label>
-                        <input type="text" v-model="form.gstin" name="gstin" :required="!form.pan_number"
+                        <label class="block text-black font-medium mb-2">GSTIN</label>
+                        <input type="text" v-model="form.gstin" name="gstin"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="GSTIN" />
                     </div>
@@ -167,8 +167,8 @@ const submitForm = async () => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                     <div>
-                        <label class="block text-black font-medium mb-2">PAN Number <span v-if="!form.gstin" class="text-red-500">*</span></label>
-                        <input type="text" v-model="form.pan_number" name="pan_number" :required="!form.gstin"
+                        <label class="block text-black font-medium mb-2">PAN Number</label>
+                        <input type="text" v-model="form.pan_number" name="pan_number"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="PAN Number" />
                     </div>
