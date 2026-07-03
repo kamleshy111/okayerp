@@ -142,11 +142,15 @@
     }
 
     .sale-total-para {
-      text-align: right;
-      font-weight: bold;
-      margin: 8px;
-      font-size: 12px;
-      color: #2e2c92;
+        text-align: right;
+        font-weight: bold;
+        margin: 0px;
+        font-size: 11px;
+        color: #2e2c92;
+        padding-top: 4px;
+        border-bottom: 1px solid #2e2c92;
+        background-color: #f3f4f6;
+        padding: 6px;
     }
 
     /* Footer styling */
@@ -163,15 +167,15 @@
 @endphp
 
 <div class="invoice-container">
-  
+
   <!-- Header Table -->
   <table class="border-bottom header-table">
     <tr>
       <td class="logo-container">
         @if($store && $store->profile_photo && file_exists(storage_path('app/public/' . $store->profile_photo)))
-          <img src="{{ storage_path('app/public/' . $store->profile_photo) }}" style="max-height: 55px; max-width: 150px;">
+          <img src="{{ storage_path('app/public/' . $store->profile_photo) }}" style="width: 55px; height: 55px; border-radius: 50%; object-fit: cover;">
         @elseif(file_exists(public_path('images/logo.png')))
-          <img src="{{ public_path('images/logo.png') }}" style="max-height: 55px; max-width: 150px;">
+          <img src="{{ public_path('images/logo.png') }}" style="width: 55px; height: 55px; border-radius: 50%; object-fit: cover;">
         @else
           <span style="font-size: 14px; font-weight: bold; color: #2e2c92;">{{ $store ? $store->name : 'OKAY ERP' }}</span>
         @endif
@@ -232,7 +236,7 @@
     <div class="invoice-section-title">
       Invoice #{{ $sale['sale_id'] }} | Date: {{ $sale['sale_date'] }}
     </div>
-    
+
     <table class="items-table border-bottom">
       <thead>
         <tr>
@@ -259,7 +263,7 @@
           </tr>
           @php $saleTotal += $item['total']; @endphp
         @endforeach
-        
+
         <!-- GST / Discount footer values inside table -->
         <tr class="total-row">
           <td class="border-right">&nbsp;</td>
@@ -273,10 +277,10 @@
         </tr>
       </tbody>
     </table>
-    
-    <p class="sale-total-para">
+
+    <div class="sale-total-para">
       Invoice Total: ₹ {{ number_format(($saleTotal + $sale['gstAmount']) - $sale['discount'], 2) }}
-    </p>
+    </div>
   @endforeach
 
   <!-- Footer Section -->
@@ -293,7 +297,7 @@
         </div>
       </td>
       <td style="width: 50%; vertical-align: top; padding: 8px;">
-        <div class="text-center" style="font-size: 10px; margin-bottom: 30px;">Receiver's Verification</div>
+        <div class="text-center bold border-bottom" style="padding-bottom: 2px; margin-bottom: 4px;">Receiver's Verification</div>
         <div style="text-align: right; width: 100%;">
           <div style="font-size: 9px; margin-bottom: 2px;">for <span class="bold">{{ $store ? $store->name : 'Your Company' }}</span></div>
           <div class="bold" style="font-size: 10px; margin-top: 15px; padding-right: 5px;">Authorized Signatory</div>
