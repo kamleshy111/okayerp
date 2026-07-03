@@ -47,7 +47,7 @@ const columns = [
     render: (data, type, row) => {
       return `
       <div class="icon-all-dflex">
-        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"
+        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn edit-btn" style="padding: 4px 8px;"
                 data-id="${data.id}"
                 data-name="${data.name}"
                 data-description="${data.description || ''}"

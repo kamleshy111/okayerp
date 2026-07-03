@@ -157,8 +157,8 @@ const columns = [
         sortable: false,
         render: (data, type, row) => {
             return `
-            <div class="icon-all-dflex">
-              <a  href="product/${data.id}/edit" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn delete-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
+            <div class="flex gap-2 justify-center items-center">
+              <a  href="product/${data.id}/edit" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"><i class="fa fa-edit"></i></a>
               <button class="text-white bg-red-600 hover:bg-red-800 rounded action-btn delete-btn px-3 py-1" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
             `;

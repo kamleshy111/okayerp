@@ -291,7 +291,7 @@ const columns = [
                 deleteBtn = `<button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>`;
             }
             return `
-            <div class="icon-all-dflex">
+            <div class="flex gap-2">
               <a href="purchase/${data.id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Purchase"><i class="fa fa-eye"></i></a>
               <a  href="purchase/${data.id}/edit" class="btn btn-light text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
               ${deleteBtn}

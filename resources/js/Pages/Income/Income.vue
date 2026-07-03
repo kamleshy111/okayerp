@@ -69,8 +69,8 @@ const columns = [
     data: null,
     render: (data, type, row) => {
       return `
-      <div class="icon-all-dflex">
-        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"
+      <div class="flex gap-2">
+        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn view-btn" style="padding: 4px 8px;"
                 data-id="${data.id}"
                 data-category_name="${data.category_name}"
                 data-received_from="${data.received_from}"
@@ -80,7 +80,7 @@ const columns = [
                 data-description="${data.description || ''}">
           <i class="fa fa-eye"></i>
         </button>
-        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"
+        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn edit-btn" style="padding: 4px 8px;"
                 data-id="${data.id}"
                 data-category_id="${data.income_category_id}"
                 data-received_from="${data.received_from !== '---' ? data.received_from : ''}"

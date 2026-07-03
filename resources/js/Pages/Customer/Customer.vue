@@ -60,7 +60,7 @@ const columns = [
         data: null,
         render: (data, type, row) => {
             return `
-            <div class="icon-all-dflex">
+            <div class="flex gap-2">
               <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn view-btn" style="padding: 3px 8px;" title="View Details" data-id="${data.id}"><i class="fa fa-eye"></i></button>
               <a href="/paymentsCustomer/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="Payment History"><i class="fa fa-history"></i></a>
               <a  href="customer/${data.id}/edit" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
