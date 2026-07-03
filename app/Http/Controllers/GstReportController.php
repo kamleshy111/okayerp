@@ -25,11 +25,8 @@ class GstReportController extends Controller
 
         // 1. Fetch Sales (Output GST)
         $salesQuery = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
+            ->where('accepted', 1)
             ->with(['saleItems.product', 'customer']);
-
-        if (session('private_ledger_unlocked') !== true) {
-            $salesQuery->where('accepted', 1);
-        }
 
         if ($startDate) {
             $salesQuery->whereDate('created_at', '>=', Carbon::parse($startDate));
@@ -43,9 +40,7 @@ class GstReportController extends Controller
         // 1b. Fetch Sales Returns
         $saleReturnsQuery = SaleReturn::where('user_id', $userId)
             ->whereHas('sale', function($q) {
-                if (session('private_ledger_unlocked') !== true) {
-                    $q->where('accepted', 1);
-                }
+                $q->where('accepted', 1);
             })
             ->with(['sale.saleItems', 'sale.customer', 'items']);
 
@@ -60,11 +55,8 @@ class GstReportController extends Controller
 
         // 2. Fetch Purchases (Input GST)
         $purchasesQuery = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+            ->where('accepted', 1)
             ->with(['items.product', 'supplier']);
-
-        if (session('private_ledger_unlocked') !== true) {
-            $purchasesQuery->where('accepted', 1);
-        }
 
         if ($startDate) {
             $purchasesQuery->whereDate('purchase_date', '>=', Carbon::parse($startDate));
@@ -78,9 +70,7 @@ class GstReportController extends Controller
         // 2b. Fetch Purchase Returns
         $purchaseReturnsQuery = PurchaseReturn::where('user_id', $userId)
             ->whereHas('purchase', function($q) {
-                if (session('private_ledger_unlocked') !== true) {
-                    $q->where('accepted', 1);
-                }
+                $q->where('accepted', 1);
             })
             ->with(['purchase.items', 'purchase.supplier', 'items']);
 
