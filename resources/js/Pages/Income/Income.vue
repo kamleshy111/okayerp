@@ -55,7 +55,7 @@ const editForm = ref({
 
 // Column definitions for DataTable
 const columns = [
-  { 
+  {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
@@ -70,21 +70,21 @@ const columns = [
     render: (data, type, row) => {
       return `
       <div class="icon-all-dflex">
-        <button class="text-white bg-blue-600 hover:bg-blue-800 px-3 py-1 rounded action-btn view-btn mr-1" 
-                data-id="${data.id}" 
-                data-category_name="${data.category_name}" 
-                data-received_from="${data.received_from}" 
-                data-amount="${data.amount}" 
-                data-date="${data.date}" 
-                data-reference_no="${data.reference_no}" 
+        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"
+                data-id="${data.id}"
+                data-category_name="${data.category_name}"
+                data-received_from="${data.received_from}"
+                data-amount="${data.amount}"
+                data-date="${data.date}"
+                data-reference_no="${data.reference_no}"
                 data-description="${data.description || ''}">
           <i class="fa fa-eye"></i>
         </button>
-        <button class="btn btn-light action-btn edit-btn" 
-                data-id="${data.id}" 
-                data-category_id="${data.income_category_id}" 
-                data-received_from="${data.received_from !== '---' ? data.received_from : ''}" 
-                data-amount="${data.amount}" 
+        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"
+                data-id="${data.id}"
+                data-category_id="${data.income_category_id}"
+                data-received_from="${data.received_from !== '---' ? data.received_from : ''}"
+                data-amount="${data.amount}"
                 data-date="${data.date}"
                 data-reference_no="${data.reference_no !== '---' ? data.reference_no : ''}"
                 data-description="${data.description || ''}">
@@ -213,7 +213,7 @@ const submitAddForm = async () => {
     const response = await axios.post(`/income/store`, form.value);
     toast.success(response.data.message);
     isAddModalOpen.value = false;
-    
+
     // Reset Form
     form.value = {
       income_category_id: "",
@@ -294,11 +294,11 @@ const submitEditForm = async () => {
           </thead>
         </DataTable>
       </div>
-    </div> 
+    </div>
 
     <!-- Add Income Modal Popup -->
-    <div v-if="isAddModalOpen" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="isAddModalOpen"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
          @click.self="isAddModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
@@ -308,7 +308,7 @@ const submitEditForm = async () => {
             <i class="fa fa-close text-xl"></i>
           </button>
         </div>
-        
+
         <form @submit.prevent="submitAddForm" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -358,11 +358,11 @@ const submitEditForm = async () => {
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" @click="isAddModalOpen = false" 
+            <button type="button" @click="isAddModalOpen = false"
                     class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">
               Cancel
             </button>
-            <button type="submit" 
+            <button type="submit"
                     class="px-5 py-2.5 bg-[#2e2c92] hover:bg-[#2e2c92e6] text-white font-semibold rounded-xl shadow-md transition">
               Save
             </button>
@@ -372,8 +372,8 @@ const submitEditForm = async () => {
     </div>
 
     <!-- Edit Income Modal Popup -->
-    <div v-if="isEditModalOpen" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="isEditModalOpen"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
          @click.self="isEditModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
@@ -383,7 +383,7 @@ const submitEditForm = async () => {
             <i class="fa fa-close text-xl"></i>
           </button>
         </div>
-        
+
         <form @submit.prevent="submitEditForm" class="space-y-4">
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -433,11 +433,11 @@ const submitEditForm = async () => {
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" @click="isEditModalOpen = false" 
+            <button type="button" @click="isEditModalOpen = false"
                     class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">
               Cancel
             </button>
-            <button type="submit" 
+            <button type="submit"
                     class="px-5 py-2.5 bg-[#2e2c92] hover:bg-[#2e2c92e6] text-white font-semibold rounded-xl shadow-md transition">
               Update
             </button>
@@ -447,8 +447,8 @@ const submitEditForm = async () => {
     </div>
 
     <!-- View Income Modal Popup -->
-    <div v-if="isViewModalOpen" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="isViewModalOpen"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
          @click.self="isViewModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-lg w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
@@ -458,7 +458,7 @@ const submitEditForm = async () => {
             <i class="fa fa-close text-xl"></i>
           </button>
         </div>
-        
+
         <div class="space-y-4 text-black text-left">
           <div class="grid grid-cols-2 gap-4">
             <div>
@@ -489,7 +489,7 @@ const submitEditForm = async () => {
         </div>
 
         <div class="flex justify-end pt-4 border-t border-gray-100">
-          <button type="button" @click="isViewModalOpen = false" 
+          <button type="button" @click="isViewModalOpen = false"
                   class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">
             Close
           </button>

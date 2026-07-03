@@ -27,9 +27,12 @@ class PurchasesController extends Controller
             $q->where('user_id', $userId);
         })
         ->where('accepted', 1)
-        ->with('supplier')
+        ->with(['supplier', 'purchaseReturns'])
         ->get()
         ->map(function ($item) {
+            $hasReturn = $item->purchaseReturns->isNotEmpty();
+            $isWithinTenMinutes = $item->created_at->diffInMinutes(now(), false) <= 10;
+
             return [
                 'id' => $item->id,
                 'supplier_name' => $item->supplier->name ?? '--',
@@ -38,6 +41,7 @@ class PurchasesController extends Controller
                 'grand_total' => $item->grand_total ?? '--',
                 'purchase_Date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->payment_status,
+                'is_deletable' => !$hasReturn && $isWithinTenMinutes,
             ];
         });
 
@@ -475,6 +479,15 @@ class PurchasesController extends Controller
 
         if (!$purchase) {
             return response()->json(['message' => 'Purchase not found or unauthorized access.'], 404);
+        }
+
+        $hasReturn = \App\Models\PurchaseReturn::where('purchase_id', $id)->exists();
+        if ($hasReturn) {
+            return response()->json(['message' => 'Cannot delete purchase because items have been returned.'], 422);
+        }
+
+        if ($purchase->created_at->diffInMinutes(now(), false) > 10) {
+            return response()->json(['message' => 'Cannot delete purchase because it was created more than 10 minutes ago.'], 403);
         }
 
         $lastClosedDate = Auth::user()->last_closed_date;

@@ -184,11 +184,15 @@ const saleColumns = [
     orderable: false,
     searchable: false, 
     render: (data, type, row) => {
+      let deleteBtn = '';
+      if (row.is_deletable) {
+        deleteBtn = `<button class="text-white bg-red-650 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>`;
+      }
       return `
       <div class="icon-all-dflex">
         <a href="sale/${data.id}/edit" class="btn btn-light action-btn"><i class="fa fa-edit"></i></a>
         <a href="sale/${data.id}/download-pdf" class="btn btn-primary action-btn"><i class="fa fa-file-pdf-o"></i></a>
-        <button class="text-white bg-red-650 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
+        ${deleteBtn}
       </div>
       `;
     }
@@ -247,10 +251,14 @@ const purchaseColumns = [
     orderable: false,
     searchable: false, 
     render: (data, type, row) => {
+      let deleteBtn = '';
+      if (row.is_deletable) {
+        deleteBtn = `<button class="text-white bg-red-650 hover:bg-red-800 px-3 py-1 rounded action-btn delete-purchase-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>`;
+      }
       return `
       <div class="icon-all-dflex">
         <a href="purchase/${data.id}/edit" class="btn btn-light action-btn"><i class="fa fa-edit"></i></a>
-        <button class="text-white bg-red-650 hover:bg-red-800 px-3 py-1 rounded action-btn delete-purchase-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
+        ${deleteBtn}
       </div>
       `;
     }

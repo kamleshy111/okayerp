@@ -32,7 +32,10 @@ class SaleController extends Controller
         ->get()
         ->map(function ($item) {
             $dueDeductions = $item->saleReturnItems ? $item->saleReturnItems->sum('due_deduction') : 0;
-            $effectiveGrandTotal = max(0, $item->grand_total - $dueDeductions);
+            $effectiveGrandTotal = max(0, $item->grand_total);
+
+            $hasReturn = $item->saleReturns->isNotEmpty();
+            $isWithinTenMinutes = $item->created_at->diffInMinutes(now(), false) <= 10;
 
             return [
                 'id' => $item->id,
@@ -42,6 +45,7 @@ class SaleController extends Controller
                 'grand_total' => number_format($effectiveGrandTotal, 2, '.', ''),
                 'sale_date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->paid >= $effectiveGrandTotal ? 'Paid' : $item->payment_status,
+                'is_deletable' => !$hasReturn && $isWithinTenMinutes,
             ];
         });
 
@@ -563,6 +567,15 @@ class SaleController extends Controller
 
         if (!$sale) {
             return response()->json(['message' => 'Sale not found.'], 404);
+        }
+
+        $hasReturn = \App\Models\SaleReturn::where('sale_id', $id)->exists();
+        if ($hasReturn) {
+            return response()->json(['message' => 'Cannot delete sale because items have been returned.'], 422);
+        }
+
+        if ($sale->created_at->diffInMinutes(now(), false) > 10) {
+            return response()->json(['message' => 'Cannot delete sale because it was created more than 10 minutes ago.'], 403);
         }
 
         $lastClosedDate = Auth::user()->last_closed_date;

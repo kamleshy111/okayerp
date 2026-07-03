@@ -15,7 +15,7 @@ defineProps({
 // Column definitions for DataTable
 const columns = [
 //   { data: 'id', title: 'S No' },
-    { 
+    {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
@@ -28,7 +28,7 @@ const columns = [
         render: (data, type, row) => {
             return `
             <div class="icon-all-dflex">
-              <a  href="category/${data.id}/edit" class="btn btn-light action-btn"><i class="fa fa-edit"></i></a>
+              <a  href="category/${data.id}/edit" class="btn btn-primary text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
               <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
             `;
@@ -106,7 +106,7 @@ function deleteCategory(categoryId) {
             <!-- The table rows would be dynamically inserted here -->
         </DataTable>
       </div>
-    </div> 
-     
+    </div>
+
   </AuthenticatedLayout>
 </template>

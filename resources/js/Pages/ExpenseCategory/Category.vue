@@ -33,7 +33,7 @@ const editForm = ref({
 
 // Column definitions for DataTable
 const columns = [
-  { 
+  {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
@@ -47,10 +47,10 @@ const columns = [
     render: (data, type, row) => {
       return `
       <div class="icon-all-dflex">
-        <button class="btn btn-light action-btn edit-btn" 
-                data-id="${data.id}" 
-                data-name="${data.name}" 
-                data-description="${data.description || ''}" 
+        <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"
+                data-id="${data.id}"
+                data-name="${data.name}"
+                data-description="${data.description || ''}"
                 data-status="${data.status}">
           <i class="fa fa-edit"></i>
         </button>
@@ -134,7 +134,7 @@ const submitAddForm = async () => {
     const response = await axios.post(`/expense-category/store`, form.value);
     toast.success(response.data.message);
     isAddModalOpen.value = false;
-    
+
     // Reset Form
     form.value = {
       name: "",
@@ -203,11 +203,11 @@ const submitEditForm = async () => {
           </thead>
         </DataTable>
       </div>
-    </div> 
+    </div>
 
     <!-- Add Category Modal Popup -->
-    <div v-if="isAddModalOpen" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="isAddModalOpen"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
          @click.self="isAddModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
@@ -217,7 +217,7 @@ const submitEditForm = async () => {
             <i class="fa fa-close text-xl"></i>
           </button>
         </div>
-        
+
         <form @submit.prevent="submitAddForm" class="space-y-4">
           <div>
             <label class="block text-black font-semibold mb-2 text-sm">Name <span class="text-red-500">*</span></label>
@@ -243,11 +243,11 @@ const submitEditForm = async () => {
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" @click="isAddModalOpen = false" 
+            <button type="button" @click="isAddModalOpen = false"
                     class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">
               Cancel
             </button>
-            <button type="submit" 
+            <button type="submit"
                     class="px-5 py-2.5 bg-[#2e2c92] hover:bg-[#2e2c92e6] text-white font-semibold rounded-xl shadow-md transition">
               Save
             </button>
@@ -257,8 +257,8 @@ const submitEditForm = async () => {
     </div>
 
     <!-- Edit Category Modal Popup -->
-    <div v-if="isEditModalOpen" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="isEditModalOpen"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
          @click.self="isEditModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
@@ -268,7 +268,7 @@ const submitEditForm = async () => {
             <i class="fa fa-close text-xl"></i>
           </button>
         </div>
-        
+
         <form @submit.prevent="submitEditForm" class="space-y-4">
           <div>
             <label class="block text-black font-semibold mb-2 text-sm">Name <span class="text-red-500">*</span></label>
@@ -294,11 +294,11 @@ const submitEditForm = async () => {
           </div>
 
           <div class="flex justify-end gap-3 pt-4 border-t border-gray-100">
-            <button type="button" @click="isEditModalOpen = false" 
+            <button type="button" @click="isEditModalOpen = false"
                     class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">
               Cancel
             </button>
-            <button type="submit" 
+            <button type="submit"
                     class="px-5 py-2.5 bg-[#2e2c92] hover:bg-[#2e2c92e6] text-white font-semibold rounded-xl shadow-md transition">
               Update
             </button>
