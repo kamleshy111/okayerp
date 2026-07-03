@@ -29,6 +29,7 @@ class ProductController extends Controller
                 'stockQuantity' => $item->stock_quantity ?? '',
                 'categoryName' => $item->categoryName ?? '----',
                 'unit_type' => $item->unit_type,
+                'price' => $item->price ?? 0.00,
                 'image' => $item->image ? '/storage/' . $item->image : null,
             ];
 
@@ -242,6 +243,8 @@ class ProductController extends Controller
                 $headerMap['unit_type'] = $index;
             } elseif ($cleaned === 'hsn' || $cleaned === 'hsn_code' || $cleaned === 'hsn code') {
                 $headerMap['hsn_code'] = $index;
+            } elseif ($cleaned === 'price' || $cleaned === 'sale price' || $cleaned === 'sale_price') {
+                $headerMap['price'] = $index;
             } elseif ($cleaned === 'description' || $cleaned === 'desc') {
                 $headerMap['description'] = $index;
             }
@@ -286,7 +289,7 @@ class ProductController extends Controller
                 }
 
                 $unitType = isset($headerMap['unit_type']) && isset($row[$headerMap['unit_type']]) ? trim($row[$headerMap['unit_type']]) : '';
-                $price = 0.00;
+                $price = isset($headerMap['price']) && isset($row[$headerMap['price']]) ? (double)trim($row[$headerMap['price']]) : 0.00;
                 $hsnCode = isset($headerMap['hsn_code']) && isset($row[$headerMap['hsn_code']]) ? trim($row[$headerMap['hsn_code']]) : '';
                 $description = isset($headerMap['description']) && isset($row[$headerMap['description']]) ? trim($row[$headerMap['description']]) : '';
 

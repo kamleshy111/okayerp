@@ -377,7 +377,7 @@ watch(hasGstSelected, (newVal) => {
 // Watch sale items
 watch(() => form.value.sale_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
-    const selectedProduct = products.value.find(product => product.id === item.product_id);
+    const selectedProduct = productRegistry.value[item.product_id] || products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = selectedProduct.unit_type;
@@ -385,6 +385,7 @@ watch(() => form.value.sale_items, (newSaleItems) => {
         item.gst_rate_id = "";
         item.cgst = 0;
         item.sgst = 0;
+        item.price = selectedProduct.price || "";
       }
 
       const quantity = parseFloat(item.quantity) || 0;

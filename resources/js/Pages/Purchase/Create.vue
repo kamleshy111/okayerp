@@ -149,6 +149,7 @@ const form = ref({
             cgst: "",
             quantity: "",
             price: "",
+            sale_price: "",
             baseAmount: "",
             gst_rate_id: "",
             last_product_id: "",
@@ -310,7 +311,7 @@ watch(hasGstSelected, (newVal) => {
 // Watch for product change in each row to update unit_type
 watch(() => form.value.purchase_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
-    const selectedProduct = products.value.find(product => product.id === item.product_id);
+    const selectedProduct = productRegistry.value[item.product_id] || products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = selectedProduct.unit_type;
@@ -318,6 +319,7 @@ watch(() => form.value.purchase_items, (newSaleItems) => {
         item.gst_rate_id = "";
         item.cgst = 0;
         item.sgst = 0;
+        item.sale_price = selectedProduct.price || "";
       }
 
       const quantity = parseFloat(item.quantity) || 0;
@@ -373,6 +375,7 @@ const addRow = () => {
         unit_type: "",
         quantity: "",
         price: "",
+        sale_price: "",
         sgst: 0,
         cgst: 0,
         gst_rate_id: "",
@@ -666,6 +669,7 @@ const handleProductSuccess = (createdProduct) => {
                         <th class="px-4 py-2 text-left">Quantity <span class="text-red-400">*</span></th>
                         <th class="px-4 py-2 text-left">Unit Type</th>
                         <th class="px-4 py-2 text-left">Price <span class="text-red-400">*</span></th>
+                        <th class="px-4 py-2 text-left">Sale Price</th>
                         <th class="px-4 py-2 text-left">Net Amount</th>
                         <th class="px-4 py-2 text-left">Action</th>
                     </tr>
@@ -722,6 +726,11 @@ const handleProductSuccess = (createdProduct) => {
                             <input type="text" name="price" v-model="item.price" required
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Price" />
+                        </td>
+                        <td class="border-t px-4 py-3">
+                            <input type="number" step="0.01" name="sale_price" v-model="item.sale_price"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                                placeholder="Sale Price" />
                         </td>
                         <td class="border-t px-4 py-3">
                             ₹  {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}
@@ -795,18 +804,24 @@ const handleProductSuccess = (createdProduct) => {
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-3 gap-2">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity <span class="text-red-500">*</span></label>
                                 <input type="text" v-model="item.quantity" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Qty" />
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Price <span class="text-red-500">*</span></label>
                                 <input type="text" v-model="item.price" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Price" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Sale Price</label>
+                                <input type="number" step="0.01" v-model="item.sale_price"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
+                                    placeholder="Sale Price" />
                             </div>
                         </div>
 

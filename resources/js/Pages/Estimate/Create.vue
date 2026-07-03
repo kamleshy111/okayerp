@@ -320,6 +320,7 @@ watch(() => form.value.estimate_items, (newItems) => {
         item.gst_rate_id = "";
         item.cgst = 0;
         item.sgst = 0;
+        item.price = prod.price || "";
       }
 
       const qty = parseFloat(item.quantity) || 0;

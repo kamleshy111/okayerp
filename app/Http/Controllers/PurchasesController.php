@@ -142,6 +142,9 @@ class PurchasesController extends Controller
                 $product = Product::find($item['product_id']);
                 if ($product) {
                     $product->stock_quantity += $item['quantity'];
+                    if (isset($item['sale_price']) && $item['sale_price'] !== null && $item['sale_price'] !== '') {
+                        $product->price = (double)$item['sale_price'];
+                    }
                     $product->save();
 
                     // Log stock movement
@@ -239,6 +242,7 @@ class PurchasesController extends Controller
                 'quantity' => $item->quantity,
                 'unit_type' => $item->unit_type,
                 'price' => $item->price,
+                'sale_price' => $item->product->price ?? 0.00,
                 'total' => $item->quantity * $item->price,
             ];
         });
@@ -409,6 +413,9 @@ class PurchasesController extends Controller
                     $product = Product::find($item['product_id']);
                     if ($product) {
                         $product->stock_quantity += $item['quantity'];
+                        if (isset($item['sale_price']) && $item['sale_price'] !== null && $item['sale_price'] !== '') {
+                            $product->price = (double)$item['sale_price'];
+                        }
                         $product->save();
 
                         // Log stock movement
