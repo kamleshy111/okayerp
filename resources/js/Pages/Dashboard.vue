@@ -45,7 +45,17 @@ const handleMouseMove = (event, index) => {
     hoveredIndex.value = index;
     const rect = event.currentTarget.getBoundingClientRect();
     const parentRect = event.currentTarget.closest('.relative').getBoundingClientRect();
-    tooltipX.value = event.clientX - parentRect.left + 15;
+    
+    const tooltipWidth = 180; // approximate width of tooltip box
+    let x = event.clientX - parentRect.left + 15;
+    
+    // If tooltip would overflow the right edge of the chart container, show it on the left of the cursor instead
+    if (x + tooltipWidth > parentRect.width) {
+        x = event.clientX - parentRect.left - tooltipWidth - 15;
+    }
+    
+    // Ensure it doesn't go below 10px from the left edge of the chart container
+    tooltipX.value = Math.max(10, x);
     tooltipY.value = event.clientY - parentRect.top - 10;
 };
 
@@ -415,12 +425,12 @@ const bars = computed(() => {
                     </div>
                 </div>
 
-                <div class="relative w-full h-[360px]">
+                <div class="w-full h-[360px] overflow-x-auto no-scrollbar">
                     <!-- If no data -->
                     <div v-if="profitLossData.length === 0" class="flex items-center justify-center h-full text-gray-400">
                         No financial data available for the last 6 months.
                     </div>
-                    <div v-else class="w-full h-full">
+                    <div v-else class="relative w-full h-full min-w-[700px] md:min-w-0">
                         <!-- Custom SVG Chart -->
                         <svg :viewBox="`0 0 ${svgWidth} ${svgHeight}`" class="w-full h-full" preserveAspectRatio="none">
                             <!-- Gradients definitions -->
