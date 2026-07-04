@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, watchEffect  } from 'vue';
+import { ref, watch, computed, watchEffect, onMounted, onUnmounted, nextTick } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -128,6 +128,8 @@ const selectedCustomer = ref(
   props.customers.find(c => c.id == sales.customer_id) || null
 );
 const showPaymentModal = ref(false);
+const lastActiveElement = ref(null);
+const paymentDiscountInput = ref(null);
 
 const isInterstate = computed(() => {
   if (!selectedCustomer.value || !selectedCustomer.value.state) return false;
@@ -439,8 +441,73 @@ const openPaymentModal = () => {
         }
     }
 
+    lastActiveElement.value = document.activeElement;
     showPaymentModal.value = true;
 };
+
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+// Global escape key handler to close payment modal
+const handleGlobalKeydown = (e) => {
+  if (e.key === 'Escape') {
+    if (showPaymentModal.value) {
+      showPaymentModal.value = false;
+      e.preventDefault();
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown);
+
+  // Auto-focus customer search input on page load
+  nextTick(() => {
+    const customerSearch = document.querySelector('.vs__search');
+    if (customerSearch) {
+      customerSearch.focus();
+    }
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
+});
+
+// Watch showPaymentModal to manage focus
+watch(showPaymentModal, async (isOpen) => {
+  if (isOpen) {
+    await nextTick();
+    if (paymentDiscountInput.value) {
+      paymentDiscountInput.value.focus();
+    }
+  } else {
+    if (lastActiveElement.value) {
+      await nextTick();
+      lastActiveElement.value.focus();
+      lastActiveElement.value = null;
+    }
+  }
+});
 
 // Submit the form data
 const submitForm = async () => {
@@ -490,6 +557,7 @@ const submitForm = async () => {
                         placeholder="Search or select customer"
                         class="w-full text-black bg-white"
                         @search="onCustomerSearch"
+                        @keydown.enter="moveToNextInput"
                     >
                         <template #no-options>
                             <div class="px-3 py-2 text-gray-500">
@@ -538,12 +606,14 @@ const submitForm = async () => {
                                 class="w-full text-black bg-white"
                                 append-to-body
                                 @search="onProductSearch"
+                                @keydown.enter="moveToNextInput"
                             />
                         </td>
                         <td class="border-t px-4 py-3 min-w-[140px]">
                             <select
                                 v-model="item.gst_rate_id"
                                 @change="onGstRateChange(item)"
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
                             >
                                 <option value="" disabled>Select GST</option>
@@ -554,6 +624,7 @@ const submitForm = async () => {
                         </td>
                         <td class="border-t px-4 py-3">
                             <input type="number" name="quantity" v-model="item.quantity" required
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Qty" />
                         </td>
@@ -562,6 +633,7 @@ const submitForm = async () => {
                         </td>
                         <td class="border-t px-4 py-3">
                             <input type="number" name="price" v-model="item.price" required
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Price" />
                         </td>
@@ -605,6 +677,7 @@ const submitForm = async () => {
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
                                 @search="onProductSearch"
+                                @keydown.enter="moveToNextInput"
                             />
                         </div>
 
@@ -614,6 +687,7 @@ const submitForm = async () => {
                                 <select
                                     v-model="item.gst_rate_id"
                                     @change="onGstRateChange(item)"
+                                    @keydown.enter.prevent="moveToNextInput"
                                     class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm bg-white"
                                 >
                                     <option value="" disabled>Select GST</option>
@@ -628,12 +702,14 @@ const submitForm = async () => {
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
                                 <input type="number" v-model="item.quantity" required
+                                    @keydown.enter.prevent="moveToNextInput"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Qty" />
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Price</label>
                                 <input type="number" v-model="item.price" required
+                                    @keydown.enter.prevent="moveToNextInput"
                                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Price" />
                             </div>
@@ -675,14 +751,22 @@ const submitForm = async () => {
         </div>
     </div>
     <!-- Payment Modal -->
-    <div v-if="showPaymentModal" class="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50">
-        <div class="bg-white p-6 rounded-xl w-96">
-            <h2 class="text-2xl font-bold mb-4">Payment Details</h2>
+    <div v-if="showPaymentModal"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
+         style="z-index: 9999;"
+         @click.self="showPaymentModal = false">
+        <form @submit.prevent="submitForm" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+            <div class="flex justify-between items-center pb-2 border-b border-gray-100">
+                <h2 class="text-xl font-bold text-[#292688]">Payment Details</h2>
+                <button type="button" @click="showPaymentModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                    <i class="fa fa-close"></i>
+                </button>
+            </div>
 
             <!-- Discount Amount -->
             <div class="flex justify-between items-center">
                 <label class="text-gray-700 font-medium">Discount</label>
-                <input type="number" v-model="form.discount"
+                <input type="number" ref="paymentDiscountInput" v-model="form.discount"
                     class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                     placeholder="₹0.00" min="0" />
             </div>
@@ -761,11 +845,11 @@ const submitForm = async () => {
 
                 <!-- Submit Button -->
                 <div class="flex justify-end gap-3 pt-2">
-                    <button @click="showPaymentModal = false" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer">Cancel</button>
-                    <button @click="submitForm" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer">Final Submit</button>
+                    <button type="button" @click="showPaymentModal = false" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer">Final Submit</button>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
     </AuthenticatedLayout>
 </template>
