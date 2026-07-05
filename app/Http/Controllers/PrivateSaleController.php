@@ -39,10 +39,13 @@ class PrivateSaleController extends Controller
             $q->where('user_id', $userId);
         })
         ->where('accepted', 0)
-        ->with('customer')
+        ->with(['customer', 'saleReturns'])
         ->orderBy('created_at', 'desc')
         ->get()
         ->map(function ($item) {
+            $hasReturn = $item->saleReturns->isNotEmpty();
+            $isWithinTenMinutes = $item->created_at->diffInMinutes(now(), false) <= 10;
+
             return [
                 'id' => $item->id,
                 'customerName' => $item->customer->name ?? '',
@@ -51,6 +54,7 @@ class PrivateSaleController extends Controller
                 'grand_total' => $item->grand_total,
                 'sale_date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->payment_status,
+                'is_deletable' => !$hasReturn && $isWithinTenMinutes,
             ];
         });
 
@@ -81,10 +85,13 @@ class PrivateSaleController extends Controller
             $q->where('user_id', $userId);
         })
         ->where('accepted', 0)
-        ->with('supplier')
+        ->with(['supplier', 'purchaseReturns'])
         ->orderBy('created_at', 'desc')
         ->get()
         ->map(function ($item) {
+            $hasReturn = $item->purchaseReturns->isNotEmpty();
+            $isWithinTenMinutes = $item->created_at->diffInMinutes(now(), false) <= 10;
+
             return [
                 'id' => $item->id,
                 'supplierName' => $item->supplier->name ?? '',
@@ -93,6 +100,7 @@ class PrivateSaleController extends Controller
                 'grand_total' => $item->grand_total,
                 'purchase_date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->payment_status,
+                'is_deletable' => !$hasReturn && $isWithinTenMinutes,
             ];
         });
 

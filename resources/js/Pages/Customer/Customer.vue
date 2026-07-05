@@ -30,7 +30,7 @@ function showCustomerDetails(customerId) {
 // Column definitions for DataTable
 const columns = [
 //   { data: 'id', title: 'S No' },
-    { 
+    {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
@@ -60,12 +60,12 @@ const columns = [
         data: null,
         render: (data, type, row) => {
             return `
-            <div class="icon-all-dflex">
-              <button class="text-white bg-blue-500 hover:bg-blue-700 rounded action-btn view-btn" style="padding: 2px 8px;" title="View Details" data-id="${data.id}"><i class="fa fa-eye"></i></button>
-              <a href="/paymentsCustomer/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 2px 8px;" title="Payment History"><i class="fa fa-history"></i></a>
-              <a  href="customer/${data.id}/edit" class="btn btn-light action-btn"><i class="fa fa-edit"></i></a>
-              <a href="customer/${data.id}/download-pdf" class="btn btn-primary action-btn"><i class="fa fa-file-pdf-o"></i></a>
-              <button class="text-white bg-red-600 hover:bg-red-800 rounded action-btn delete-btn main-delete-button" style="padding: 2px 8px;" data-id="${data.id}"><i class="fa fa-trash"></i></button>
+            <div class="flex gap-2">
+              <button class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn view-btn" style="padding: 3px 8px;" title="View Details" data-id="${data.id}"><i class="fa fa-eye"></i></button>
+              <a href="/paymentsCustomer/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="Payment History"><i class="fa fa-history"></i></a>
+              <a  href="customer/${data.id}/edit" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
+              <a href="customer/${data.id}/download-pdf" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-file-pdf-o"></i></a>
+              <button class="text-white bg-red-600 hover:bg-red-800 rounded action-btn delete-btn main-delete-button px-3 py-1" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
             `;
         }
@@ -160,8 +160,8 @@ function deleteCustomer(customerId) {
     </AuthenticatedLayout>
 
     <!-- View Customer Modal Popup -->
-    <div v-if="isViewModalOpen" 
-         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6" 
+    <div v-if="isViewModalOpen"
+         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
          @click.self="isViewModalOpen = false">
       <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-2xl w-full my-auto transform transition-all duration-300 border border-gray-100 space-y-6">
@@ -171,7 +171,7 @@ function deleteCustomer(customerId) {
             <i class="fa fa-close text-xl"></i>
           </button>
         </div>
-        
+
         <div class="space-y-6 text-black text-left overflow-y-auto max-h-[70vh]">
           <!-- General Details -->
           <div>
@@ -244,7 +244,7 @@ function deleteCustomer(customerId) {
         </div>
 
         <div class="flex justify-end pt-4 border-t border-gray-100">
-          <button type="button" @click="isViewModalOpen = false" 
+          <button type="button" @click="isViewModalOpen = false"
                   class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition">
             Close
           </button>

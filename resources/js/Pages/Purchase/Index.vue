@@ -56,24 +56,24 @@ async function handleOcrUpload(event) {
                 throw new Error('PDF.js library not loaded properly. Please wait a moment and try again.');
             }
             const pdfjsLib = window.pdfjsLib;
-            
+
             pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-            
+
             const arrayBuffer = await file.arrayBuffer();
             const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise;
             const page = await pdf.getPage(1); // Read first page
-            
+
             // Higher scale = better OCR resolution
             const viewport = page.getViewport({ scale: 2.0 });
             const canvas = document.createElement('canvas');
             canvas.height = viewport.height;
             canvas.width = viewport.width;
-            
+
             await page.render({
                 canvasContext: canvas.getContext('2d'),
                 viewport: viewport
             }).promise;
-            
+
             ocrTarget = canvas;
         }
 
@@ -96,7 +96,7 @@ async function handleOcrUpload(event) {
             // Fallback: match any DD/MM/YYYY or DD-MM-YYYY pattern
             dateMatch = text.match(/(\d{1,2}[\/\-\.]\d{1,2}[\/\-\.]\d{2,4})/);
         }
-        
+
         if (dateMatch) {
             let dString = dateMatch[1].replace(/\./g, '-');
             let parts = dString.split(/[\/\-]/);
@@ -105,7 +105,7 @@ async function handleOcrUpload(event) {
                 let val1 = parseInt(parts[0], 10);
                 let val2 = parseInt(parts[1], 10);
                 let day, month;
-                
+
                 if (val2 > 12) {
                     // Must be MM/DD/YYYY
                     month = parts[0].padStart(2, '0');
@@ -115,7 +115,7 @@ async function handleOcrUpload(event) {
                     day = parts[0].padStart(2, '0');
                     month = parts[1].padStart(2, '0');
                 }
-                
+
                 let year = parts[2].length === 2 ? '20' + parts[2] : parts[2];
                 data.purchase_date = `${year}-${month}-${day}`;
             }
@@ -136,7 +136,7 @@ async function handleOcrUpload(event) {
         for (const line of lines) {
             const lowerLine = line.toLowerCase();
             const matchedProduct = props.products.find(p => p.name && lowerLine.includes(p.name.toLowerCase()));
-            
+
             if (matchedProduct) {
                 const lineWithoutName = lowerLine.replace(matchedProduct.name.toLowerCase(), '');
                 const numbers = lineWithoutName.match(/[\d,\.]+/g) || [];
@@ -153,14 +153,14 @@ async function handleOcrUpload(event) {
                 let price = matchedProduct.purchase_price || matchedProduct.price || 0;
 
                 let found = false;
-                
+
                 // 1. Try to find A * B = C (Qty * Price = Total)
                 for (let i = 0; i < cleanNumbers.length - 1; i++) {
                     for (let j = i + 1; j < cleanNumbers.length; j++) {
                         let a = parseFloat(cleanNumbers[i]);
                         let b = parseFloat(cleanNumbers[j]);
                         let cCandidates = cleanNumbers.slice(j + 1).map(parseFloat);
-                        
+
                         for (let c of cCandidates) {
                             if (Math.abs(a * b - c) < 1.0) {
                                 qty = Math.min(a, b);
@@ -190,7 +190,7 @@ async function handleOcrUpload(event) {
                 if (!found && cleanNumbers.length >= 2) {
                     let num1 = parseFloat(cleanNumbers[0]);
                     let num2 = parseFloat(cleanNumbers[1]);
-                    
+
                     if (Number.isInteger(num1) && num1 < num2 && num2 < 50000) {
                         qty = num1;
                         price = num2;
@@ -271,7 +271,7 @@ async function handleOcrUpload(event) {
 // Column definitions for DataTable
 const columns = [
 //   { data: 'id', title: 'S No' },
-    { 
+    {
     data: null,
     title: 'S No',
     render: (data, type, row, meta) => meta.row + 1,
@@ -286,11 +286,15 @@ const columns = [
         title: 'Actions',
         data: null,
         render: (data, type, row) => {
+            let deleteBtn = '';
+            if (row.is_deletable) {
+                deleteBtn = `<button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>`;
+            }
             return `
-            <div class="icon-all-dflex">
-              <a href="purchase/${data.id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 2px 8px;" title="View Purchase"><i class="fa fa-eye"></i></a>
-              <a  href="purchase/${data.id}/edit" class="btn btn-light action-btn"><i class="fa fa-edit"></i></a>
-              <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
+            <div class="flex gap-2">
+              <a href="purchase/${data.id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Purchase"><i class="fa fa-eye"></i></a>
+              <a  href="purchase/${data.id}/edit" class="btn btn-light text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
+              ${deleteBtn}
             </div>
             `;
         }
@@ -300,7 +304,7 @@ const columns = [
 // Attach event when component is mounted
 onMounted(() => {
   setupDeleteButton()
-  
+
   // Dynamically load Tesseract.js script to avoid Vite warning
   if (!document.getElementById('tesseract-script')) {
       const script = document.createElement('script');
@@ -308,7 +312,7 @@ onMounted(() => {
       script.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
       document.head.appendChild(script);
   }
-  
+
   // Dynamically load PDF.js script for PDF support
   if (!document.getElementById('pdfjs-script')) {
       const script = document.createElement('script');
@@ -396,8 +400,8 @@ function deleteSupplier(purchaseId) {
     </div>
         </div>
 
-        <VerifyInvoiceModal 
-            v-if="showVerifyModal" 
+        <VerifyInvoiceModal
+            v-if="showVerifyModal"
             :ocrData="scannedData"
             :suppliers="suppliers"
             :products="products"

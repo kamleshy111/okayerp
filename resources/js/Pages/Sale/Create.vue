@@ -118,7 +118,7 @@ const form = ref({
     estimate_id: "",
     grand_total: "",
     GstAmount: "",
-    accepted: true,
+    accepted: false,
     total_amount: "",
     paid: 0,
     discount: 0,
@@ -370,40 +370,22 @@ const hasGstSelected = computed(() => {
   return form.value.sale_items.some(item => !!item.gst_rate_id);
 });
 
+watch(hasGstSelected, (newVal) => {
+  form.value.accepted = newVal;
+});
+
 // Watch sale items
 watch(() => form.value.sale_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
-    const selectedProduct = products.value.find(product => product.id === item.product_id);
+    const selectedProduct = productRegistry.value[item.product_id] || products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = selectedProduct.unit_type;
-        item.sgst = selectedProduct.sgst;
-        item.cgst = selectedProduct.cgst;
         item.last_product_id = item.product_id;
-
-        // Auto-match gst_rate_id from product's default tax rates
-        const totalProductRate = (parseFloat(selectedProduct.sgst) || 0) + (parseFloat(selectedProduct.cgst) || 0);
-        const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
-        if (matchedRate) {
-          item.gst_rate_id = matchedRate.id;
-          if (parseFloat(matchedRate.igst) > 0) {
-            item.cgst = parseFloat(matchedRate.igst) / 2;
-            item.sgst = parseFloat(matchedRate.igst) / 2;
-          } else {
-            item.cgst = parseFloat(matchedRate.cgst) || 0;
-            item.sgst = parseFloat(matchedRate.sgst) || 0;
-          }
-        } else {
-          const defaultRate = filteredGstRates.value[0];
-          item.gst_rate_id = defaultRate?.id || "";
-          if (defaultRate && parseFloat(defaultRate.igst) > 0) {
-            item.cgst = parseFloat(defaultRate.igst) / 2;
-            item.sgst = parseFloat(defaultRate.igst) / 2;
-          } else {
-            item.cgst = defaultRate ? parseFloat(defaultRate.cgst) || 0 : 0;
-            item.sgst = defaultRate ? parseFloat(defaultRate.sgst) || 0 : 0;
-          }
-        }
+        item.gst_rate_id = "";
+        item.cgst = 0;
+        item.sgst = 0;
+        item.price = selectedProduct.price || "";
       }
 
       const quantity = parseFloat(item.quantity) || 0;
@@ -424,6 +406,9 @@ const onGstRateChange = (item) => {
       item.cgst = parseFloat(selectedRate.cgst) || 0;
       item.sgst = parseFloat(selectedRate.sgst) || 0;
     }
+  } else {
+    item.cgst = 0;
+    item.sgst = 0;
   }
 };
 
@@ -602,7 +587,7 @@ const submitForm = async () => {
       customer_id: "",
       grand_total: "",
       GstAmount: "",
-      accepted: true,
+      accepted: false,
       total_amount: "",
       paid: 0,
       discount: 0,
@@ -777,15 +762,16 @@ const handleProductSuccess = (createdProduct) => {
                             ₹  {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}
                         </td>
 
-                        <td class="border-t px-4 py-2">
+                        <td class="border-t px-4 py-2 flex items-center gap-2">
                             <button @click="removeRow(index)" type="button"
-                                class="bg-red-600 text-white px-6 py-2 rounded-md shadow hover:bg-red-700 transition mr-2">
-                                Remove
+                                class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition flex items-center justify-center">
+                                <i class="bi bi-trash"></i>
                             </button>
 
                             <button v-if="index === form.sale_items.length - 1" @click="addRow" type="button"
-                                class="bg-green-600 text-white px-6 py-2 rounded-md shadow hover:bg-green-700 transition">
-                                Add Items
+                                class="bg-green-600 text-white px-3 py-1 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2"
+                            >
+                                <i class="bi bi-plus-lg"></i>
                             </button>
                         </td>
                     </tr>
@@ -798,7 +784,7 @@ const handleProductSuccess = (createdProduct) => {
                     <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                         <span class="font-bold text-sm text-[#292688]">Item #{{ index + 1 }}</span>
                         <button @click="removeRow(index)" type="button" class="text-red-600 hover:text-red-800 text-sm font-semibold flex items-center gap-1">
-                            <i class="fa fa-trash"></i> Remove
+                            <i class="bi bi-trash"></i>
                         </button>
                     </div>
 

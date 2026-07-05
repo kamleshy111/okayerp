@@ -27,9 +27,12 @@ class PurchasesController extends Controller
             $q->where('user_id', $userId);
         })
         ->where('accepted', 1)
-        ->with('supplier')
+        ->with(['supplier', 'purchaseReturns'])
         ->get()
         ->map(function ($item) {
+            $hasReturn = $item->purchaseReturns->isNotEmpty();
+            $isWithinTenMinutes = $item->created_at->diffInMinutes(now(), false) <= 10;
+
             return [
                 'id' => $item->id,
                 'supplier_name' => $item->supplier->name ?? '--',
@@ -38,6 +41,7 @@ class PurchasesController extends Controller
                 'grand_total' => $item->grand_total ?? '--',
                 'purchase_Date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->payment_status,
+                'is_deletable' => !$hasReturn && $isWithinTenMinutes,
             ];
         });
 
@@ -138,6 +142,9 @@ class PurchasesController extends Controller
                 $product = Product::find($item['product_id']);
                 if ($product) {
                     $product->stock_quantity += $item['quantity'];
+                    if (isset($item['sale_price']) && $item['sale_price'] !== null && $item['sale_price'] !== '') {
+                        $product->price = (double)$item['sale_price'];
+                    }
                     $product->save();
 
                     // Log stock movement
@@ -235,6 +242,7 @@ class PurchasesController extends Controller
                 'quantity' => $item->quantity,
                 'unit_type' => $item->unit_type,
                 'price' => $item->price,
+                'sale_price' => $item->product->price ?? 0.00,
                 'total' => $item->quantity * $item->price,
             ];
         });
@@ -405,6 +413,9 @@ class PurchasesController extends Controller
                     $product = Product::find($item['product_id']);
                     if ($product) {
                         $product->stock_quantity += $item['quantity'];
+                        if (isset($item['sale_price']) && $item['sale_price'] !== null && $item['sale_price'] !== '') {
+                            $product->price = (double)$item['sale_price'];
+                        }
                         $product->save();
 
                         // Log stock movement
@@ -477,6 +488,15 @@ class PurchasesController extends Controller
             return response()->json(['message' => 'Purchase not found or unauthorized access.'], 404);
         }
 
+        $hasReturn = \App\Models\PurchaseReturn::where('purchase_id', $id)->exists();
+        if ($hasReturn) {
+            return response()->json(['message' => 'Cannot delete purchase because items have been returned.'], 422);
+        }
+
+        if ($purchase->created_at->diffInMinutes(now(), false) > 10) {
+            return response()->json(['message' => 'Cannot delete purchase because it was created more than 10 minutes ago.'], 403);
+        }
+
         $lastClosedDate = Auth::user()->last_closed_date;
         if ($lastClosedDate && $purchase->purchase_date <= $lastClosedDate) {
             return response()->json(['message' => 'Cannot delete transactions from a closed financial year.'], 403);
@@ -485,7 +505,22 @@ class PurchasesController extends Controller
         DB::beginTransaction();
 
         try {
+            // Revert product stock quantities
+            $purchaseItems = PurchaseItem::where('purchase_id', $id)->get();
+            foreach ($purchaseItems as $pItem) {
+                $product = Product::find($pItem->product_id);
+                if ($product) {
+                    $product->stock_quantity -= $pItem->quantity;
+                    $product->save();
+                }
+            }
 
+            // Delete associated stock movements
+            \App\Models\StockMovement::where('reference_type', 'Purchase')
+                ->where('reference_id', $id)
+                ->delete();
+
+            // Delete purchase items
             PurchaseItem::where('purchase_id', $id)->delete();
 
             $accountingService = new AccountingService(Auth::id());

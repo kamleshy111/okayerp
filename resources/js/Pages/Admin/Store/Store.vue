@@ -30,18 +30,18 @@ const columns = [
         className: 'text-center',
         render: (data, type, row) => {
             return `
-            <div class="flex flex-wrap gap-2 justify-center items-center">
+            <div class="flex gap-2 justify-center items-center">
               <button class="inline-flex items-center gap-1.5 text-white bg-blue-600 hover:bg-blue-700 px-3 py-2 rounded-xl text-xs font-semibold action-btn edit-btn transition-colors duration-200 cursor-pointer shadow-sm hover:shadow" data-id="${data.id}" title="Edit Store">
-                <i class="fa fa-edit"></i> <span class="hidden sm:inline">Edit</span>
+                <i class="fa fa-edit"></i>
               </button>
               <button class="inline-flex items-center gap-1.5 text-white bg-red-600 hover:bg-red-700 px-3 py-2 rounded-xl text-xs font-semibold action-btn delete-btn transition-colors duration-200 cursor-pointer shadow-sm hover:shadow" data-id="${data.id}" title="Delete Store">
-                <i class="fa fa-trash"></i> <span class="hidden sm:inline">Delete</span>
+                <i class="fa fa-trash"></i>
               </button>
               <button class="inline-flex items-center gap-1.5 text-white bg-purple-600 hover:bg-purple-700 px-3 py-2 rounded-xl text-xs font-semibold action-btn permission-btn transition-colors duration-200 cursor-pointer shadow-sm hover:shadow" data-id="${data.id}" title="Permissions">
-                <i class="fa fa-key"></i> <span>Permissions</span>
+                <i class="fa fa-key"></i>
               </button>
               <button class="inline-flex items-center gap-1.5 text-white bg-emerald-600 hover:bg-emerald-700 px-3 py-2 rounded-xl text-xs font-semibold action-btn login-btn transition-colors duration-200 cursor-pointer shadow-sm hover:shadow" data-id="${data.id}" title="Login as Store">
-                <i class="fa fa-sign-in"></i> <span>Login</span>
+                <i class="fa fa-sign-in"></i>
               </button>
             </div>
             `;

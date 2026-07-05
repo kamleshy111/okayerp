@@ -46,8 +46,8 @@ const clearSelectedFile = () => {
 };
 
 const downloadSampleCsv = () => {
-  const headers = ['name', 'category_name', 'unit_type', 'hsn_code', 'description'];
-  const sampleRow = ['Sample Product', 'Electronics', 'Pcs', '8517', 'A premium quality sample product description.'];
+  const headers = ['name', 'category_name', 'unit_type', 'hsn_code', 'sale_price', 'description'];
+  const sampleRow = ['Sample Product', 'Electronics', 'Pcs', '8517', '1500.00', 'A premium quality sample product description.'];
 
   const csvContent = "data:text/csv;charset=utf-8,"
     + [headers.join(','), sampleRow.join(',')].join('\n');
@@ -147,6 +147,11 @@ const columns = [
     { data: 'name' },
     { data: 'sku'},
     { data: 'categoryName' ?? '---'},
+    { 
+      data: 'price', 
+      title: 'Sale Price',
+      render: (data) => data ? `₹${parseFloat(data).toFixed(2)}` : '₹0.00'
+    },
     { data: 'stockQuantity'},
     { data: 'unit_type'},
     {
@@ -154,11 +159,12 @@ const columns = [
         data: null,
         orderable: false,
         searchable: false,
+        sortable: false,
         render: (data, type, row) => {
             return `
-            <div class="icon-all-dflex">
-              <a  href="product/${data.id}/edit" class="btn btn-light action-btn"><i class="fa fa-edit"></i></a>
-              <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
+            <div class="flex gap-2 justify-center items-center">
+              <a  href="product/${data.id}/edit" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"><i class="fa fa-edit"></i></a>
+              <button class="text-white bg-red-600 hover:bg-red-800 rounded action-btn delete-btn px-3 py-1" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
             `;
         }
@@ -235,6 +241,7 @@ function deleteProduct(productId) {
                       <th scope="col">Name</th>
                       <th scope="col">Sku</th>
                       <th scope="col">Category Name</th>
+                      <th scope="col">Sale Price</th>
                       <th scope="col">Stock Quantity</th>
                       <th scope="col">Unit Type</th>
                       <th scope="col">Action</th>
@@ -272,6 +279,7 @@ function deleteProduct(productId) {
                 <li><strong>category_name</strong> - Associated category</li>
                 <li><strong>unit_type</strong> - Unit type (e.g. Kg, Pcs, Liters)</li>
                 <li><strong>hsn_code</strong> - Product HSN code</li>
+                <li><strong>sale_price</strong> - Product sale price (e.g. 1500.00)</li>
                 <li><strong>description</strong> - Details about the product</li>
               </ul>
             </div>

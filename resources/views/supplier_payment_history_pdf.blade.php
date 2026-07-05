@@ -210,9 +210,9 @@
     <tr>
       <td class="logo-container">
         @if($store && $store->profile_photo && file_exists(storage_path('app/public/' . $store->profile_photo)))
-          <img src="{{ storage_path('app/public/' . $store->profile_photo) }}" style="max-height: 55px; max-width: 150px;">
+          <img src="{{ storage_path('app/public/' . $store->profile_photo) }}" style="width: 55px; height: 55px; border-radius: 50%; object-fit: cover;">
         @elseif(file_exists(public_path('images/logo.png')))
-          <img src="{{ public_path('images/logo.png') }}" style="max-height: 55px; max-width: 150px;">
+          <img src="{{ public_path('images/logo.png') }}" style="width: 55px; height: 55px; border-radius: 50%; object-fit: cover;">
         @else
           <span style="font-size: 14px; font-weight: bold; color: #2e2c92;">{{ $store ? $store->name : 'OKAY ERP' }}</span>
         @endif

@@ -88,22 +88,18 @@ class SuppliersController extends Controller
         $validated = $request->validate([
             'name' => 'required',
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 'max:255',
                 Rule::unique('suppliers', 'email')->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
-            'phone' => 'required',
-            'gstin' => 'required_without:pan_number|nullable|string|max:255',
-            'pan_number' => 'required_without:gstin|nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+            'gstin' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|string|max:255',
             'cin_number' => 'nullable|string|max:255',
         ], [
-         
             'name.required' => 'Name is required.',
             'email.unique' => 'The supplier email ID must be unique. Please choose a different email ID.',
-            'phone.required' => 'Phone Number is required.',
-            'gstin.required_without' => 'Either GSTIN or PAN Number is required.',
-            'pan_number.required_without' => 'Either GSTIN or PAN Number is required.',
         ]);
 
         if (!$validated) {
@@ -177,23 +173,19 @@ class SuppliersController extends Controller
         $validated = $request->validate([
             'name' => 'required',
             'email' => [
-                'required',
+                'nullable',
                 'email',
                 Rule::unique('suppliers', 'email')
                     ->ignore($id)
                     ->where(fn ($q) => $q->where('user_id', Auth::id()))
             ],
-            'phone' => 'required',
-            'gstin' => 'required_without:pan_number|nullable|string|max:255',
-            'pan_number' => 'required_without:gstin|nullable|string|max:255',
+            'phone' => 'nullable|string|max:255',
+            'gstin' => 'nullable|string|max:255',
+            'pan_number' => 'nullable|string|max:255',
             'cin_number' => 'nullable|string|max:255',
         ], [
-         
             'name.required' => 'Name is required.',
             'email.unique' => 'The supplier email ID must be unique. Please choose a different email ID.',
-            'phone.required' => 'Phone Number is required.',
-            'gstin.required_without' => 'Either GSTIN or PAN Number is required.',
-            'pan_number.required_without' => 'Either GSTIN or PAN Number is required.',
         ]);
 
         if (!$validated) {

@@ -127,7 +127,7 @@ const form = ref({
     expiry_date: defaultExpiry,
     grand_total: 0,
     GstAmount: 0,
-    accepted: true, // Apply to GST
+    accepted: false, // Apply to GST
     total_amount: 0,
     discount: 0,
     notes: "",
@@ -305,6 +305,10 @@ const hasGstSelected = computed(() => {
   return form.value.estimate_items.some(item => !!item.gst_rate_id);
 });
 
+watch(hasGstSelected, (newVal) => {
+  form.value.accepted = newVal;
+});
+
 // Watch Estimate Items to auto-populate product details (price, SGST, CGST, unit_type)
 watch(() => form.value.estimate_items, (newItems) => {
   newItems.forEach(item => {
@@ -312,33 +316,11 @@ watch(() => form.value.estimate_items, (newItems) => {
     if (prod) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = prod.unit_type;
-        item.sgst = prod.sgst;
-        item.cgst = prod.cgst;
         item.last_product_id = item.product_id;
-
-        // Auto-match gst_rate_id from product's default tax rates
-        const totalProductRate = (parseFloat(prod.sgst) || 0) + (parseFloat(prod.cgst) || 0);
-        const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
-        if (matchedRate) {
-          item.gst_rate_id = matchedRate.id;
-          if (parseFloat(matchedRate.igst) > 0) {
-            item.cgst = parseFloat(matchedRate.igst) / 2;
-            item.sgst = parseFloat(matchedRate.igst) / 2;
-          } else {
-            item.cgst = parseFloat(matchedRate.cgst) || 0;
-            item.sgst = parseFloat(matchedRate.sgst) || 0;
-          }
-        } else {
-          const defaultRate = filteredGstRates.value[0];
-          item.gst_rate_id = defaultRate?.id || "";
-          if (defaultRate && parseFloat(defaultRate.igst) > 0) {
-            item.cgst = parseFloat(defaultRate.igst) / 2;
-            item.sgst = parseFloat(defaultRate.igst) / 2;
-          } else {
-            item.cgst = defaultRate ? parseFloat(defaultRate.cgst) || 0 : 0;
-            item.sgst = defaultRate ? parseFloat(defaultRate.sgst) || 0 : 0;
-          }
-        }
+        item.gst_rate_id = "";
+        item.cgst = 0;
+        item.sgst = 0;
+        item.price = prod.price || "";
       }
 
       const qty = parseFloat(item.quantity) || 0;
@@ -358,6 +340,9 @@ const onGstRateChange = (item) => {
       item.cgst = parseFloat(selectedRate.cgst) || 0;
       item.sgst = parseFloat(selectedRate.sgst) || 0;
     }
+  } else {
+    item.cgst = 0;
+    item.sgst = 0;
   }
 };
 
@@ -597,11 +582,11 @@ const submitForm = async () => {
                                 <td class="px-4 py-3 text-center space-x-1">
                                     <button @click="removeRow(index)" type="button"
                                         class="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded transition font-medium text-xs border border-red-200">
-                                        Remove
+                                        <i class="bi bi-trash"></i>
                                     </button>
                                     <button v-if="index === form.estimate_items.length - 1" @click="addRow" type="button"
                                         class="bg-green-50 hover:bg-green-100 text-green-600 px-3 py-1.5 rounded transition font-medium text-xs border border-green-200">
-                                        + Add Item
+                                        <i class="bi bi-plus-lg"></i>
                                     </button>
                                 </td>
                             </tr>

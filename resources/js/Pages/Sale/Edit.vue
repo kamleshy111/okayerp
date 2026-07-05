@@ -238,40 +238,22 @@ const hasGstSelected = computed(() => {
   return form.value.sale_items.some(item => !!item.gst_rate_id);
 });
 
+watch(hasGstSelected, (newVal) => {
+  form.value.accepted = newVal;
+});
+
 // Watch for product change in each row to update unit_type
 watch(() => form.value.sale_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
-    const selectedProduct = products.value.find(product => product.id === item.product_id);
+    const selectedProduct = productRegistry.value[item.product_id] || products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = selectedProduct.unit_type;
-        item.sgst = selectedProduct.sgst;
-        item.cgst = selectedProduct.cgst;
         item.last_product_id = item.product_id;
-
-        // Auto-match gst_rate_id from product's default tax rates
-        const totalProductRate = (parseFloat(selectedProduct.sgst) || 0) + (parseFloat(selectedProduct.cgst) || 0);
-        const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
-        if (matchedRate) {
-          item.gst_rate_id = matchedRate.id;
-          if (parseFloat(matchedRate.igst) > 0) {
-            item.cgst = parseFloat(matchedRate.igst) / 2;
-            item.sgst = parseFloat(matchedRate.igst) / 2;
-          } else {
-            item.cgst = parseFloat(matchedRate.cgst) || 0;
-            item.sgst = parseFloat(matchedRate.sgst) || 0;
-          }
-        } else {
-          const defaultRate = filteredGstRates.value[0];
-          item.gst_rate_id = defaultRate?.id || "";
-          if (defaultRate && parseFloat(defaultRate.igst) > 0) {
-            item.cgst = parseFloat(defaultRate.igst) / 2;
-            item.sgst = parseFloat(defaultRate.igst) / 2;
-          } else {
-            item.cgst = defaultRate ? parseFloat(defaultRate.cgst) || 0 : 0;
-            item.sgst = defaultRate ? parseFloat(defaultRate.sgst) || 0 : 0;
-          }
-        }
+        item.gst_rate_id = "";
+        item.cgst = 0;
+        item.sgst = 0;
+        item.price = selectedProduct.price || "";
       }
 
       const quantity = parseFloat(item.quantity) || 0;
@@ -292,6 +274,9 @@ const onGstRateChange = (item) => {
       item.cgst = parseFloat(selectedRate.cgst) || 0;
       item.sgst = parseFloat(selectedRate.sgst) || 0;
     }
+  } else {
+    item.cgst = 0;
+    item.sgst = 0;
   }
 };
 
@@ -586,13 +571,13 @@ const submitForm = async () => {
 
                         <td class="border-t px-4 py-2">
                             <button @click="removeRow(index)" type="button"
-                                class="bg-red-600 text-white px-6 py-2 rounded-md shadow hover:bg-red-700 transition mr-2">
-                                Remove
+                                class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition mr-2">
+                                <i class="bi bi-trash"></i>
                             </button>
 
                             <button v-if="index === form.sale_items.length - 1" @click="addRow" type="button"
-                                class="bg-green-600 text-white px-6 py-2 rounded-md shadow hover:bg-green-700 transition">
-                                Add Items
+                                class="bg-green-600 text-white px-3 py-1 rounded-md shadow hover:bg-green-700 transition">
+                                <i class="bi bi-plus-lg"></i>
                             </button>
                         </td>
                     </tr>

@@ -59,15 +59,15 @@ const columns = [
             let convertBtn = '';
             if (data.status !== 'Invoiced') {
                 convertBtn = `
-                <a href="/sale/create?estimate_id=${data.id}" class="text-white bg-green-600 hover:bg-green-700 px-3 py-1 rounded action-btn text-xs font-medium inline-flex items-center gap-1" title="Convert to Sale">
+                <a href="/sale/create?estimate_id=${data.id}" class="text-white bg-green-600 hover:bg-green-700 rounded action-btn text-xs font-medium inline-flex items-center gap-1" title="Convert to Sale" style="padding: 8px 10px;">
                     <i class="fa fa-exchange"></i> Convert
                 </a>`;
             } else {
-                convertBtn = `<span class="px-2.5 py-1 bg-purple-50 text-purple-700 border border-purple-200 rounded text-xs font-medium">Invoiced</span>`;
+                convertBtn = `<span class="bg-purple-50 text-purple-700 border border-purple-200 rounded text-xs font-medium" style="padding: 8px 10px;">Invoiced</span>`;
             }
             return `
-            <div class="icon-all-dflex flex items-center gap-2">
-              <a href="/estimate/${data.id}/edit" class="btn btn-light action-btn px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50"><i class="fa fa-edit text-gray-700"></i></a>
+            <div class="flex items-center gap-2">
+              <a href="/estimate/${data.id}/edit" class="btn btn-primary action-btn px-2.5 py-1 rounded bg-[#2e2c92] hover:bg-[#201e6a] text-white"><i class="fa fa-edit"></i></a>
               <a href="/estimate/${data.id}/download-pdf" target="_blank" class="btn btn-primary action-btn px-2.5 py-1 rounded bg-[#2e2c92] hover:bg-[#201e6a] text-white"><i class="fa fa-file-pdf-o"></i></a>
               <button class="text-white bg-red-600 hover:bg-red-800 px-2.5 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
               ${convertBtn}

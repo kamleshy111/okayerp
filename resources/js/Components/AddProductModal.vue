@@ -179,7 +179,7 @@ const submitProduct = async () => {
             <input type="text" v-model="form.hsn_code" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-750 mb-1">Price</label>
+            <label class="block text-sm font-medium text-gray-750 mb-1">Sale Price (₹)</label>
             <input type="number" step="0.01" v-model="form.price" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
           </div>
         </div>

@@ -160,6 +160,7 @@ const form = ref({
             product_id: item.product_id,
             quantity: item.quantity,
             price: item.price,
+            sale_price: item.sale_price || "",
             unit_type: item.unit_type,
             sgst: item.sgst,
             cgst: item.cgst,
@@ -224,40 +225,22 @@ const hasGstSelected = computed(() => {
   return form.value.purchase_items.some(item => !!item.gst_rate_id);
 });
 
+watch(hasGstSelected, (newVal) => {
+  form.value.accepted = newVal;
+});
+
 // Watch for product change in each row to update unit_type
 watch(() => form.value.purchase_items, (newSaleItems) => {
   newSaleItems.forEach(item => {
-    const selectedProduct = products.value.find(product => product.id === item.product_id);
+    const selectedProduct = productRegistry.value[item.product_id] || products.value.find(product => product.id === item.product_id);
     if (selectedProduct) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = selectedProduct.unit_type;
-        item.sgst = selectedProduct.sgst;
-        item.cgst = selectedProduct.cgst;
         item.last_product_id = item.product_id;
-
-        // Auto-match gst_rate_id from product's default tax rates
-        const totalProductRate = (parseFloat(selectedProduct.sgst) || 0) + (parseFloat(selectedProduct.cgst) || 0);
-        const matchedRate = filteredGstRates.value.find(r => parseFloat(r.rate) === totalProductRate);
-        if (matchedRate) {
-          item.gst_rate_id = matchedRate.id;
-          if (parseFloat(matchedRate.igst) > 0) {
-            item.cgst = parseFloat(matchedRate.igst) / 2;
-            item.sgst = parseFloat(matchedRate.igst) / 2;
-          } else {
-            item.cgst = parseFloat(matchedRate.cgst) || 0;
-            item.sgst = parseFloat(matchedRate.sgst) || 0;
-          }
-        } else {
-          const defaultRate = filteredGstRates.value[0];
-          item.gst_rate_id = defaultRate?.id || "";
-          if (defaultRate && parseFloat(defaultRate.igst) > 0) {
-            item.cgst = parseFloat(defaultRate.igst) / 2;
-            item.sgst = parseFloat(defaultRate.igst) / 2;
-          } else {
-            item.cgst = defaultRate ? parseFloat(defaultRate.cgst) || 0 : 0;
-            item.sgst = defaultRate ? parseFloat(defaultRate.sgst) || 0 : 0;
-          }
-        }
+        item.gst_rate_id = "";
+        item.cgst = 0;
+        item.sgst = 0;
+        item.sale_price = selectedProduct.price || "";
       }
 
       const quantity = parseFloat(item.quantity) || 0;
@@ -278,6 +261,9 @@ const onGstRateChange = (item) => {
       item.cgst = parseFloat(selectedRate.cgst) || 0;
       item.sgst = parseFloat(selectedRate.sgst) || 0;
     }
+  } else {
+    item.cgst = 0;
+    item.sgst = 0;
   }
 };
 
@@ -288,6 +274,7 @@ const addRow = () => {
         unit_type: "",
         quantity: "",
         price: "",
+        sale_price: "",
         sgst: 0,
         cgst: 0,
         gst_rate_id: "",
@@ -547,6 +534,7 @@ const submitForm = async () => {
                         <th class="px-4 py-2 text-left">Quantity</th>
                         <th class="px-4 py-2 text-left">Unit Type</th>
                         <th class="px-4 py-2 text-left">Price</th>
+                        <th class="px-4 py-2 text-left">Sale Price</th>
                         <th class="px-4 py-2 text-left">Net Amount</th>
                         <th class="px-4 py-2 text-left">Action</th>
                     </tr>
@@ -592,18 +580,23 @@ const submitForm = async () => {
                                 placeholder="Price" />
                         </td>
                         <td class="border-t px-4 py-3">
+                            <input type="number" step="0.01" name="sale_price" v-model="item.sale_price"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                                placeholder="Sale Price" />
+                        </td>
+                        <td class="border-t px-4 py-3">
                             ₹  {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}
                         </td>
 
                         <td class="border-t px-4 py-2">
                             <button @click="removeRow(index)" type="button"
-                                class="bg-red-600 text-white px-4 py-1.5 rounded-md shadow hover:bg-red-700 transition mr-2 mt-2">
-                                Remove
+                                class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition mr-2 mt-2">
+                                <i class="bi bi-trash"></i>
                             </button>
 
                             <button v-if="index === form.purchase_items.length - 1" @click="addRow" type="button"
-                                class="bg-green-600 text-white px-4 py-1.5 rounded-md shadow hover:bg-green-700 transition mt-2">
-                                Add Items
+                                class="bg-green-600 text-white px-3 py-1 rounded-md shadow hover:bg-green-700 transition mt-2">
+                                <i class="bi bi-plus-lg"></i>
                             </button>
                         </td>
                     </tr>
@@ -650,18 +643,24 @@ const submitForm = async () => {
                             </div>
                         </div>
 
-                        <div class="grid grid-cols-2 gap-4">
+                        <div class="grid grid-cols-3 gap-2">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
                                 <input type="number" v-model="item.quantity" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Qty" />
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Price</label>
                                 <input type="number" v-model="item.price" required
-                                    class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Price" />
+                            </div>
+                            <div>
+                                <label class="block text-xs font-semibold text-gray-500 mb-1">Sale Price</label>
+                                <input type="number" step="0.01" v-model="item.sale_price"
+                                    class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
+                                    placeholder="Sale Price" />
                             </div>
                         </div>
 

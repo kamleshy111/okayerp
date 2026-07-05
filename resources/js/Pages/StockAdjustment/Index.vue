@@ -49,17 +49,7 @@ const columns = [
             return `<span class="${colorClass}">${prefix}${data}</span>`;
         }
     },
-    { 
-        data: 'reference_type', 
-        title: 'Source',
-        render: (data) => {
-            let badgeClass = 'bg-gray-100 text-gray-800 border-gray-200';
-            if (data === 'Manual') badgeClass = 'bg-blue-100 text-blue-800 border-blue-200';
-            else if (data === 'Sale') badgeClass = 'bg-purple-100 text-purple-800 border-purple-200';
-            else if (data === 'Purchase') badgeClass = 'bg-teal-100 text-teal-800 border-teal-200';
-            return `<span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeClass}">${data}</span>`;
-        }
-    },
+
     { 
         data: 'reason', 
         title: 'Reason / Remarks',
@@ -125,7 +115,6 @@ watch(filterProductId, (newVal) => {
                       <th scope="col">SKU</th>
                       <th scope="col">Type</th>
                       <th scope="col">Change Qty</th>
-                      <th scope="col">Source</th>
                       <th scope="col">Reason / Remarks</th>
                   </tr>
               </thead>

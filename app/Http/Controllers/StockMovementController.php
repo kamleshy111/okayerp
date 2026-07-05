@@ -16,6 +16,7 @@ class StockMovementController extends Controller
         $userId = Auth::id();
         
         $query = StockMovement::where('user_id', $userId)
+            ->where('reference_type', 'Manual')
             ->with('product')
             ->orderBy('id', 'desc');
 

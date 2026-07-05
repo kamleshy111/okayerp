@@ -38,7 +38,7 @@ const columns = [
     searchable: false,
     render: (data) => `
       <div class="icon-all-dflex">
-        <a href="purchase-return/${data.id}/download-pdf" class="btn btn-primary action-btn" target="_blank"><i class="fa fa-file-pdf-o"></i></a>
+        <a href="purchase-return/${data.id}/download-pdf" class="btn btn-primary text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" target="_blank"><i class="fa fa-file-pdf-o"></i></a>
       </div>
     `
   }

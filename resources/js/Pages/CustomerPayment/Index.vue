@@ -71,8 +71,8 @@ const columns = [
         render: (data, type, row) => {
             let sourceParam = data.source === 'Return' ? 'return' : 'payment';
             return `
-            <div class="icon-all-dflex">
-              <a href="/paymentsCustomer/receipt/${sourceParam}/${data.transaction_id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 2px 8px;" title="View Invoice"><i class="fa fa-eye"></i> View</a>
+            <div class="flex">
+              <a href="/paymentsCustomer/receipt/${sourceParam}/${data.transaction_id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Invoice"><i class="fa fa-eye"></i></a>
             </div>
             `;
         }

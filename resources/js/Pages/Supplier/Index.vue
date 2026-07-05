@@ -59,10 +59,10 @@ const columns = [
         data: null,
         render: (data, type, row) => {
             return `
-            <div class="icon-all-dflex">
-              <button class="text-white bg-blue-500 hover:bg-blue-700 rounded action-btn view-btn" style="padding: 2px 8px;" title="View Details" data-id="${data.id}"><i class="fa fa-eye"></i></button>
-              <a href="/paymentSupplier/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 2px 8px;" title="Payment History"><i class="fa fa-history"></i></a>
-              <a  href="supplier/${data.id}/edit" class="btn btn-light action-btn"><i class="fa fa-edit"></i></a>
+            <div class="flex gap-2">
+              <button class="view-btn text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;" title="View Details" data-id="${data.id}"><i class="fa fa-eye"></i></button>
+              <a href="/paymentSupplier/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="Payment History"><i class="fa fa-history"></i></a>
+              <a  href="supplier/${data.id}/edit" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
               <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
             `;

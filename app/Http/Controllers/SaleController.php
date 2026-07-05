@@ -32,7 +32,10 @@ class SaleController extends Controller
         ->get()
         ->map(function ($item) {
             $dueDeductions = $item->saleReturnItems ? $item->saleReturnItems->sum('due_deduction') : 0;
-            $effectiveGrandTotal = max(0, $item->grand_total - $dueDeductions);
+            $effectiveGrandTotal = max(0, $item->grand_total);
+
+            $hasReturn = $item->saleReturns->isNotEmpty();
+            $isWithinTenMinutes = $item->created_at->diffInMinutes(now(), false) <= 10;
 
             return [
                 'id' => $item->id,
@@ -42,6 +45,7 @@ class SaleController extends Controller
                 'grand_total' => number_format($effectiveGrandTotal, 2, '.', ''),
                 'sale_date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->paid >= $effectiveGrandTotal ? 'Paid' : $item->payment_status,
+                'is_deletable' => !$hasReturn && $isWithinTenMinutes,
             ];
         });
 
@@ -565,6 +569,15 @@ class SaleController extends Controller
             return response()->json(['message' => 'Sale not found.'], 404);
         }
 
+        $hasReturn = \App\Models\SaleReturn::where('sale_id', $id)->exists();
+        if ($hasReturn) {
+            return response()->json(['message' => 'Cannot delete sale because items have been returned.'], 422);
+        }
+
+        if ($sale->created_at->diffInMinutes(now(), false) > 10) {
+            return response()->json(['message' => 'Cannot delete sale because it was created more than 10 minutes ago.'], 403);
+        }
+
         $lastClosedDate = Auth::user()->last_closed_date;
         if ($lastClosedDate && $sale->created_at->toDateString() <= $lastClosedDate) {
             return response()->json(['message' => 'Cannot delete transactions from a closed financial year.'], 403);
@@ -573,6 +586,20 @@ class SaleController extends Controller
         DB::beginTransaction();
 
         try {
+            // Restore product stock quantities (since items are no longer sold)
+            $saleItems = SaleItem::where('sale_id', $id)->get();
+            foreach ($saleItems as $sItem) {
+                $product = Product::find($sItem->product_id);
+                if ($product) {
+                    $product->stock_quantity += $sItem->quantity;
+                    $product->save();
+                }
+            }
+
+            // Delete associated stock movements
+            \App\Models\StockMovement::where('reference_type', 'Sale')
+                ->where('reference_id', $id)
+                ->delete();
 
             $accountingService = new AccountingService(Auth::id());
 
