@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick, onMounted } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -22,6 +22,38 @@ const form = ref({
   reason: "",
   due_deduction: 0,
   items: [],
+});
+
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.bi-trash-fill') || el.closest('button')?.querySelector('.bi-trash-fill');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+// Auto-focus purchase select on page load
+onMounted(() => {
+  nextTick(() => {
+    const firstInput = document.querySelector('.vs__search');
+    if (firstInput) {
+      firstInput.focus();
+    }
+  });
 });
 
 const selectedPurchaseDetails = ref(null);
@@ -55,6 +87,17 @@ watch(() => form.value.purchase_id, async (newVal) => {
     }));
 
     form.value.due_deduction = 0;
+
+    nextTick(() => {
+      const inputs = Array.from(document.querySelectorAll('.bg-white.p-8 input[type="number"]')).filter(el => {
+        const rect = el.getBoundingClientRect();
+        return rect.width > 0 && rect.height > 0;
+      });
+      if (inputs.length > 0) {
+        inputs[0].focus();
+        inputs[0].select();
+      }
+    });
   } catch (error) {
     console.error("Error fetching purchase details:", error);
     toast.error("Failed to load purchase details.");
@@ -184,6 +227,7 @@ const submitReturn = async () => {
               :reduce="p => p.id"
               placeholder="Search or select purchase bill"
               class="w-full text-black bg-white"
+              @keydown.enter="moveToNextInput"
             />
           </div>
         </div>
@@ -223,6 +267,7 @@ const submitReturn = async () => {
                     min="0"
                     :max="item.available_qty"
                     :disabled="item.available_qty === 0"
+                    @keydown.enter.prevent="moveToNextInput"
                     class="w-full px-3 py-1.5 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition disabled:bg-gray-100 disabled:text-gray-400"
                     placeholder="0"
                   />
@@ -260,6 +305,7 @@ const submitReturn = async () => {
                     min="0"
                     :max="item.available_qty"
                     :disabled="item.available_qty === 0"
+                    @keydown.enter.prevent="moveToNextInput"
                     class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm disabled:bg-gray-100 disabled:text-gray-400"
                     placeholder="0"
                   />
@@ -283,6 +329,7 @@ const submitReturn = async () => {
                   type="date"
                   v-model="form.return_date"
                   required
+                  @keydown.enter.prevent="moveToNextInput"
                   class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                 />
               </div>
@@ -292,6 +339,7 @@ const submitReturn = async () => {
                 <select
                   v-model="form.refund_method"
                   required
+                  @keydown.enter.prevent="moveToNextInput"
                   class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                 >
                   <option value="Cash">Cash</option>
@@ -306,6 +354,7 @@ const submitReturn = async () => {
                 <textarea
                   v-model="form.reason"
                   rows="3"
+                  @keydown.enter.prevent="moveToNextInput"
                   class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                   placeholder="e.g. Broken packaging, wrong shipment..."
                 ></textarea>
@@ -337,6 +386,7 @@ const submitReturn = async () => {
                     v-model.number="form.due_deduction"
                     :min="0"
                     :max="Math.min(grandRefundTotal, parseFloat(selectedPurchaseDetails.supplier_total_due) || 0)"
+                    @keydown.enter.prevent="moveToNextInput"
                     class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold"
                   />
                 </div>

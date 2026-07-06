@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, nextTick } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 
@@ -10,11 +10,42 @@ import axios from 'axios';
 
 // Access props
 const { categoryDetail } = usePage().props;
+const nameInput = ref(null);
 
 const form = ref({
     name: categoryDetail.name,
     status: categoryDetail.status,
     description: categoryDetail.description,
+});
+
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.bi-trash-fill') || el.closest('button')?.querySelector('.bi-trash-fill');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+onMounted(() => {
+    nextTick(() => {
+        if (nameInput.value) {
+            nameInput.value.focus();
+        }
+    });
 });
 
 // Form submit handler
@@ -46,13 +77,15 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="form.name" name="name" required
+                    <input ref="nameInput" type="text" v-model="form.name" name="name" required
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Name" />
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">Description</label>
                     <input type="text" v-model="form.description" name="description"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Description" />
                 </div>

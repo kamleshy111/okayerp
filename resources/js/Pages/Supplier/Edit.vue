@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import vSelect from 'vue3-select';
 import 'vue3-select/dist/vue3-select.css';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -12,6 +12,7 @@ import axios from 'axios';
 
 // Access props
 const { supplierDetail } = usePage().props;
+const nameInput = ref(null);
 
 const form = ref({
     name: supplierDetail.name,
@@ -30,6 +31,36 @@ const form = ref({
 
 const page = usePage();
 
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.bi-trash-fill') || el.closest('button')?.querySelector('.bi-trash-fill');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+onMounted(() => {
+    nextTick(() => {
+        if (nameInput.value) {
+            nameInput.value.focus();
+        }
+    });
+});
+
 const availableDistricts = computed(() => {
     if (!form.value.state) return [];
     const stateName = form.value.state;
@@ -47,6 +78,26 @@ watch(() => form.value.state, (newVal, oldVal) => {
     }
     if (newVal) {
         form.value.country = "India";
+        
+        // Auto-focus District dropdown
+        nextTick(() => {
+            const dropdowns = document.querySelectorAll('.v-select .vs__search');
+            if (dropdowns.length > 1) {
+                dropdowns[1].focus();
+            }
+        });
+    }
+});
+
+watch(() => form.value.district, (newVal) => {
+    if (newVal) {
+        // Auto-focus City input
+        nextTick(() => {
+            const cityInput = document.querySelector('input[name="city"]');
+            if (cityInput) {
+                cityInput.focus();
+            }
+        });
     }
 });
 
@@ -80,13 +131,15 @@ const submitForm = async () => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div>
                         <label class="block text-black font-medium mb-2">Name <span class="text-red-500">*</span></label>
-                        <input type="text" v-model="form.name" name="name" required
+                        <input ref="nameInput" type="text" v-model="form.name" name="name" required
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Name" />
                     </div>
                     <div>
                         <label class="block text-black font-medium mb-2">Email</label>
                         <input type="email" v-model="form.email" name="email"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="email" />
                     </div>
@@ -96,12 +149,14 @@ const submitForm = async () => {
                     <div>
                         <label class="block text-black font-medium mb-2">Phone</label>
                         <input type="text" v-model="form.phone" name="phone"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Phone" />
                     </div>
                     <div>
                         <label class="block text-black font-medium mb-2">Address</label>
                         <input type="text" v-model="form.address" name="address"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="address" />
                     </div>
@@ -117,6 +172,7 @@ const submitForm = async () => {
                             v-model="form.state"
                             placeholder="Search & Select State"
                             class="w-full"
+                            @keydown.enter="moveToNextInput"
                         ></v-select>
                     </div>
                     <div>
@@ -127,6 +183,7 @@ const submitForm = async () => {
                             placeholder="Search & Select District"
                             class="w-full"
                             :disabled="!form.state"
+                            @keydown.enter="moveToNextInput"
                         ></v-select>
                     </div>
                 </div>
@@ -135,12 +192,14 @@ const submitForm = async () => {
                     <div>
                         <label class="block text-black font-medium mb-2">City</label>
                         <input type="text" name="city" v-model="form.city"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Enter City" />
                     </div>
                     <div>
                         <label class="block text-black font-medium mb-2">Country</label>
                         <select name="country" v-model="form.country"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                             <option value="" disabled>Select Country</option>
                             <option v-for="c in $page.props.countries" :key="c" :value="c">
@@ -154,12 +213,14 @@ const submitForm = async () => {
                     <div>
                         <label class="block text-black font-medium mb-2">PIN Code</label>
                         <input type="text" v-model="form.pin_code" name="pin_code"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="PIN Code" />
                     </div>
                     <div>
                         <label class="block text-black font-medium mb-2">GSTIN</label>
                         <input type="text" v-model="form.gstin" name="gstin"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="GSTIN" />
                     </div>
@@ -169,12 +230,14 @@ const submitForm = async () => {
                     <div>
                         <label class="block text-black font-medium mb-2">PAN Number</label>
                         <input type="text" v-model="form.pan_number" name="pan_number"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="PAN Number" />
                     </div>
                     <div>
                         <label class="block text-black font-medium mb-2">CIN Number</label>
                         <input type="text" v-model="form.cin_number" name="cin_number"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="CIN Number" />
                     </div>
