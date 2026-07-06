@@ -36,10 +36,15 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  referralUsers: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const suppliers = ref([...props.customers]); // Wait, the original code had: const customers = ref([...props.customers]);
 const customers = ref([...props.customers]);
+const referralUsers = ref([...props.referralUsers]);
 const products = ref([...props.products]);
 const productItems = props.productItems;
 const sales = props.sales;
@@ -123,6 +128,38 @@ const onCustomerSearch = async (search, loading) => {
   }
 };
 
+const referralSearchQuery = ref("");
+const onReferralSearch = async (search, loading) => {
+  referralSearchQuery.value = search;
+  if (!search.trim()) {
+    const selectedId = form.value?.referral_user_id;
+    if (selectedId) {
+      const selected = referralUsers.value.find(r => r.id == selectedId);
+      if (selected) {
+        referralUsers.value = [selected];
+        return;
+      }
+    }
+    referralUsers.value = [...props.referralUsers];
+    return;
+  }
+  try {
+    const response = await axios.get(`/referral-user/search?query=${encodeURIComponent(search)}`);
+    referralUsers.value = response.data;
+
+    // Ensure selected referral user is always in options list
+    const selectedId = form.value?.referral_user_id;
+    if (selectedId) {
+      const selected = props.referralUsers.find(r => r.id == selectedId) || referralUsers.value.find(r => r.id == selectedId);
+      if (selected && !referralUsers.value.some(r => r.id == selected.id)) {
+        referralUsers.value.unshift(selected);
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching referral users:", error);
+  }
+};
+
 
 const selectedCustomer = ref(
   props.customers.find(c => c.id == sales.customer_id) || null
@@ -147,6 +184,8 @@ const filteredGstRates = computed(() => {
 const form = ref({
     id: sales.id,
     customer_id: sales.customer_id,
+    referral_user_id: sales.referral_user_id || "",
+    sale_date: sales.sale_date || new Date().toLocaleDateString('en-CA'),
     grand_total: "",
     GstAmount: "",
     accepted: sales.accepted  === 1,
@@ -546,7 +585,7 @@ const submitForm = async () => {
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Update Sale</h2>
         <div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Customer</label>
                     <vSelect
@@ -566,6 +605,34 @@ const submitForm = async () => {
                             </div>
                         </template>
                     </vSelect>
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Referral User</label>
+                    <vSelect
+                        v-model="form.referral_user_id"
+                        :options="referralUsers"
+                        label="name"
+                        :reduce="user => user.id"
+                        placeholder="Search or select referral user"
+                        class="w-full text-black bg-white"
+                        @search="onReferralSearch"
+                    >
+                        <template #no-options>
+                            <div class="px-3 py-2 text-gray-500">
+                                <span v-if="!referralSearchQuery">Type to search referral user...</span>
+                                <span v-else>No referral users found.</span>
+                            </div>
+                        </template>
+                    </vSelect>
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Sales Date <span class="text-red-500">*</span></label>
+                    <input
+                        type="date"
+                        v-model="form.sale_date"
+                        required
+                        class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black"
+                    />
                 </div>
             </div>
 
@@ -768,7 +835,7 @@ const submitForm = async () => {
                 <label class="text-gray-700 font-medium">Discount</label>
                 <input type="number" ref="paymentDiscountInput" v-model="form.discount"
                     class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                    placeholder="₹0.00" min="0" />
+                    placeholder="₹0.00" min="0" step="any" />
             </div>
 
             <div class="space-y-4 border-t pt-4">
@@ -813,7 +880,7 @@ const submitForm = async () => {
                     <label class="text-gray-700 font-medium">Paid Amount</label>
                     <input type="number" v-model="form.paid"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="Amount" min="0" />
+                        placeholder="Amount" min="0" step="any" />
                 </div>
 
                 <!-- Allocated General Payments -->

@@ -11,6 +11,8 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\SaleItem;
 use App\Models\SalePayment;
+use App\Models\ReferralUser;
+use App\Models\ReferralSale;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Storage;
 use App\Services\AccountingService;
@@ -43,7 +45,7 @@ class SaleController extends Controller
                 'email' => $item->customer->email ?? '',
                 'phone' => $item->customer->phone ?? '',
                 'grand_total' => number_format($effectiveGrandTotal, 2, '.', ''),
-                'sale_date' => $item->created_at->format('d-m-Y'),
+                'sale_date' => $item->sale_date ? \Carbon\Carbon::parse($item->sale_date)->format('d-m-Y') : $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->paid >= $effectiveGrandTotal ? 'Paid' : $item->payment_status,
                 'is_deletable' => !$hasReturn && $isWithinTenMinutes,
             ];
@@ -62,11 +64,18 @@ class SaleController extends Controller
         $categories = \App\Models\Category::where('user_id', $userId)->select('id', 'name')->get();
         $unitTypes = config('units.types') ?? [];
         $gstRates = \App\Models\GstRate::where('is_active', true)->get();
+        $referralUsers = ReferralUser::where('user_id', $userId)
+            ->select('id', 'name', 'phone')
+            ->orderByRaw('(SELECT MAX(created_at) FROM referral_sales WHERE referral_sales.referral_user_id = referral_users.id) DESC')
+            ->orderBy('created_at', 'DESC')
+            ->limit(5)
+            ->get();
         return Inertia::render('Sale/Create',[
             'products' => $products,
             'categories' => $categories,
             'unitTypes' => $unitTypes,
             'gstRates' => $gstRates,
+            'referralUsers' => $referralUsers,
         ]);
     }
 
@@ -74,9 +83,8 @@ class SaleController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'required',
+            'sale_date' => 'nullable|date',
             'sale_items.*.product_id' => 'required',
-
-
         ], [
             'customer_id.required' => 'Customer name is required.',
             'sale_items.*.product_id.required' => 'Product is required.',
@@ -117,6 +125,8 @@ class SaleController extends Controller
             $sale = Sale::create([
                 'customer_id' => $request->input('customer_id'),
                 'estimate_id' => $request->input('estimate_id'),
+                'referral_user_id' => $request->input('referral_user_id') ?: null,
+                'sale_date' => $request->input('sale_date') ?: now()->toDateString(),
                 'grand_total' => $request->input('grand_total') ?? 0.00,
                 'total_amount' => $request->input('total_amount') ?? 0.00,
                 'gst_amount' => $request->input('GstAmount') ?? 0.00,
@@ -170,6 +180,15 @@ class SaleController extends Controller
 
             $accountingService = new AccountingService($userId);
             $accountingService->postSale($sale);
+
+            // Save ReferralSale if referral_user_id provided
+            if ($sale->referral_user_id) {
+                ReferralSale::create([
+                    'sale_id'          => $sale->id,
+                    'referral_user_id' => $sale->referral_user_id,
+                    'sale_amount'      => $sale->grand_total,
+                ]);
+            }
 
             // Create a SalePayment record if down payment is made
             if ($sale->paid > 0) {
@@ -320,6 +339,18 @@ class SaleController extends Controller
         $customers = $customer ? [$customer] : [];
 
         $gstRates = \App\Models\GstRate::where('is_active', true)->get();
+        $referralUsers = ReferralUser::where('user_id', $userId)
+            ->select('id', 'name', 'phone')
+            ->orderByRaw('(SELECT MAX(created_at) FROM referral_sales WHERE referral_sales.referral_user_id = referral_users.id) DESC')
+            ->orderBy('created_at', 'DESC')
+            ->limit(5)
+            ->get();
+        if ($sales->referral_user_id) {
+            $currentReferral = ReferralUser::find($sales->referral_user_id);
+            if ($currentReferral && !$referralUsers->contains('id', $sales->referral_user_id)) {
+                $referralUsers->push($currentReferral);
+            }
+        }
 
         return Inertia::render('Sale/Edit',[
             'products' => $products,
@@ -328,6 +359,7 @@ class SaleController extends Controller
             'sales' => $sales,
             'allocatedPayment' => $allocatedPayment,
             'gstRates' => $gstRates,
+            'referralUsers' => $referralUsers,
         ]);
     }
 
@@ -390,6 +422,8 @@ class SaleController extends Controller
                 // Update purchase data
                 $sale->update([
                     'customer_id' => $request->input('customer_id'),
+                    'referral_user_id' => $request->input('referral_user_id') ?: null,
+                    'sale_date' => $request->input('sale_date') ?: now()->toDateString(),
                     'gst_amount' => $request->input('GstAmount'),
                     'accepted' => $request->input('accepted') ?? 0,
                     'grand_total' => $request->input('grand_total'),
@@ -459,6 +493,19 @@ class SaleController extends Controller
 
                 $accountingService = new AccountingService($userId);
                 $accountingService->postSale($sale);
+
+                // Update or create/delete ReferralSale
+                if ($sale->referral_user_id) {
+                    ReferralSale::updateOrCreate(
+                        ['sale_id' => $sale->id],
+                        [
+                            'referral_user_id' => $sale->referral_user_id,
+                            'sale_amount'      => $sale->grand_total,
+                        ]
+                    );
+                } else {
+                    ReferralSale::where('sale_id', $sale->id)->delete();
+                }
 
                 // Update or create/delete associated SalePayment
                 $payment = SalePayment::where('sale_id', $sale->id)->orderBy('id', 'asc')->first();

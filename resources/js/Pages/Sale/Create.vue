@@ -32,9 +32,14 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  referralUsers: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const customers = ref([...props.customers]);
+const referralUsers = ref([...props.referralUsers]);
 const products = ref([]);
 
 // Registry to store all products we have seen/loaded so far
@@ -113,8 +118,42 @@ const onCustomerSearch = async (search, loading) => {
   }
 };
 
+const referralSearchQuery = ref("");
+const onReferralSearch = async (search, loading) => {
+  referralSearchQuery.value = search;
+  if (!search.trim()) {
+    const selectedId = form.value?.referral_user_id;
+    if (selectedId) {
+      const selected = referralUsers.value.find(r => r.id == selectedId);
+      if (selected) {
+        referralUsers.value = [selected];
+        return;
+      }
+    }
+    referralUsers.value = [...props.referralUsers];
+    return;
+  }
+  try {
+    const response = await axios.get(`/referral-user/search?query=${encodeURIComponent(search)}`);
+    referralUsers.value = response.data;
+
+    // Ensure selected referral user is always in options list
+    const selectedId = form.value?.referral_user_id;
+    if (selectedId) {
+      const selected = props.referralUsers.find(r => r.id == selectedId) || referralUsers.value.find(r => r.id == selectedId);
+      if (selected && !referralUsers.value.some(r => r.id == selected.id)) {
+        referralUsers.value.unshift(selected);
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching referral users:", error);
+  }
+};
+
 const form = ref({
     customer_id: "",
+    referral_user_id: "",
+    sale_date: new Date().toLocaleDateString('en-CA'),
     estimate_id: "",
     grand_total: "",
     GstAmount: "",
@@ -688,6 +727,8 @@ const submitForm = async () => {
     // Reset form
     form.value = {
       customer_id: "",
+      referral_user_id: "",
+      sale_date: new Date().toLocaleDateString('en-CA'),
       grand_total: "",
       GstAmount: "",
       accepted: false,
@@ -765,7 +806,7 @@ const handleProductSuccess = (createdProduct) => {
             </div>
         <div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Customer <span class="text-red-500">*</span></label>
                     <vSelect
@@ -793,6 +834,34 @@ const handleProductSuccess = (createdProduct) => {
                                         ➕ Add New Customer
                                     </button>
                                 </span>
+                            </div>
+                        </template>
+                    </vSelect>
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Sales Date <span class="text-red-500">*</span></label>
+                    <input
+                        type="date"
+                        v-model="form.sale_date"
+                        required
+                        class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black"
+                    />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Referral User (Optional)</label>
+                    <vSelect
+                        v-model="form.referral_user_id"
+                        :options="referralUsers"
+                        label="name"
+                        :reduce="user => user.id"
+                        placeholder="Search or select referral user"
+                        class="w-full text-black bg-white"
+                        @search="onReferralSearch"
+                    >
+                        <template #no-options>
+                            <div class="px-3 py-2 text-gray-500">
+                                <span v-if="!referralSearchQuery">Type to search referral user...</span>
+                                <span v-else>No referral users found.</span>
                             </div>
                         </template>
                     </vSelect>
@@ -1024,7 +1093,7 @@ const handleProductSuccess = (createdProduct) => {
                 <label class="text-gray-700 font-medium">Discount</label>
                 <input type="number" ref="paymentDiscountInput" v-model="form.discount"
                     class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                    placeholder="₹0.00" min="0" />
+                    placeholder="₹0.00" min="0" step="any" />
             </div>
 
             <div class="space-y-4 border-t pt-4">
@@ -1068,7 +1137,7 @@ const handleProductSuccess = (createdProduct) => {
                     <label class="text-gray-700 font-medium">Paid Amount</label>
                     <input type="number" v-model.number="form.paid"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="Amount" min="0" />
+                        placeholder="Amount" min="0" step="any" />
                 </div>
 
                 <!-- Final Balance after this payment -->
