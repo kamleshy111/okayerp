@@ -29,13 +29,23 @@ const unit = props.product.unit_type || '';
 const qty  = (n) => (n > 0 ? `${n}${unit ? ' ' + unit : ''}` : '—');
 
 // ── Row selection & keyboard nav ────────────────────────────────────────────
-const selectedIndex = ref(props.rows.length > 0 ? 0 : -1);
+const selectedIndex = ref(-1);
 const tableRef      = ref(null);
 
-const selectRow = (i) => { selectedIndex.value = i; };
+const selectRow = (i) => {
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    openInvoice(props.rows[i]);
+    return;
+  }
+  if (selectedIndex.value === i) {
+    openInvoice(props.rows[i]);
+  } else {
+    selectedIndex.value = i;
+  }
+};
 
 const scrollToSelected = () => {
-  if (!tableRef.value) return;
+  if (!tableRef.value || selectedIndex.value === -1) return;
   const row = tableRef.value.querySelector(`tr[data-index="${selectedIndex.value}"]`);
   row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 };
@@ -58,11 +68,19 @@ const handleKeydown = (e) => {
 
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    selectedIndex.value = Math.min(selectedIndex.value + 1, len - 1);
+    if (selectedIndex.value === -1) {
+      selectedIndex.value = 0;
+    } else {
+      selectedIndex.value = Math.min(selectedIndex.value + 1, len - 1);
+    }
     nextTick(scrollToSelected);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
+    if (selectedIndex.value === -1) {
+      selectedIndex.value = len - 1;
+    } else {
+      selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
+    }
     nextTick(scrollToSelected);
   } else if (e.key === 'Enter') {
     e.preventDefault();
@@ -87,7 +105,7 @@ onUnmounted(() => window.removeEventListener('keydown', handleKeydown));
       <div class="flex items-center justify-between bg-[#2e2c92] text-white px-5 py-2 rounded-t-xl">
         <div class="flex items-center gap-3">
           <span class="text-sm font-bold tracking-wide">Stock Item</span>
-          <span class="hidden md:flex items-center gap-1 text-white/50 text-[10px]">
+          <span class="hidden items-center gap-1 text-white/50 text-[10px]">
             <kbd class="px-1 bg-white/10 rounded text-[9px] font-mono">↑</kbd>
             <kbd class="px-1 bg-white/10 rounded text-[9px] font-mono">↓</kbd>
             navigate &nbsp;·&nbsp;

@@ -58,17 +58,24 @@ const clearFilters = () => {
 };
 
 // ── Row selection + keyboard nav ──────────────────────────────────────────
-const selectedIndex = ref(0);   // first row selected on mount
+const selectedIndex = ref(-1);   // no row selected on mount
 const tableRef      = ref(null);
 
-// When filters change, reset selection to first row
+// When filters change, reset selection
 watch(filteredProducts, () => {
-  selectedIndex.value = 0;
-  nextTick(() => scrollToSelected());
+  selectedIndex.value = -1;
 });
 
 const selectRow = (index) => {
-  selectedIndex.value = index;
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    openRow(filteredProducts.value[index]);
+    return;
+  }
+  if (selectedIndex.value === index) {
+    openRow(filteredProducts.value[index]);
+  } else {
+    selectedIndex.value = index;
+  }
 };
 
 const openRow = (product) => {
@@ -76,7 +83,7 @@ const openRow = (product) => {
 };
 
 const scrollToSelected = () => {
-  if (!tableRef.value) return;
+  if (!tableRef.value || selectedIndex.value === -1) return;
   const row = tableRef.value.querySelector(`tr[data-index="${selectedIndex.value}"]`);
   row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 };
@@ -87,16 +94,26 @@ const handleKeydown = (e) => {
 
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    selectedIndex.value = Math.min(selectedIndex.value + 1, len - 1);
+    if (selectedIndex.value === -1) {
+      selectedIndex.value = 0;
+    } else {
+      selectedIndex.value = Math.min(selectedIndex.value + 1, len - 1);
+    }
     nextTick(scrollToSelected);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
+    if (selectedIndex.value === -1) {
+      selectedIndex.value = len - 1;
+    } else {
+      selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
+    }
     nextTick(scrollToSelected);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    const product = filteredProducts.value[selectedIndex.value];
-    if (product) openRow(product);
+    if (selectedIndex.value >= 0 && selectedIndex.value < len) {
+      const product = filteredProducts.value[selectedIndex.value];
+      if (product) openRow(product);
+    }
   }
 };
 
@@ -120,20 +137,6 @@ onUnmounted(() => {
         <div>
           <h1 class="text-2xl font-extrabold text-gray-900 tracking-tight">Stock Summary</h1>
           <p class="text-gray-400 text-sm mt-0.5">Inventory snapshot — quantities, rates &amp; valuations</p>
-        </div>
-        <div class="flex items-center gap-3">
-          <span class="text-xs bg-gray-100 text-gray-500 px-3 py-1.5 rounded-full font-medium">
-            {{ filteredProducts.length }} / {{ totalProducts }} products
-          </span>
-          <!-- Keyboard hint -->
-          <span class="hidden md:flex items-center gap-1.5 text-xs text-gray-400 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full">
-            <kbd class="px-1 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono shadow-sm">↑</kbd>
-            <kbd class="px-1 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono shadow-sm">↓</kbd>
-            navigate &nbsp;·&nbsp;
-            <kbd class="px-1.5 py-0.5 bg-white border border-gray-300 rounded text-[10px] font-mono shadow-sm">Enter</kbd>
-            open &nbsp;·&nbsp;
-            Double-click to open
-          </span>
         </div>
       </div>
 
@@ -177,7 +180,7 @@ onUnmounted(() => {
             <option value="">All Categories</option>
             <option v-for="cat in categories" :key="cat.id" :value="cat.name">{{ cat.name }}</option>
           </select>
-          <div class="flex items-center gap-1.5 flex-wrap">
+          <div class="flex items-center gap-1.5">
             <button v-for="opt in [
               { val:'all',          label:'All' },
               { val:'in_stock',     label:'In Stock' },

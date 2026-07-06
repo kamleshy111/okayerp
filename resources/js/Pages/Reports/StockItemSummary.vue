@@ -31,15 +31,23 @@ const maxBar = computed(() => Math.max(...props.rows.flatMap(r => [r.in_qty, r.o
 const barH   = (val) => Math.round((val / maxBar.value) * 80);
 
 // ── Row selection & keyboard nav ────────────────────────────────────────
-const selectedIndex = ref(0);   // first row selected on mount
+const selectedIndex = ref(-1);   // no row selected on mount
 const tableRef      = ref(null);
 
 const selectRow = (index) => {
-  selectedIndex.value = index;
+  if (typeof window !== 'undefined' && window.innerWidth < 768) {
+    openMonthDetail(props.rows[index]);
+    return;
+  }
+  if (selectedIndex.value === index) {
+    openMonthDetail(props.rows[index]);
+  } else {
+    selectedIndex.value = index;
+  }
 };
 
 const scrollToSelected = () => {
-  if (!tableRef.value) return;
+  if (!tableRef.value || selectedIndex.value === -1) return;
   const row = tableRef.value.querySelector(`tr[data-index="${selectedIndex.value}"]`);
   row?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 };
@@ -50,16 +58,26 @@ const handleKeydown = (e) => {
 
   if (e.key === 'ArrowDown') {
     e.preventDefault();
-    selectedIndex.value = Math.min(selectedIndex.value + 1, len - 1);
+    if (selectedIndex.value === -1) {
+      selectedIndex.value = 0;
+    } else {
+      selectedIndex.value = Math.min(selectedIndex.value + 1, len - 1);
+    }
     nextTick(scrollToSelected);
   } else if (e.key === 'ArrowUp') {
     e.preventDefault();
-    selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
+    if (selectedIndex.value === -1) {
+      selectedIndex.value = len - 1;
+    } else {
+      selectedIndex.value = Math.max(selectedIndex.value - 1, 0);
+    }
     nextTick(scrollToSelected);
   } else if (e.key === 'Enter') {
     e.preventDefault();
-    const row = props.rows[selectedIndex.value];
-    openMonthDetail(row);
+    if (selectedIndex.value >= 0 && selectedIndex.value < len) {
+      const row = props.rows[selectedIndex.value];
+      openMonthDetail(row);
+    }
   } else if (e.key === 'Escape') {
     goBack();
   }
@@ -67,10 +85,6 @@ const handleKeydown = (e) => {
 
 onMounted(() => {
   window.addEventListener('keydown', handleKeydown);
-  // auto-highlight current month if exists
-  const currentIdx = props.rows.findIndex(r => r.is_current);
-  if (currentIdx !== -1) selectedIndex.value = currentIdx;
-  nextTick(scrollToSelected);
 });
 
 onUnmounted(() => {
@@ -205,8 +219,8 @@ const selectedRow = computed(() => props.rows[selectedIndex.value] ?? null);
                 selectedIndex === i
                   ? 'bg-[#2e2c92] text-white selected-row'
                   : row.is_current
-                    ? 'bg-amber-400/90 font-semibold text-gray-900 hover:bg-amber-400'
-                    : i % 2 === 0
+                    // ? 'bg-amber-400/90 font-semibold text-gray-900 hover:bg-amber-400'
+                    // : i % 2 === 0
                       ? 'bg-white hover:bg-indigo-50/50 text-gray-800'
                       : 'bg-gray-50/40 hover:bg-indigo-50/50 text-gray-800'
               ]"
