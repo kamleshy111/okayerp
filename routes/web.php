@@ -31,6 +31,9 @@ use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\GstReportController;
+use App\Http\Controllers\StockSummaryController;
+use App\Http\Controllers\StockItemSummaryController;
+use App\Http\Controllers\StockItemMonthDetailController;
 
 
 
@@ -262,6 +265,9 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     // AR/AP Aging Report
     Route::get('/reports/aging', [AgingReportController::class, 'index'])->name('reports.aging');
     Route::get('/reports/ledger', [LedgerController::class, 'index'])->name('reports.ledger');
+    Route::get('/reports/stock-summary', [StockSummaryController::class, 'index'])->name('reports.stock-summary');
+    Route::get('/reports/stock-item-summary/{productId}', [StockItemSummaryController::class, 'show'])->name('reports.stock-item-summary');
+    Route::get('/reports/stock-item-month/{productId}/{year}/{month}', [StockItemMonthDetailController::class, 'show'])->name('reports.stock-item-month');
     Route::post('/reports/ledger/repost', [LedgerController::class, 'repost'])->name('reports.ledger.repost');
     Route::get('/reports/gst', [GstReportController::class, 'index'])->name('reports.gst');
     Route::post('/purchases/{id}/toggle-refundable', [GstReportController::class, 'toggleRefundable'])->name('purchases.toggle-refundable');

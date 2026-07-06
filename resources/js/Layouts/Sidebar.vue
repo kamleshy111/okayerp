@@ -181,6 +181,15 @@ onMounted(() => {
           </a>
         </li>
 
+        <li v-if="role === 'store'" :class="{ 'active': route().current('reports.stock-summary') }">
+          <a
+            :href="route('reports.stock-summary')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-card-checklist text-xl"></i> <span>Stock Summary</span>
+          </a>
+        </li>
+
         <!-- Section: Incomes (Inflows) -->
         <li v-if="role === 'store' && (hasPermission('income manage') || hasPermission('income category manage'))" class="pt-4 pb-1 pl-4 text-[10px] font-bold text-indigo-200 uppercase tracking-widest pointer-events-none select-none opacity-80">
           Incomes

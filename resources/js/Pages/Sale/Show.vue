@@ -1,6 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
+import { onMounted, onUnmounted } from 'vue';
 
 const props = defineProps({
   sale: {
@@ -30,6 +31,21 @@ const formatDate = (dateStr) => {
   const year = date.getFullYear();
   return `${day}/${month}/${year}`;
 };
+
+const handleKeydown = (e) => {
+  if (e.key === 'Escape') {
+    e.preventDefault();
+    window.history.back();
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeydown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeydown);
+});
 </script>
 
 <template>
