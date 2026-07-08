@@ -55,6 +55,7 @@ class OfferController extends Controller
                 'end_date' => date('d-m-Y', strtotime($offer->end_date)),
                 'reward_description' => $offer->reward_description,
                 'performance' => $referralPerformance,
+                'is_expired' => date('Y-m-d') > $offer->end_date,
             ];
         });
 

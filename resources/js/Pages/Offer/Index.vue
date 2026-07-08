@@ -62,9 +62,23 @@ const deleteOffer = async (id) => {
           <!-- Offer main header -->
           <div class="bg-gray-50 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-gray-100">
             <div class="space-y-1">
-              <span class="inline-block bg-purple-100 text-purple-700 text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
-                Target Offer
-              </span>
+              <div class="flex items-center gap-2">
+                <span class="inline-block bg-purple-100 text-purple-700 text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  Target Offer
+                </span>
+                <span 
+                  v-if="offer.is_expired" 
+                  class="inline-block bg-red-100 text-red-700 text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                >
+                  Expired
+                </span>
+                <span 
+                  v-else 
+                  class="inline-block bg-green-100 text-green-700 text-[11px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
+                >
+                  Active
+                </span>
+              </div>
               <h3 class="text-lg font-bold text-gray-800">{{ offer.title }}</h3>
               <p class="text-xs text-gray-500 flex items-center gap-1">
                 <i class="bi bi-calendar-range"></i> Duration: {{ offer.start_date }} to {{ offer.end_date }}
@@ -122,7 +136,7 @@ const deleteOffer = async (id) => {
                   <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
                     <div
                       class="h-2.5 rounded-full transition-all duration-500"
-                      :class="user.achieved ? 'bg-green-600' : 'bg-indigo-600'"
+                      :class="user.achieved ? 'bg-green-600' : (offer.is_expired ? 'bg-gray-400' : 'bg-indigo-600')"
                       :style="{ width: user.percentage + '%' }"
                     ></div>
                   </div>
@@ -140,6 +154,12 @@ const deleteOffer = async (id) => {
                       class="inline-flex items-center gap-1 bg-green-100 text-green-700 text-xs font-bold px-2.5 py-1 rounded-full"
                     >
                       <i class="bi bi-check-circle-fill"></i> Achieved
+                    </span>
+                    <span
+                      v-else-if="offer.is_expired"
+                      class="inline-flex items-center gap-1 bg-red-100 text-red-700 text-xs font-bold px-2.5 py-1 rounded-full"
+                    >
+                      <i class="bi bi-x-circle-fill"></i> Expired
                     </span>
                     <span
                       v-else

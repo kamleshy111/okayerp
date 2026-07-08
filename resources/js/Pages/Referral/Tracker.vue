@@ -235,7 +235,7 @@ const totalReferredAmount = computed(() => {
             <div v-if="props.expiredOffers.length > 0" class="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div v-for="offer in props.expiredOffers" :key="offer.id" class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm opacity-70 space-y-4">
                 <div>
-                  <h3 class="font-bold text-gray-800 text-lg text-gray-500">{{ offer.title }}</h3>
+                  <h3 class="font-bold text-lg text-gray-500">{{ offer.title }}</h3>
                   <p class="text-xs text-gray-400 mt-0.5">Timeline: {{ offer.start_date }} to {{ offer.end_date }} (Expired)</p>
                 </div>
                 <div class="bg-gray-100 p-3 rounded-lg border border-gray-200 flex items-center justify-between text-xs">
