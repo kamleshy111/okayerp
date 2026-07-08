@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch } from 'vue';
+import { ref, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { toast } from "vue3-toastify";
 
@@ -26,6 +26,7 @@ const emit = defineEmits(['close', 'success']);
 
 const imagePreview = ref(null);
 const isDragging = ref(false);
+const productNameInput = ref(null);
 
 const form = ref({
   name: '',
@@ -42,7 +43,7 @@ const form = ref({
 // Watch for initialName or visibility changes to reset form
 watch(
   () => props.show,
-  (newVal) => {
+  async (newVal) => {
     if (newVal) {
       form.value = {
         name: props.initialName || '',
@@ -56,9 +57,28 @@ watch(
         image: null,
       };
       imagePreview.value = null;
+
+      await nextTick();
+      if (productNameInput.value) {
+        productNameInput.value.focus();
+      }
     }
   }
 );
+
+const handleKeyDown = (e) => {
+  if (e.key === 'Escape' && props.show) {
+    emit('close');
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleKeyDown);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleKeyDown);
+});
 
 const handleFileSelect = (file) => {
   if (file && file.type.startsWith('image/')) {
@@ -138,23 +158,23 @@ const submitProduct = async () => {
        class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
        style="z-index: 99999;"
        @click.self="emit('close')">
-    <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+    <form @submit.prevent="submitProduct" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-lg my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
       <div class="flex justify-between items-center pb-2 border-b border-gray-100">
         <h2 class="text-xl font-bold text-[#292688]">Add New Product</h2>
-        <button @click="emit('close')" class="text-gray-400 hover:text-gray-600 transition">
+        <button type="button" @click="emit('close')" class="text-gray-400 hover:text-gray-600 transition">
           <i class="fa fa-close"></i>
         </button>
       </div>
 
       <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-1 text-black">
         <div>
-          <label class="block text-sm font-medium text-gray-750 mb-1">Product Name <span class="text-red-500">*</span></label>
-          <input type="text" v-model="form.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
+          <label class="block text-sm font-medium text-gray-755 mb-1">Product Name <span class="text-red-500">*</span></label>
+          <input type="text" ref="productNameInput" v-model="form.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
         </div>
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-750 mb-1">Category <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-755 mb-1">Category <span class="text-red-500">*</span></label>
             <select v-model="form.category_id" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white">
               <option value="">Select Category</option>
               <option v-for="category in categories" :key="category.id" :value="category.id">
@@ -163,7 +183,7 @@ const submitProduct = async () => {
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-750 mb-1">Unit Type <span class="text-red-500">*</span></label>
+            <label class="block text-sm font-medium text-gray-755 mb-1">Unit Type <span class="text-red-500">*</span></label>
             <select v-model="form.unit_type" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white">
               <option value="">Select Unit</option>
               <option v-for="(label, key) in unitTypes" :key="key" :value="key">
@@ -175,22 +195,22 @@ const submitProduct = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div>
-            <label class="block text-sm font-medium text-gray-750 mb-1">HSN/SAC Code</label>
+            <label class="block text-sm font-medium text-gray-755 mb-1">HSN/SAC Code</label>
             <input type="text" v-model="form.hsn_code" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
           </div>
           <div>
-            <label class="block text-sm font-medium text-gray-750 mb-1">Sale Price (₹)</label>
+            <label class="block text-sm font-medium text-gray-755 mb-1">Sale Price (₹)</label>
             <input type="number" step="0.01" v-model="form.price" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
           </div>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-750 mb-1">Description</label>
+          <label class="block text-sm font-medium text-gray-755 mb-1">Description</label>
           <textarea v-model="form.description" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" rows="2"></textarea>
         </div>
 
         <div>
-          <label class="block text-sm font-medium text-gray-750 mb-1">Product Image</label>
+          <label class="block text-sm font-medium text-gray-755 mb-1">Product Image</label>
           <div 
               @dragover="onDragOver" 
               @dragleave="onDragLeave" 
@@ -238,18 +258,19 @@ const submitProduct = async () => {
 
       <div class="mt-6 flex justify-end gap-3 pt-2">
         <button
+          type="button"
           @click="emit('close')"
           class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition cursor-pointer font-medium"
         >
           Cancel
         </button>
         <button
-          @click="submitProduct"
+          type="submit"
           class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition cursor-pointer font-medium"
         >
           Save Product
         </button>
       </div>
-    </div>
+    </form>
   </div>
 </template>

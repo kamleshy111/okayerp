@@ -1,5 +1,5 @@
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -29,6 +29,47 @@ const form = ref({
     advance_amount_used: 0,
 });
 
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.bi-trash-fill') || el.closest('button')?.querySelector('.bi-trash-fill');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+const onEnterKey = (event) => {
+  if (customerSearchQuery.value && customers.value.length === 0) {
+    event.preventDefault();
+    openCustomerModalWithName(customerSearchQuery.value);
+    return;
+  }
+  moveToNextInput(event);
+};
+
+// Auto-focus customer select on page load
+onMounted(() => {
+  nextTick(() => {
+    const firstInput = document.querySelector('.vs__search');
+    if (firstInput) {
+      firstInput.focus();
+    }
+  });
+});
+
 const onCustomerSearch = async (search, loading) => {
   customerSearchQuery.value = search;
   if (!search.trim()) {
@@ -48,8 +89,6 @@ const onCustomerSearch = async (search, loading) => {
   }
 };
 
-import { watch } from 'vue';
-
 watch(() => form.value.customer_id, async (newId) => {
     if (newId) {
         try {
@@ -58,7 +97,14 @@ watch(() => form.value.customer_id, async (newId) => {
             form.value.sale_id = "";
             form.value.use_advance = false;
             form.value.advance_amount_used = 0;
-            // Optionally auto-set the max advance
+            
+            // Auto-focus Invoice select dropdown
+            nextTick(() => {
+                const invoiceSelect = document.querySelector('select[name="sale_id"]');
+                if (invoiceSelect) {
+                    invoiceSelect.focus();
+                }
+            });
         } catch(e) {
             console.error("Error fetching payment info");
         }
@@ -212,6 +258,37 @@ const submitCustomer = async () => {
     toast.error(errorMessage);
   }
 };
+
+const lastActiveElement = ref(null);
+const newCustomerNameInput = ref(null);
+
+const handleEscKey = (e) => {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    showCustomerModal.value = false;
+  }
+};
+
+watch(showCustomerModal, async (isOpen) => {
+  if (isOpen) {
+    window.addEventListener('keydown', handleEscKey);
+    lastActiveElement.value = document.activeElement;
+    await nextTick();
+    if (newCustomerNameInput.value) {
+      newCustomerNameInput.value.focus();
+    }
+  } else {
+    window.removeEventListener('keydown', handleEscKey);
+    if (lastActiveElement.value) {
+      await nextTick();
+      lastActiveElement.value.focus();
+      lastActiveElement.value = null;
+    }
+  }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscKey);
+});
 </script>
 <template>
 
@@ -237,16 +314,19 @@ const submitCustomer = async () => {
                         placeholder="Search or select customer"
                         class="w-full text-black bg-white"
                         @search="onCustomerSearch"
+                        @keydown.enter="onEnterKey"
                     >
                         <template #no-options="{ search, searching, loading }">
-                            <div class="px-3 py-2 text-gray-500">
+                            <div class="px-3 py-2 text-gray-500 flex items-center justify-between">
                                 <span v-if="!search">Type to search customer...</span>
                                 <span v-else>No customers found.</span>
                                 <button
                                     type="button"
                                     @click.stop="openCustomerModalWithName(search)"
-                                    class="mt-2 block text-blue-600 hover:underline text-sm"
-                                >
+                                    :class="search
+                                            ? 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold border border-blue-300 rounded-lg px-3 py-1.5'
+                                            : 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold'"
+                                    >
                                     ➕ Add New Customer
                                 </button>
                             </div>
@@ -256,6 +336,7 @@ const submitCustomer = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Invoice (Optional)</label>
                     <select name="sale_id" v-model="form.sale_id"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="">Direct Payment (No Invoice)</option>
                         <option v-for="invoice in customerInfo.due_invoices" :key="invoice.id" :value="invoice.id">
@@ -271,6 +352,7 @@ const submitCustomer = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Cash/Bank Amount <span class="text-red-500">*</span></label>
                     <input type="number" name="amount" v-model="form.amount"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter remaining cash/bank amount" />
                 </div>
@@ -280,6 +362,7 @@ const submitCustomer = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Date <span class="text-red-500">*</span></label>
                     <input type="date" name="payment_date" v-model="form.payment_date"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Payment Date" />
                 </div>
@@ -287,6 +370,7 @@ const submitCustomer = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Payment Method <span class="text-red-500">*</span></label>
                     <select name="payment_method" v-model="form.payment_method"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="" disabled>Select Payment Method</option>
                         <option value="Cash">Cash</option>
@@ -303,6 +387,7 @@ const submitCustomer = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Note</label>
                     <input type="note" name="note" v-model="form.note"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Note"/>
                 </div>
@@ -318,10 +403,10 @@ const submitCustomer = async () => {
         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
         style="z-index: 99999;"
         @click.self="showCustomerModal = false">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+        <form @submit.prevent="submitCustomer" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 class="text-xl font-bold text-[#2E2C92]">Add New Customer</h2>
-                <button @click="showCustomerModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                <button type="button" @click="showCustomerModal = false" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="fa fa-close"></i>
                 </button>
             </div>
@@ -329,7 +414,7 @@ const submitCustomer = async () => {
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newCustomer.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <input ref="newCustomerNameInput" type="text" v-model="newCustomer.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
@@ -384,19 +469,20 @@ const submitCustomer = async () => {
 
             <div class="mt-6 flex justify-end gap-3 pt-2">
                 <button
+                    type="button"
                     @click="showCustomerModal = false"
                     class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer"
                 >
                     Cancel
                 </button>
                 <button
-                    @click="submitCustomer"
+                    type="submit"
                     class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer"
                 >
                     Save Customer
                 </button>
             </div>
-        </div>
+        </form>
     </div>
     </AuthenticatedLayout>
 </template>

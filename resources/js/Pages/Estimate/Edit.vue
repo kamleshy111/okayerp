@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -162,6 +162,8 @@ const form = ref({
 
 const selectedCustomer = ref(customers.value.find(c => c.id == estimate.customer_id) || null);
 const showCustomerModal = ref(false);
+const newCustomerNameInput = ref(null);
+const lastActiveElement = ref(null);
 const newCustomer = ref({
   name: '',
   phone: '',
@@ -179,11 +181,92 @@ const newCustomer = ref({
 const showProductModal = ref(false);
 const activeRowIndexForNewProduct = ref(null);
 
-const onCustomerEnterKey = (event) => {
-  if (!form.value.customer_id && selectedCustomer.value === null) {
-    openCustomerModalWithName(event.target.value);
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.fa-trash') || el.closest('button')?.querySelector('.fa-trash');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600') || el.closest('button')?.classList.contains('bg-green-50') || el.closest('button')?.classList.contains('text-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
   }
 };
+
+const onEnterKey = (event) => {
+  // If there's an active search query and no options match, open modal directly
+  if (customerSearchQuery.value && customers.value.length === 0) {
+    event.preventDefault();
+    openCustomerModalWithName(customerSearchQuery.value);
+    return;
+  }
+  moveToNextInput(event);
+};
+
+const onProductEnterKey = (event, index) => {
+  const searchVal = productSearchQuery.value || '';
+  const matched = products.value.filter(p => p.name.toLowerCase().includes(searchVal.toLowerCase()));
+  if (searchVal && matched.length === 0) {
+    event.preventDefault();
+    openProductModal(index, searchVal);
+    return;
+  }
+  moveToNextInput(event);
+};
+
+// Global escape key handler to close modals
+const handleGlobalKeydown = (e) => {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    if (showCustomerModal.value || showProductModal.value) {
+      showCustomerModal.value = false;
+      showProductModal.value = false;
+      e.preventDefault();
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown);
+
+  // Auto-focus customer search input on page load
+  nextTick(() => {
+    const customerSearch = document.querySelector('.vs__search');
+    if (customerSearch) {
+      customerSearch.focus();
+    }
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
+});
+
+// Watch showCustomerModal to manage focus
+watch(showCustomerModal, async (isOpen) => {
+  if (isOpen) {
+    lastActiveElement.value = document.activeElement;
+    await nextTick();
+    if (newCustomerNameInput.value) {
+      newCustomerNameInput.value.focus();
+    }
+  } else {
+    if (lastActiveElement.value) {
+      await nextTick();
+      lastActiveElement.value.focus();
+      lastActiveElement.value = null;
+    }
+  }
+});
 
 const openCustomerModalWithName = (name) => {
   newCustomer.value = {
@@ -245,10 +328,20 @@ const submitCustomer = async () => {
 };
 
 const openProductModal = (rowIndex, search = '') => {
+  lastActiveElement.value = document.activeElement;
   activeRowIndexForNewProduct.value = rowIndex;
   productSearchQuery.value = search || '';
   showProductModal.value = true;
 };
+
+// Watch showProductModal to restore focus on close
+watch(showProductModal, async (isOpen) => {
+  if (!isOpen && lastActiveElement.value) {
+    await nextTick();
+    lastActiveElement.value.focus();
+    lastActiveElement.value = null;
+  }
+});
 
 const handleProductSuccess = (createdProduct) => {
   productRegistry.value[createdProduct.id] = createdProduct;
@@ -485,17 +578,19 @@ const submitForm = async () => {
                         :reduce="customer => customer.id"
                         placeholder="Search or select customer"
                         class="w-full text-black bg-white"
-                        @keydown.enter="onCustomerEnterKey"
+                        @keydown.enter="onEnterKey"
                         @search="onCustomerSearch"
                     >
                         <template #no-options>
-                            <div class="px-3 py-2 text-gray-500 text-sm">
+                            <div class="px-3 py-2 text-gray-500 text-sm flex items-center justify-between">
                                 <span v-if="!customerSearchQuery">Type to search customer...</span>
                                 <span v-else>No customers found.</span>
                                 <button
                                     @click.stop="showCustomerModal = true"
-                                    class="mt-2 text-blue-600 hover:underline text-xs block"
-                                >
+                                    :class="customerSearchQuery
+                                                ? 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold border border-blue-300 rounded-lg px-3 py-1.5'
+                                                : 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold'"
+                                        >
                                     ➕ Add New Customer
                                 </button>
                             </div>
@@ -505,11 +600,13 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Estimate Date <span class="text-red-500">*</span></label>
                     <input type="date" v-model="form.estimate_date"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-2 bg-white text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">Expiry Date</label>
                     <input type="date" v-model="form.expiry_date"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-2 bg-white text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
             </div>
@@ -551,15 +648,18 @@ const submitForm = async () => {
                                         class="w-full text-black bg-white"
                                         append-to-body
                                         @search="onProductSearch"
+                                        @keydown.enter="onProductEnterKey($event, index)"
                                     >
                                         <template #no-options="{ search, searching, loading }">
-                                            <div class="px-3 py-2 text-gray-500 text-xs">
+                                            <div class="px-3 py-2 text-gray-500 text-xs flex items-center justify-between">
                                                 <span v-if="!search">Type to search product...</span>
                                                 <span v-else>No products found.</span>
                                                 <button
                                                     @click.stop="openProductModal(index, search)"
-                                                    class="mt-1 text-blue-600 hover:underline text-xs block"
-                                                >
+                                                    :class="search
+                                                            ? 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold border border-blue-300 rounded-lg px-3 py-1.5'
+                                                            : 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold'"
+                                                    >
                                                     ➕ Add New Product
                                                 </button>
                                             </div>
@@ -571,6 +671,7 @@ const submitForm = async () => {
                                     <select
                                         v-model="item.gst_rate_id"
                                         @change="onGstRateChange(item)"
+                                        @keydown.enter.prevent="moveToNextInput"
                                         class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
                                     >
                                         <option value="" disabled>Select GST</option>
@@ -582,6 +683,7 @@ const submitForm = async () => {
 
                                 <td class="px-4 py-3">
                                     <input type="number" v-model="item.quantity" min="1" required
+                                        @keydown.enter.prevent="moveToNextInput"
                                         class="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-center" />
                                 </td>
 
@@ -591,6 +693,7 @@ const submitForm = async () => {
 
                                 <td class="px-4 py-3">
                                     <input type="number" step="0.01" v-model="item.price" min="0" required
+                                        @keydown.enter.prevent="moveToNextInput"
                                         class="w-full px-2 py-1.5 border border-gray-300 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-right" />
                                 </td>
 
@@ -634,6 +737,7 @@ const submitForm = async () => {
                                     placeholder="Search product"
                                     class="w-full text-black bg-white"
                                     @search="onProductSearch"
+                                    @keydown.enter="onProductEnterKey($event, index)"
                                 >
                                     <template #no-options="{ search, searching, loading }">
                                         <div class="px-3 py-2 text-gray-500 text-xs">
@@ -776,10 +880,10 @@ const submitForm = async () => {
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 99999;"
          @click.self="showCustomerModal = false">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+        <form @submit.prevent="submitCustomer" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 class="text-xl font-bold text-[#2E2C92]">Add New Customer</h2>
-                <button @click="showCustomerModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                <button type="button" @click="showCustomerModal = false" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="fa fa-close"></i>
                 </button>
             </div>
@@ -787,7 +891,7 @@ const submitForm = async () => {
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newCustomer.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <input type="text" ref="newCustomerNameInput" v-model="newCustomer.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
@@ -842,19 +946,20 @@ const submitForm = async () => {
 
             <div class="mt-6 flex justify-end gap-3 pt-2">
                 <button
+                    type="button"
                     @click="showCustomerModal = false"
                     class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer"
                 >
                     Cancel
                 </button>
                 <button
-                    @click="submitCustomer"
+                    type="submit"
                     class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer"
                 >
                     Save Customer
                 </button>
             </div>
-        </div>
+        </form>
     </div>
 
     <!-- Add Product Modal -->

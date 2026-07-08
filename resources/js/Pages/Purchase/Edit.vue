@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, watchEffect  } from 'vue';
+import { ref, watch, computed, watchEffect, onMounted, onUnmounted, nextTick } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -372,6 +372,64 @@ const paymentStatus = computed(() => {
 });
 
 const showPaymentModal = ref(false);
+const lastActiveElement = ref(null);
+const paymentTransportInput = ref(null);
+
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.closest('button')?.classList.contains('bg-red-600');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+// Global escape key handler
+const handleGlobalKeydown = (e) => {
+  if (e.key === 'Escape') {
+    if (showPaymentModal.value) {
+      showPaymentModal.value = false;
+      e.preventDefault();
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown);
+  nextTick(() => {
+    const supplierSearch = document.querySelector('.vs__search');
+    if (supplierSearch) supplierSearch.focus();
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
+});
+
+// Watch showPaymentModal to manage focus
+watch(showPaymentModal, async (isOpen) => {
+  if (isOpen) {
+    await nextTick();
+    if (paymentTransportInput.value) paymentTransportInput.value.focus();
+  } else {
+    if (lastActiveElement.value) {
+      await nextTick();
+      lastActiveElement.value.focus();
+      lastActiveElement.value = null;
+    }
+  }
+});
 
 // Show modal first, then submit all
 const openPaymentModal = () => {
@@ -402,6 +460,7 @@ const openPaymentModal = () => {
             return;
         }
     }
+    lastActiveElement.value = document.activeElement;
     showPaymentModal.value = true;
 };
 
@@ -452,6 +511,7 @@ const submitForm = async () => {
                         placeholder="Search or select supplier"
                         class="w-full"
                         @search="onSupplierSearch"
+                        @keydown.enter="moveToNextInput"
                     >
                         <template #no-options>
                             <div class="px-3 py-2 text-gray-500">
@@ -465,6 +525,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Invoice / Bill Number</label>
                     <input type="text" name="invoice_no" v-model="form.invoice_no"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter invoice/bill number" />
                 </div>
@@ -472,12 +533,14 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Invoice Date</label>
                     <input type="date" name="purchase_date" v-model="form.purchase_date"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
 
                 <div>
                     <label class="block text-black font-medium mb-2">Received Date</label>
                     <input type="date" name="received_date" v-model="form.received_date"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
             </div>
@@ -551,6 +614,7 @@ const submitForm = async () => {
                                 class="w-full text-black bg-white"
                                 append-to-body
                                 @search="onProductSearch"
+                                @keydown.enter="moveToNextInput"
                             />
                         </td>
 
@@ -558,6 +622,7 @@ const submitForm = async () => {
                             <select
                                 v-model="item.gst_rate_id"
                                 @change="onGstRateChange(item)"
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
                             >
                                 <option value="" disabled>Select GST</option>
@@ -568,6 +633,7 @@ const submitForm = async () => {
                         </td>
                         <td class="border-t px-4 py-3">
                             <input type="number" name="quantity" v-model="item.quantity" required
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Qty" />
                         </td>
@@ -576,11 +642,13 @@ const submitForm = async () => {
                         </td>
                         <td class="border-t px-4 py-3">
                             <input type="number" name="price" v-model="item.price" required
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Price" />
                         </td>
                         <td class="border-t px-4 py-3">
                             <input type="number" step="0.01" name="sale_price" v-model="item.sale_price"
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Sale Price" />
                         </td>
@@ -588,7 +656,7 @@ const submitForm = async () => {
                             ₹  {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}
                         </td>
 
-                        <td class="border-t px-4 py-2">
+                        <td class="border-t px-4 py-2 flex items-center justify-start">
                             <button @click="removeRow(index)" type="button"
                                 class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition mr-2 mt-2">
                                 <i class="bi bi-trash"></i>
@@ -624,6 +692,7 @@ const submitForm = async () => {
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
                                 @search="onProductSearch"
+                                @keydown.enter="moveToNextInput"
                             />
                         </div>
 
@@ -633,6 +702,7 @@ const submitForm = async () => {
                                 <select
                                     v-model="item.gst_rate_id"
                                     @change="onGstRateChange(item)"
+                                    @keydown.enter.prevent="moveToNextInput"
                                     class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm bg-white"
                                 >
                                     <option value="" disabled>Select GST</option>
@@ -647,18 +717,21 @@ const submitForm = async () => {
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
                                 <input type="number" v-model="item.quantity" required
+                                    @keydown.enter.prevent="moveToNextInput"
                                     class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Qty" />
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Price</label>
                                 <input type="number" v-model="item.price" required
+                                    @keydown.enter.prevent="moveToNextInput"
                                     class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Price" />
                             </div>
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Sale Price</label>
                                 <input type="number" step="0.01" v-model="item.sale_price"
+                                    @keydown.enter.prevent="moveToNextInput"
                                     class="w-full px-2 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                                     placeholder="Sale Price" />
                             </div>
@@ -702,11 +775,12 @@ const submitForm = async () => {
     <!-- Payment Modal -->
     <div v-if="showPaymentModal"
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
-         style="z-index: 9999;">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+         style="z-index: 9999;"
+         @click.self="showPaymentModal = false">
+        <form @submit.prevent="submitForm" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 class="text-xl font-bold text-[#292688]">Payment Details</h2>
-                <button @click="showPaymentModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                <button type="button" @click="showPaymentModal = false" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="fa fa-close"></i>
                 </button>
             </div>
@@ -715,7 +789,7 @@ const submitForm = async () => {
 
                 <div class="flex justify-between items-center">
                     <label class="text-gray-700 font-medium">Transport Amount</label>
-                    <input type="number" v-model="form.transport"
+                    <input type="number" ref="paymentTransportInput" v-model="form.transport"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
 
@@ -785,11 +859,11 @@ const submitForm = async () => {
 
                 <!-- Submit Button -->
                 <div class="flex justify-end gap-3 pt-2">
-                    <button @click="showPaymentModal = false" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer">Cancel</button>
-                    <button @click="submitForm" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer">Final Submit</button>
+                    <button type="button" @click="showPaymentModal = false" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer">Final Submit</button>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
     </AuthenticatedLayout>
 </template>

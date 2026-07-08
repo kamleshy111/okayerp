@@ -85,7 +85,7 @@ class AccountingService
         $this->clearEntries('Sale', $sale->id);
 
         $accounts = $this->getDefaultAccounts($sale->accepted);
-        $date = $sale->created_at ? $sale->created_at->toDateString() : now()->toDateString();
+        $date = $sale->sale_date ?? ($sale->created_at ? $sale->created_at->toDateString() : now()->toDateString());
         $desc = "Sale Invoice #{$sale->id}" . ($sale->invoice_no ? " ({$sale->invoice_no})" : "");
 
         $baseAmount = $sale->total_amount;

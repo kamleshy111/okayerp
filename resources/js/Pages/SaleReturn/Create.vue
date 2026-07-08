@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick, onMounted } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -22,6 +22,38 @@ const form = ref({
   customer_due_deduction: 0,
   due_deductions: {},
   items: [],
+});
+
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.bi-trash-fill') || el.closest('button')?.querySelector('.bi-trash-fill');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+// Auto-focus customer select on page load
+onMounted(() => {
+  nextTick(() => {
+    const firstInput = document.querySelector('.vs__search');
+    if (firstInput) {
+      firstInput.focus();
+    }
+  });
 });
 
 const customerTotalDue = ref(0);
@@ -127,6 +159,17 @@ const addItemToList = () => {
   // Reset selection
   selectedItemToAdd.value = null;
   toast.success(`Added ${item.product_name} to return list.`);
+
+  nextTick(() => {
+    const inputs = Array.from(document.querySelectorAll('.bg-white.p-8 input[type="number"]')).filter(el => {
+      const rect = el.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    if (inputs.length > 0) {
+      inputs[inputs.length - 1].focus();
+      inputs[inputs.length - 1].select();
+    }
+  });
 };
 
 const removeItemFromList = (index) => {
@@ -293,6 +336,7 @@ const submitReturn = async () => {
               placeholder="Type to search customer..."
               class="w-full text-black bg-white"
               @search="(query) => customerSearchQuery = query"
+              @keydown.enter="moveToNextInput"
             >
               <template #no-options>
                 search customer then select
@@ -311,6 +355,7 @@ const submitReturn = async () => {
                 class="w-full text-black bg-white"
                 :disabled="isLoadingItems"
                 @search="(query) => itemSearchQuery = query"
+                @keydown.enter="moveToNextInput"
                 :close-on-select="false"
                 :clear-search-on-select="false"
               >
@@ -357,6 +402,7 @@ const submitReturn = async () => {
                       v-model.number="item.quantity"
                       min="1"
                       :max="item.available_qty"
+                      @keydown.enter.prevent="moveToNextInput"
                       class="w-full px-2 py-1 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-center font-bold text-black"
                       placeholder="1"
                     />
@@ -411,6 +457,7 @@ const submitReturn = async () => {
                       v-model.number="item.quantity"
                       min="1"
                       :max="item.available_qty"
+                      @keydown.enter.prevent="moveToNextInput"
                       class="w-full px-2 py-1.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm text-center text-black font-bold"
                       placeholder="1"
                     />
@@ -438,6 +485,7 @@ const submitReturn = async () => {
                   type="date"
                   v-model="form.return_date"
                   required
+                  @keydown.enter.prevent="moveToNextInput"
                   class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                 />
               </div>
@@ -447,6 +495,7 @@ const submitReturn = async () => {
                 <select
                   v-model="form.refund_method"
                   required
+                  @keydown.enter.prevent="moveToNextInput"
                   class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                 >
                   <option value="Cash">Cash</option>
@@ -461,6 +510,7 @@ const submitReturn = async () => {
                 <textarea
                   v-model="form.reason"
                   rows="3"
+                  @keydown.enter.prevent="moveToNextInput"
                   class="w-full border px-3 py-2 rounded focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black"
                   placeholder="e.g. Defective stock, client cancelled..."
                 ></textarea>
@@ -497,6 +547,7 @@ const submitReturn = async () => {
                       v-model.number="form.customer_due_deduction"
                       :min="0"
                       :max="maxAllowedDeduction"
+                      @keydown.enter.prevent="moveToNextInput"
                       class="w-full border border-gray-300 px-3 py-1.5 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black font-mono font-bold text-sm"
                     />
                   </div>

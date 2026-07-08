@@ -1,13 +1,14 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, nextTick } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head ,usePage} from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 import axios from 'axios';
 
 const { categories } = usePage().props;
 const { unitTypes } = usePage().props;
+const nameInput = ref(null);
 
 const form = ref({
     name: "",
@@ -23,6 +24,36 @@ const unitSearchQuery = ref("");
 const showUnitDropdown = ref(false);
 const imagePreview = ref(null);
 const isDragging = ref(false);
+
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.bi-trash-fill') || el.closest('button')?.querySelector('.bi-trash-fill');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+onMounted(() => {
+    nextTick(() => {
+        if (nameInput.value) {
+            nameInput.value.focus();
+        }
+    });
+});
 
 const filteredUnitTypes = computed(() => {
   const query = unitSearchQuery.value.toLowerCase().trim();
@@ -42,6 +73,15 @@ const selectUnit = (key, label) => {
   form.value.unit_type = key;
   unitSearchQuery.value = label;
   showUnitDropdown.value = false;
+  
+  // Auto-focus Sale Price input field
+  nextTick(() => {
+    const priceInput = document.querySelector('input[name="price"]');
+    if (priceInput) {
+      priceInput.focus();
+      priceInput.select();
+    }
+  });
 };
 
 const closeUnitDropdownWithDelay = () => {
@@ -140,6 +180,11 @@ const submitForm = async () => {
       image: null,
     };
     imagePreview.value = null;
+    nextTick(() => {
+      if (nameInput.value) {
+        nameInput.value.focus();
+      }
+    });
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
     toast.error(errorMessage);
@@ -162,14 +207,16 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Name <span class="text-red-500">*</span></label>
-                    <input type="text" name="Name" v-model="form.name" required
+                    <input ref="nameInput" type="text" name="Name" v-model="form.name" required
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter name" />
                 </div>
 
                 <div>
                     <label class="block text-black font-medium mb-2">Category <span class="text-red-500">*</span></label>
-                        <select   name="category_id" v-model="form.category_id" required
+                        <select name="category_id" v-model="form.category_id" required
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="" disabled>Select Category</option>
                             <option v-for="category in categories" :key="category.id"
@@ -184,6 +231,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">HSN/SAC Code</label>
                     <input type="text" name="hsn_code" v-model="form.hsn_code"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter HSN/SAC code" />
                 </div>
@@ -195,6 +243,7 @@ const submitForm = async () => {
                             v-model="unitSearchQuery" 
                             @focus="showUnitDropdown = true"
                             @blur="closeUnitDropdownWithDelay"
+                            @keydown.enter.prevent="moveToNextInput"
                             class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Search & select unit..." 
                         />
@@ -227,6 +276,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Sale Price (₹)</label>
                     <input type="number" step="0.01" name="price" v-model="form.price"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter sale price" />
                 </div>
@@ -235,6 +285,7 @@ const submitForm = async () => {
             <div class="mt-7">
                 <label class="block text-black font-medium mb-2">Description</label>
                 <textarea name="description" v-model="form.description" rows="3"
+                    @keydown.enter.prevent="moveToNextInput"
                     class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                     placeholder="Description"></textarea>
             </div>

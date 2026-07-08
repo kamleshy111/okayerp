@@ -11,7 +11,7 @@ class Sale extends Model
     use Auditable;
 
     protected $fillable = [
-        'customer_id', 'estimate_id', 'gst_amount', 'discount', 'total_amount', 'grand_total', 'accepted', 'paid', 'payment_method', 'payment_status'
+        'customer_id', 'estimate_id', 'referral_user_id', 'sale_date', 'gst_amount', 'discount', 'total_amount', 'grand_total', 'accepted', 'paid', 'payment_method', 'payment_status'
     ];
 
     public function customer()
@@ -42,5 +42,15 @@ class Sale extends Model
     public function saleReturnItems()
     {
         return $this->hasMany(SaleReturnItem::class);
+    }
+
+    public function referralUser()
+    {
+        return $this->belongsTo(ReferralUser::class);
+    }
+
+    public function referralSale()
+    {
+        return $this->hasOne(ReferralSale::class);
     }
 }

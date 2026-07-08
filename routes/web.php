@@ -31,6 +31,11 @@ use App\Http\Controllers\LedgerController;
 use App\Http\Controllers\SaleReturnController;
 use App\Http\Controllers\PurchaseReturnController;
 use App\Http\Controllers\GstReportController;
+use App\Http\Controllers\StockSummaryController;
+use App\Http\Controllers\StockItemSummaryController;
+use App\Http\Controllers\StockItemMonthDetailController;
+use App\Http\Controllers\ReferralUserController;
+use App\Http\Controllers\OfferController;
 
 
 
@@ -98,6 +103,24 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::get('/supplier/search', [SuppliersController::class, 'search'])->name('supplier.search');
     Route::get('/customer/search', [CustomersController::class, 'search'])->name('customer.search');
     Route::get('/product/search', [ProductController::class, 'search'])->name('product.search');
+    Route::get('/referral-user/search', [ReferralUserController::class, 'search'])->name('referral-user.search');
+
+    // Referral Users
+    Route::get('/referral-user', [ReferralUserController::class, 'index'])->name('referral-user.index');
+    Route::get('/referral-user/create', [ReferralUserController::class, 'create'])->name('referral-user.create');
+    Route::post('/referral-user/store', [ReferralUserController::class, 'store'])->name('referral-user.store');
+    Route::get('/referral-user/{id}/edit', [ReferralUserController::class, 'edit'])->name('referral-user.edit');
+    Route::post('/referral-user/update/{id}', [ReferralUserController::class, 'update'])->name('referral-user.update');
+    Route::delete('/referral-user/destroy/{id}', [ReferralUserController::class, 'destroy'])->name('referral-user.destroy');
+    Route::get('/referral-user/{id}/tracker', [ReferralUserController::class, 'tracker'])->name('referral-user.tracker');
+
+    // Offers
+    Route::get('/offer', [OfferController::class, 'index'])->name('offer.index');
+    Route::get('/offer/create', [OfferController::class, 'create'])->name('offer.create');
+    Route::post('/offer/store', [OfferController::class, 'store'])->name('offer.store');
+    Route::get('/offer/{id}/edit', [OfferController::class, 'edit'])->name('offer.edit');
+    Route::post('/offer/update/{id}', [OfferController::class, 'update'])->name('offer.update');
+    Route::delete('/offer/destroy/{id}', [OfferController::class, 'destroy'])->name('offer.destroy');
 
     // Customers
     Route::middleware('permission:customer manage')->group(function () {
@@ -262,6 +285,9 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     // AR/AP Aging Report
     Route::get('/reports/aging', [AgingReportController::class, 'index'])->name('reports.aging');
     Route::get('/reports/ledger', [LedgerController::class, 'index'])->name('reports.ledger');
+    Route::get('/reports/stock-summary', [StockSummaryController::class, 'index'])->name('reports.stock-summary');
+    Route::get('/reports/stock-item-summary/{productId}', [StockItemSummaryController::class, 'show'])->name('reports.stock-item-summary');
+    Route::get('/reports/stock-item-month/{productId}/{year}/{month}', [StockItemMonthDetailController::class, 'show'])->name('reports.stock-item-month');
     Route::post('/reports/ledger/repost', [LedgerController::class, 'repost'])->name('reports.ledger.repost');
     Route::get('/reports/gst', [GstReportController::class, 'index'])->name('reports.gst');
     Route::post('/purchases/{id}/toggle-refundable', [GstReportController::class, 'toggleRefundable'])->name('purchases.toggle-refundable');

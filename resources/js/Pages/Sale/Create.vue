@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, onMounted } from 'vue';
+import { ref, watch, computed, onMounted, onUnmounted, nextTick } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -32,9 +32,14 @@ const props = defineProps({
     type: Array,
     required: true,
   },
+  referralUsers: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const customers = ref([...props.customers]);
+const referralUsers = ref([...props.referralUsers]);
 const products = ref([]);
 
 // Registry to store all products we have seen/loaded so far
@@ -113,8 +118,42 @@ const onCustomerSearch = async (search, loading) => {
   }
 };
 
+const referralSearchQuery = ref("");
+const onReferralSearch = async (search, loading) => {
+  referralSearchQuery.value = search;
+  if (!search.trim()) {
+    const selectedId = form.value?.referral_user_id;
+    if (selectedId) {
+      const selected = referralUsers.value.find(r => r.id == selectedId);
+      if (selected) {
+        referralUsers.value = [selected];
+        return;
+      }
+    }
+    referralUsers.value = [...props.referralUsers];
+    return;
+  }
+  try {
+    const response = await axios.get(`/referral-user/search?query=${encodeURIComponent(search)}`);
+    referralUsers.value = response.data;
+
+    // Ensure selected referral user is always in options list
+    const selectedId = form.value?.referral_user_id;
+    if (selectedId) {
+      const selected = props.referralUsers.find(r => r.id == selectedId) || referralUsers.value.find(r => r.id == selectedId);
+      if (selected && !referralUsers.value.some(r => r.id == selected.id)) {
+        referralUsers.value.unshift(selected);
+      }
+    }
+  } catch (error) {
+    console.error("Error fetching referral users:", error);
+  }
+};
+
 const form = ref({
     customer_id: "",
+    referral_user_id: "",
+    sale_date: new Date().toLocaleDateString('en-CA'),
     estimate_id: "",
     grand_total: "",
     GstAmount: "",
@@ -236,9 +275,12 @@ onMounted(async () => {
 
 const selectedCustomer = ref(null);
 const showPaymentModal = ref(false);
+const paymentDiscountInput = ref(null);
 const customerData = ref(null);
 
 const showCustomerModal = ref(false);
+const newCustomerNameInput = ref(null);
+const lastActiveElement = ref(null);
 const newCustomer = ref({
   name: '',
   phone: '',
@@ -252,11 +294,94 @@ const newCustomer = ref({
   pin_code: ''
 });
 
-const onEnterKey = (event) => {
-  if (!form.value.customer_id && selectedCustomer.value === null) {
-    openCustomerModalWithName(event.target.value);
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
   }
 };
+
+const onEnterKey = (event) => {
+  // If there's an active search query and no options match, open modal directly
+  if (customerSearchQuery.value && customers.value.length === 0) {
+    event.preventDefault();
+    openCustomerModalWithName(customerSearchQuery.value);
+    return;
+  }
+  moveToNextInput(event);
+};
+
+const onProductEnterKey = (event, index) => {
+  const searchVal = productSearchQuery.value || '';
+  const matched = products.value.filter(p => p.name.toLowerCase().includes(searchVal.toLowerCase()));
+  if (searchVal && matched.length === 0) {
+    event.preventDefault();
+    openProductModal(index, searchVal);
+    return;
+  }
+  moveToNextInput(event);
+};
+
+// Global escape key handler to close modals
+const handleGlobalKeydown = (e) => {
+  if (e.key === 'Escape') {
+    if (showCustomerModal.value) {
+      showCustomerModal.value = false;
+      e.preventDefault();
+    } else if (showPaymentModal.value) {
+      showPaymentModal.value = false;
+      e.preventDefault();
+    }
+  }
+};
+
+onMounted(() => {
+  window.addEventListener('keydown', handleGlobalKeydown);
+
+  // Auto-focus customer search input on page load
+  nextTick(() => {
+    const customerSearch = document.querySelector('.vs__search');
+    if (customerSearch) {
+      customerSearch.focus();
+    }
+  });
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleGlobalKeydown);
+});
+
+// Watch showCustomerModal to manage focus
+watch(showCustomerModal, async (isOpen) => {
+  if (isOpen) {
+    lastActiveElement.value = document.activeElement;
+    await nextTick();
+    if (newCustomerNameInput.value) {
+      newCustomerNameInput.value.focus();
+    }
+  } else {
+    if (lastActiveElement.value) {
+      await nextTick();
+      lastActiveElement.value.focus();
+      lastActiveElement.value = null;
+    }
+  }
+});
 
 const openCustomerModalWithName = (name) => {
   newCustomer.value = {
@@ -541,8 +666,25 @@ const openPaymentModal = () => {
 
     }
 
+    lastActiveElement.value = document.activeElement;
     showPaymentModal.value = true;
 };
+
+// Watch showPaymentModal to manage focus
+watch(showPaymentModal, async (isOpen) => {
+  if (isOpen) {
+    await nextTick();
+    if (paymentDiscountInput.value) {
+      paymentDiscountInput.value.focus();
+    }
+  } else {
+    if (lastActiveElement.value) {
+      await nextTick();
+      lastActiveElement.value.focus();
+      lastActiveElement.value = null;
+    }
+  }
+});
 
 //add 225/08/25
 
@@ -585,6 +727,8 @@ const submitForm = async () => {
     // Reset form
     form.value = {
       customer_id: "",
+      referral_user_id: "",
+      sale_date: new Date().toLocaleDateString('en-CA'),
       grand_total: "",
       GstAmount: "",
       accepted: false,
@@ -614,10 +758,20 @@ const showProductModal = ref(false);
 const activeProductRowIndex = ref(null);
 
 const openProductModal = (rowIndex, search) => {
+  lastActiveElement.value = document.activeElement;
   activeProductRowIndex.value = rowIndex;
   productSearchQuery.value = search || '';
   showProductModal.value = true;
 };
+
+// Watch showProductModal to restore focus on close
+watch(showProductModal, async (isOpen) => {
+  if (!isOpen && lastActiveElement.value) {
+    await nextTick();
+    lastActiveElement.value.focus();
+    lastActiveElement.value = null;
+  }
+});
 
 const handleProductSuccess = (createdProduct) => {
   productRegistry.value[createdProduct.id] = createdProduct;
@@ -652,7 +806,7 @@ const handleProductSuccess = (createdProduct) => {
             </div>
         <div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Customer <span class="text-red-500">*</span></label>
                     <vSelect
@@ -671,12 +825,43 @@ const handleProductSuccess = (createdProduct) => {
                                 <span v-if="!customerSearchQuery">Type to search customer name...</span>
                                 <span v-else class="flex justify-between"><span>No customers found.</span>
                                     <button
+                                        id="add-customer-btn"
                                         @click.stop="showCustomerModal = true"
-                                        class="mt-2 block text-blue-600 hover:underline text-sm"
+                                        :class="customerSearchQuery
+                                                ? 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold border border-blue-300 rounded-lg px-3 py-1.5'
+                                                : 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold'"
                                     >
                                         ➕ Add New Customer
                                     </button>
                                 </span>
+                            </div>
+                        </template>
+                    </vSelect>
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Sales Date <span class="text-red-500">*</span></label>
+                    <input
+                        type="date"
+                        v-model="form.sale_date"
+                        required
+                        class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black"
+                    />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Referral User (Optional)</label>
+                    <vSelect
+                        v-model="form.referral_user_id"
+                        :options="referralUsers"
+                        label="name"
+                        :reduce="user => user.id"
+                        placeholder="Search or select referral user"
+                        class="w-full text-black bg-white"
+                        @search="onReferralSearch"
+                    >
+                        <template #no-options>
+                            <div class="px-3 py-2 text-gray-500">
+                                <span v-if="!referralSearchQuery">Type to search referral user...</span>
+                                <span v-else>No referral users found.</span>
                             </div>
                         </template>
                     </vSelect>
@@ -718,14 +903,18 @@ const handleProductSuccess = (createdProduct) => {
                                 class="w-full text-black bg-white"
                                 append-to-body
                                 @search="onProductSearch"
+                                @keydown.enter="onProductEnterKey($event, index)"
                             >
                                 <template #no-options="{ search, searching, loading }">
                                     <div class="px-3 py-2 text-gray-500">
                                         <span v-if="!search">Type to search product...</span>
                                         <span v-else>No products found.</span>
                                         <button
+                                            :id="'add-product-btn-' + index"
                                             @click.stop="openProductModal(index, search)"
-                                            class="mt-2 block text-blue-600 hover:underline text-sm"
+                                            :class="search
+                                                ? 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold border border-blue-300 rounded-lg px-3 py-1.5'
+                                                : 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold'"
                                         >
                                             ➕ Add New Product
                                         </button>
@@ -737,6 +926,7 @@ const handleProductSuccess = (createdProduct) => {
                             <select
                                 v-model="item.gst_rate_id"
                                 @change="onGstRateChange(item)"
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
                             >
                                 <option value="" disabled>Select GST</option>
@@ -747,6 +937,7 @@ const handleProductSuccess = (createdProduct) => {
                         </td>
                         <td class="border-t px-4 py-3">
                             <input type="number" name="quantity" v-model="item.quantity" required
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Qty" />
                         </td>
@@ -755,6 +946,7 @@ const handleProductSuccess = (createdProduct) => {
                         </td>
                         <td class="border-t px-4 py-3">
                             <input type="number" name="price" v-model="item.price" required
+                                @keydown.enter.prevent="moveToNextInput"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Price" />
                         </td>
@@ -799,14 +991,16 @@ const handleProductSuccess = (createdProduct) => {
                                 placeholder="Search or select product"
                                 class="w-full text-black bg-white"
                                 @search="onProductSearch"
+                                @keydown.enter="onProductEnterKey($event, index)"
                             >
                                 <template #no-options="{ search, searching, loading }">
                                     <div class="px-3 py-2 text-gray-500">
                                         <span v-if="!search">Type to search product...</span>
                                         <span v-else>No products found.</span>
                                         <button
+                                            :id="'add-product-btn-' + index"
                                             @click.stop="openProductModal(index, search)"
-                                            class="mt-2 block text-blue-600 hover:underline text-sm"
+                                            class="mt-2 inline-flex items-center text-blue-600 text-sm font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 focus:px-3 focus:py-1.5 focus:rounded-lg focus:border focus:border-blue-300"
                                         >
                                             ➕ Add New Product
                                         </button>
@@ -884,11 +1078,12 @@ const handleProductSuccess = (createdProduct) => {
     <!-- Payment Modal -->
     <div v-if="showPaymentModal"
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
-         style="z-index: 9999;">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+         style="z-index: 9999;"
+         @click.self="showPaymentModal = false">
+        <form @submit.prevent="submitForm" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 class="text-xl font-bold text-[#292688]">Payment Details</h2>
-                <button @click="showPaymentModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                <button type="button" @click="showPaymentModal = false" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="fa fa-close"></i>
                 </button>
             </div>
@@ -896,9 +1091,9 @@ const handleProductSuccess = (createdProduct) => {
             <!-- Discount Amount -->
             <div class="flex justify-between items-center">
                 <label class="text-gray-700 font-medium">Discount</label>
-                <input type="number" v-model="form.discount"
+                <input type="number" ref="paymentDiscountInput" v-model="form.discount"
                     class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                    placeholder="₹0.00" min="0" />
+                    placeholder="₹0.00" min="0" step="any" />
             </div>
 
             <div class="space-y-4 border-t pt-4">
@@ -942,7 +1137,7 @@ const handleProductSuccess = (createdProduct) => {
                     <label class="text-gray-700 font-medium">Paid Amount</label>
                     <input type="number" v-model.number="form.paid"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                        placeholder="Amount" min="0" />
+                        placeholder="Amount" min="0" step="any" />
                 </div>
 
                 <!-- Final Balance after this payment -->
@@ -956,11 +1151,6 @@ const handleProductSuccess = (createdProduct) => {
                     <span class="text-red-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
 
-                <!-- <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Balance</span>
-                    <span class="text-gray-600 font-bold">₹ 0.00 (Clear)</span>
-                </div> -->
-
                 <!-- Payment Status -->
                 <div class="flex justify-between items-center pb-4 border-b border-gray-100">
                     <span class="text-gray-700 font-semibold">Payment Status</span>
@@ -969,11 +1159,11 @@ const handleProductSuccess = (createdProduct) => {
 
                 <!-- Submit Button -->
                 <div class="flex justify-end gap-3 pt-2">
-                    <button @click="showPaymentModal = false" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer">Cancel</button>
-                    <button @click="submitForm" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer">Final Submit</button>
+                    <button type="button" @click="showPaymentModal = false" class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 font-semibold rounded-xl transition cursor-pointer">Cancel</button>
+                    <button type="submit" class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer">Final Submit</button>
                 </div>
             </div>
-        </div>
+        </form>
     </div>
 
     <!-- Add Customer Modal -->
@@ -981,10 +1171,10 @@ const handleProductSuccess = (createdProduct) => {
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 99999;"
          @click.self="showCustomerModal = false">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+        <form @submit.prevent="submitCustomer" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 class="text-xl font-bold text-[#2E2C92]">Add New Customer</h2>
-                <button @click="showCustomerModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                <button type="button" @click="showCustomerModal = false" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="fa fa-close"></i>
                 </button>
             </div>
@@ -992,7 +1182,7 @@ const handleProductSuccess = (createdProduct) => {
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1">Name <span class="text-red-500">*</span></label>
-                    <input type="text" v-model="newCustomer.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                    <input type="text" ref="newCustomerNameInput" v-model="newCustomer.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                 </div>
 
                 <div>
@@ -1047,19 +1237,20 @@ const handleProductSuccess = (createdProduct) => {
 
             <div class="mt-6 flex justify-end gap-3 pt-2">
                 <button
+                    type="button"
                     @click="showCustomerModal = false"
                     class="px-5 py-2.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl transition cursor-pointer font-medium"
                 >
                     Cancel
                 </button>
                 <button
-                    @click="submitCustomer"
+                    type="submit"
                     class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl shadow-md transition cursor-pointer font-medium"
                 >
                     Save Customer
                 </button>
             </div>
-        </div>
+        </form>
     </div>
     <!-- Add Product Modal -->
     <AddProductModal

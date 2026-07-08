@@ -108,6 +108,24 @@ onMounted(() => {
           </a>
         </li>
 
+        <li v-if="role === 'store'" :class="{ 'active': route().current('referral-user*') }">
+          <a
+            :href="route('referral-user.index')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-person-heart text-xl"></i> <span>Referral Users</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('offer*') }">
+          <a
+            :href="route('offer.index')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-gift text-xl"></i> <span>Offers & Targets</span>
+          </a>
+        </li>
+
         <!-- Section: Catalog & Stock (Supporting Catalog & Inventory) -->
         <li v-if="role === 'store' && (hasPermission('product manage') || hasPermission('category manage'))" class="pt-4 pb-1 pl-4 text-[10px] font-bold text-indigo-200 uppercase tracking-widest pointer-events-none select-none opacity-80">
           Inventory & Catalog
@@ -178,6 +196,15 @@ onMounted(() => {
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
           >
             <i class="bi bi-truck text-xl"></i> <span>Suppliers</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store'" :class="{ 'active': route().current('reports.stock-summary') }">
+          <a
+            :href="route('reports.stock-summary')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-card-checklist text-xl"></i> <span>Stock Summary</span>
           </a>
         </li>
 

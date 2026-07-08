@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted, nextTick } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -28,6 +28,77 @@ const newSupplier = ref({
     pin_code: "",
 });
 
+const lastActiveElement = ref(null);
+const newSupplierNameInput = ref(null);
+
+const handleEscKey = (e) => {
+  if (e.key === 'Escape' || e.key === 'Esc') {
+    showSupplierModal.value = false;
+  }
+};
+
+watch(showSupplierModal, async (isOpen) => {
+  if (isOpen) {
+    window.addEventListener('keydown', handleEscKey);
+    lastActiveElement.value = document.activeElement;
+    await nextTick();
+    if (newSupplierNameInput.value) {
+      newSupplierNameInput.value.focus();
+    }
+  } else {
+    window.removeEventListener('keydown', handleEscKey);
+    if (lastActiveElement.value) {
+      await nextTick();
+      lastActiveElement.value.focus();
+      lastActiveElement.value = null;
+    }
+  }
+});
+
+onUnmounted(() => {
+  window.removeEventListener('keydown', handleEscKey);
+});
+
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.bi-trash-fill') || el.closest('button')?.querySelector('.bi-trash-fill');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+const onSupplierEnterKey = (event) => {
+  if (supplierSearchQuery.value.trim() && suppliers.value.length === 0) {
+    event.preventDefault();
+    openSupplierModalWithName(supplierSearchQuery.value);
+    return;
+  }
+  moveToNextInput(event);
+};
+
+onMounted(() => {
+  nextTick(() => {
+    const searchInput = document.querySelector('.vs__search');
+    if (searchInput) {
+      searchInput.focus();
+    }
+  });
+});
+
 const availableDistricts = computed(() => {
     if (!newSupplier.value.state) return [];
     const stateName = newSupplier.value.state;
@@ -45,6 +116,26 @@ watch(() => newSupplier.value.state, (newVal, oldVal) => {
     }
     if (newVal) {
         newSupplier.value.country = "India";
+        
+        // Modal State ➔ District auto-focus
+        nextTick(() => {
+            const modalDropdowns = document.querySelectorAll('form .v-select .vs__search');
+            if (modalDropdowns.length > 1) {
+                modalDropdowns[1].focus();
+            }
+        });
+    }
+});
+
+watch(() => newSupplier.value.district, (newVal) => {
+    if (newVal) {
+        // Modal District ➔ City focus
+        nextTick(() => {
+            const cityInput = document.querySelector('form input[v-model="newSupplier.city"]') || document.querySelectorAll('form input')[5];
+            if (cityInput) {
+                cityInput.focus();
+            }
+        });
     }
 });
 
@@ -137,11 +228,29 @@ const submitForm = async () => {
     };
     suppliers.value = [];
     supplierSearchQuery.value = "";
+    nextTick(() => {
+      const searchInput = document.querySelector('.vs__search');
+      if (searchInput) {
+        searchInput.focus();
+      }
+    });
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
     toast.error(errorMessage);
   }
 };
+
+watch(() => form.value.supplier_id, (newVal) => {
+  if (newVal) {
+    nextTick(() => {
+      const amountInput = document.querySelector('input[name="amount"]');
+      if (amountInput) {
+        amountInput.focus();
+        amountInput.select();
+      }
+    });
+  }
+});
 </script>
 <template>
 
@@ -167,16 +276,19 @@ const submitForm = async () => {
                         placeholder="Search or select supplier"
                         class="w-full text-black bg-white"
                         @search="onSupplierSearch"
+                        @keydown.enter="onSupplierEnterKey"
                     >
                         <template #no-options="{ search, searching, loading }">
-                            <div class="px-3 py-2 text-gray-500">
+                            <div class="px-3 py-2 text-gray-500 flex items-center justify-between">
                                 <span v-if="!search">Type to search supplier...</span>
                                 <span v-else>No suppliers found.</span>
                                 <button
                                     type="button"
                                     @click.stop="openSupplierModalWithName(search)"
-                                    class="mt-2 block text-blue-600 hover:underline text-sm"
-                                >
+                                    :class="search
+                                            ? 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold border border-blue-300 rounded-lg px-3 py-1.5'
+                                            : 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold'"
+                                    >
                                     ➕ Add New Supplier
                                 </button>
                             </div>
@@ -186,6 +298,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Amount <span class="text-red-500">*</span></label>
                     <input type="number" name="amount" v-model="form.amount"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Amount" />
                 </div>
@@ -195,6 +308,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Date <span class="text-red-500">*</span></label>
                     <input type="date" name="payment_date" v-model="form.payment_date"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Payment Date" />
                 </div>
@@ -202,6 +316,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Payment Method <span class="text-red-500">*</span></label>
                     <select name="payment_method" v-model="form.payment_method"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="" disabled>Select Payment Method</option>
                         <option value="Cash">Cash</option>
@@ -217,6 +332,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Note</label>
                     <input type="note" name="note" v-model="form.note"
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Note"/>
                 </div>
@@ -233,10 +349,10 @@ const submitForm = async () => {
         class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
         style="z-index: 99999;"
         @click.self="showSupplierModal = false">
-        <div class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-2xl my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+        <form @submit.prevent="submitSupplier" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-2xl my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 class="text-xl font-bold text-[#2E2C92]">Add New Supplier</h2>
-                <button @click="showSupplierModal = false" class="text-gray-400 hover:text-gray-600 transition">
+                <button type="button" @click="showSupplierModal = false" class="text-gray-400 hover:text-gray-600 transition">
                     <i class="bi bi-x-lg"></i>
                 </button>
             </div>
@@ -245,7 +361,7 @@ const submitForm = async () => {
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Full Name <span class="text-red-500">*</span></label>
-                        <input type="text" v-model="newSupplier.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
+                        <input ref="newSupplierNameInput" type="text" v-model="newSupplier.name" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
@@ -336,14 +452,13 @@ const submitForm = async () => {
                     Cancel
                 </button>
                 <button
-                    @click="submitSupplier"
-                    type="button"
+                    type="submit"
                     class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer"
                 >
                     Save Supplier
                 </button>
             </div>
-        </div>
+        </form>
     </div>
     </AuthenticatedLayout>
 </template>

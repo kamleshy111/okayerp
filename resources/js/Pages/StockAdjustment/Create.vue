@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed } from 'vue';
+import { ref, watch, computed, nextTick, onMounted } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
@@ -11,11 +11,19 @@ import "vue3-select/dist/vue3-select.css";
 const props = defineProps({
   products: {
     type: Array,
-    required: true,
+    required: false,
+    default: () => [],
   }
 });
 
-const products = ref([...props.products]);
+const products = ref([]);
+const productRegistry = ref({});
+
+if (props.products) {
+  props.products.forEach(p => {
+    productRegistry.value[p.id] = p;
+  });
+}
 
 const form = ref({
     product_id: "",
@@ -23,6 +31,68 @@ const form = ref({
     quantity: "",
     reason: "",
     remarks: ""
+});
+
+// Move focus to the next logical input/select/button
+const moveToNextInput = (event) => {
+  const container = document.querySelector('.bg-white.p-8');
+  if (!container) return;
+
+  const elements = Array.from(container.querySelectorAll(
+    'input:not([disabled]), select:not([disabled]), button:not([disabled]), .vs__search'
+  )).filter(el => {
+    const rect = el.getBoundingClientRect();
+    const isVisible = rect.width > 0 && rect.height > 0;
+    const isTrashBtn = el.querySelector('.bi-trash') || el.classList.contains('bg-red-600') || el.closest('button')?.classList.contains('bg-red-600') || el.querySelector('.bi-trash-fill') || el.closest('button')?.querySelector('.bi-trash-fill');
+    const isAddRowBtn = el.closest('button')?.classList.contains('bg-green-600') || el.classList.contains('bg-green-600');
+    return isVisible && !isTrashBtn && !isAddRowBtn;
+  });
+
+  const currentIndex = elements.indexOf(event.target);
+  if (currentIndex !== -1 && currentIndex < elements.length - 1) {
+    event.preventDefault();
+    elements[currentIndex + 1].focus();
+  }
+};
+
+const productSearchQuery = ref('');
+const onProductSearch = async (search, loading) => {
+  productSearchQuery.value = search;
+  if (!search.trim()) {
+    let initialList = [];
+    if (form.value.product_id && productRegistry.value[form.value.product_id]) {
+      initialList.push(productRegistry.value[form.value.product_id]);
+    }
+    products.value = initialList;
+    return;
+  }
+  try {
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(search)}`);
+    response.data.forEach(p => {
+      productRegistry.value[p.id] = p;
+    });
+    let results = response.data;
+    if (form.value.product_id && productRegistry.value[form.value.product_id]) {
+      const alreadyInResults = results.some(p => p.id === form.value.product_id);
+      if (!alreadyInResults) {
+        results.push(productRegistry.value[form.value.product_id]);
+      }
+    }
+    products.value = results;
+  } catch (error) {
+    console.error("Error fetching products:", error);
+  }
+};
+
+// Auto-focus product select on page load
+onMounted(() => {
+  nextTick(() => {
+    const firstInput = document.querySelector('.vs__search');
+    if (firstInput) {
+      firstInput.focus();
+    }
+  });
+  onProductSearch('', null);
 });
 
 const selectedProduct = ref(null);
@@ -33,6 +103,14 @@ watch(() => form.value.product_id, (newVal) => {
         return;
     }
     selectedProduct.value = products.value.find(p => p.id === newVal) || null;
+
+    nextTick(() => {
+        const qtyInput = document.querySelector('input[placeholder="Qty to adjust"]');
+        if (qtyInput) {
+            qtyInput.focus();
+            qtyInput.select();
+        }
+    });
 });
 watch(() => form.value.type, () => {
     form.value.reason = "";
@@ -135,6 +213,8 @@ const submitForm = async () => {
                     :reduce="product => product.id"
                     placeholder="Search product name or SKU"
                     class="w-full text-black bg-white"
+                    @search="onProductSearch"
+                    @keydown.enter="moveToNextInput"
                 />
             </div>
 
@@ -174,6 +254,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Quantity <span class="text-red-500">*</span></label>
                     <input type="number" v-model.number="form.quantity" min="1" required
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-2 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Qty to adjust" />
                 </div>
@@ -181,6 +262,7 @@ const submitForm = async () => {
                 <div>
                     <label class="block text-black font-medium mb-2">Reason <span class="text-red-500">*</span></label>
                     <select v-model="form.reason" required
+                        @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-2 bg-white text-black border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
                         <option value="" disabled>Select Reason</option>
                         <option v-for="reason in reasons" :key="reason.value" :value="reason.value">{{ reason.label }}</option>
@@ -192,6 +274,7 @@ const submitForm = async () => {
             <div>
                 <label class="block text-black font-medium mb-2">Remarks / Notes</label>
                 <textarea v-model="form.remarks" rows="3"
+                    @keydown.enter.prevent="moveToNextInput"
                     class="w-full border border-gray-300 rounded-lg px-4 py-2 focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm"
                     placeholder="Enter detailed remarks (e.g. Audit reference number, damage details)..."></textarea>
             </div>
