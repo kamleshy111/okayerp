@@ -146,6 +146,13 @@ const columns = [
     },
     { data: 'name' },
     { data: 'sku'},
+    {
+      data: 'type',
+      title: 'Type',
+      render: (data) => {
+        return data === 'service' ? 'Service' : 'Product';
+      }
+    },
     { data: 'categoryName' ?? '---'},
     { 
       data: 'price', 
@@ -240,6 +247,7 @@ function deleteProduct(productId) {
                       <th scope="col">Image</th>
                       <th scope="col">Name</th>
                       <th scope="col">Sku</th>
+                      <th scope="col">Type</th>
                       <th scope="col">Category Name</th>
                       <th scope="col">Sale Price</th>
                       <th scope="col">Stock Quantity</th>

@@ -15,6 +15,7 @@ const form = ref({
     unit_type: productDetail.unit_type,
     hsn_code: productDetail.hsn_code || '',
     price: productDetail.price || '',
+    type: productDetail.type || 'product',
     category_id: productDetail.category_id,
     description: productDetail.description,
     image: null,
@@ -278,6 +279,15 @@ const getImageName = () => {
                         @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter sale price" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Type <span class="text-red-500">*</span></label>
+                    <select name="type" v-model="form.type" required
+                        @keydown.enter.prevent="moveToNextInput"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
+                        <option value="product">Product</option>
+                        <option value="service">Service</option>
+                    </select>
                 </div>
             </div>
 

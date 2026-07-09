@@ -30,6 +30,7 @@ class ProductController extends Controller
                 'categoryName' => $item->categoryName ?? '----',
                 'unit_type' => $item->unit_type,
                 'price' => $item->price ?? 0.00,
+                'type' => $item->type ?? 'product',
                 'image' => $item->image ? '/storage/' . $item->image : null,
             ];
 
@@ -60,11 +61,14 @@ class ProductController extends Controller
             'name' => 'required',
             'category_id' => 'required',
             'unit_type' => 'required',
+            'type' => 'required|in:product,service',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
             'name.required' => 'Name is required.',
             'category_id.required' => 'Category is required.',
             'unit_type.required' => 'Unit Type is required.',
+            'type.required' => 'Type is required.',
+            'type.in' => 'Type must be product or service.',
             'image.image' => 'The file must be an image.',
             'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
             'image.max' => 'The image size must not exceed 2MB.',
@@ -94,6 +98,7 @@ class ProductController extends Controller
             'unit_type' => $request->input('unit_type') ?? '',
             'hsn_code' => $request->input('hsn_code'),
             'price' => $request->input('price') ?? 0.00,
+            'type' => $request->input('type'),
             'sku' => $sku,
             'description' => $request->input('description'),
             'image' => $imagePath,
@@ -122,6 +127,7 @@ class ProductController extends Controller
             'unit_type' => $data->unit_type ?? '',
             'hsn_code' => $data->hsn_code ?? '',
             'price' => $data->price ?? 0.00,
+            'type' => $data->type ?? 'product',
             'category_id' => $data->category_id ?? '',
             'description' => $data->description ?? '',
             'image' => $data->image ? '/storage/' . $data->image : null,
@@ -140,11 +146,14 @@ class ProductController extends Controller
             'name' => 'required',
             'category_id' => 'required',
             'unit_type' => 'required',
+            'type' => 'required|in:product,service',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
         ], [
             'name.required' => 'Name is required.',
             'category_id.required' => 'Category is required.',
             'unit_type.required' => 'Unit Type is required.',
+            'type.required' => 'Type is required.',
+            'type.in' => 'Type must be product or service.',
             'image.image' => 'The file must be an image.',
             'image.mimes' => 'The image must be a file of type: jpeg, png, jpg, gif, webp.',
             'image.max' => 'The image size must not exceed 2MB.',
@@ -160,6 +169,7 @@ class ProductController extends Controller
             $product->unit_type = $request->input("unit_type");
             $product->hsn_code = $request->input("hsn_code");
             $product->price = $request->input("price") ?? 0.00;
+            $product->type = $request->input("type");
             $product->category_id = $request->input("category_id");
             $product->description = $request->input("description");
 

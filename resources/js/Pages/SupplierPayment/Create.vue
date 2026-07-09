@@ -109,12 +109,19 @@ const availableDistricts = computed(() => {
     return lookupKey ? statesData[lookupKey] : [];
 });
 
+watch(() => newSupplier.value.country, (newVal) => {
+    if (newVal && newVal !== 'India') {
+        newSupplier.value.state = "";
+        newSupplier.value.district = "";
+    }
+});
+
 watch(() => newSupplier.value.state, (newVal, oldVal) => {
     if (oldVal !== undefined) {
         newSupplier.value.district = "";
         newSupplier.value.city = "";
     }
-    if (newVal) {
+    if (newVal && (!newSupplier.value.country || newSupplier.value.country === 'India')) {
         newSupplier.value.country = "India";
         
         // Modal State ➔ District auto-focus
@@ -382,8 +389,21 @@ watch(() => form.value.supplier_id, (newVal) => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                        <select v-model="newSupplier.country" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none bg-white">
+                            <option value="" disabled>Select Country</option>
+                            <option v-for="c in $page.props.countries" :key="c" :value="c">
+                                {{ c }}
+                            </option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
                         <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
                         <vSelect
+                            v-if="!newSupplier.country || newSupplier.country === 'India'"
                             :options="$page.props.gst_states"
                             label="display"
                             :reduce="state => state.name"
@@ -391,8 +411,15 @@ watch(() => form.value.supplier_id, (newVal) => {
                             placeholder="Search & Select State"
                             class="w-full text-black bg-white"
                         ></vSelect>
+                        <input
+                            v-else
+                            type="text"
+                            v-model="newSupplier.state"
+                            class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none"
+                            placeholder="Enter State"
+                        />
                     </div>
-                    <div>
+                    <div v-if="!newSupplier.country || newSupplier.country === 'India'">
                         <label class="block text-sm font-medium text-gray-700 mb-1">District</label>
                         <vSelect
                             :options="availableDistricts"
@@ -401,22 +428,6 @@ watch(() => form.value.supplier_id, (newVal) => {
                             class="w-full text-black bg-white"
                             :disabled="!newSupplier.state"
                         ></vSelect>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
-                        <input type="text" v-model="newSupplier.city" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                        <select v-model="newSupplier.country" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#2E2C92] focus:outline-none bg-white">
-                            <option value="" disabled>Select Country</option>
-                            <option v-for="c in $page.props.countries" :key="c" :value="c">
-                                {{ c }}
-                            </option>
-                        </select>
                     </div>
                 </div>
 

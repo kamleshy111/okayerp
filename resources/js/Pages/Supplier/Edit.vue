@@ -71,12 +71,19 @@ const availableDistricts = computed(() => {
     return lookupKey ? statesData[lookupKey] : [];
 });
 
+watch(() => form.value.country, (newVal) => {
+    if (newVal && newVal !== 'India') {
+        form.value.state = "";
+        form.value.district = "";
+    }
+});
+
 watch(() => form.value.state, (newVal, oldVal) => {
     if (oldVal !== undefined) {
         form.value.district = "";
         form.value.city = "";
     }
-    if (newVal) {
+    if (newVal && (!form.value.country || form.value.country === 'India')) {
         form.value.country = "India";
         
         // Auto-focus District dropdown
@@ -164,39 +171,6 @@ const submitForm = async () => {
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                     <div>
-                        <label class="block text-black font-medium mb-2">State</label>
-                        <v-select
-                            :options="$page.props.gst_states"
-                            label="display"
-                            :reduce="state => state.name"
-                            v-model="form.state"
-                            placeholder="Search & Select State"
-                            class="w-full"
-                            @keydown.enter="moveToNextInput"
-                        ></v-select>
-                    </div>
-                    <div>
-                        <label class="block text-black font-medium mb-2">District</label>
-                        <v-select
-                            :options="availableDistricts"
-                            v-model="form.district"
-                            placeholder="Search & Select District"
-                            class="w-full"
-                            :disabled="!form.state"
-                            @keydown.enter="moveToNextInput"
-                        ></v-select>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
-                    <div>
-                        <label class="block text-black font-medium mb-2">City</label>
-                        <input type="text" name="city" v-model="form.city"
-                            @keydown.enter.prevent="moveToNextInput"
-                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                            placeholder="Enter City" />
-                    </div>
-                    <div>
                         <label class="block text-black font-medium mb-2">Country</label>
                         <select name="country" v-model="form.country"
                             @keydown.enter.prevent="moveToNextInput"
@@ -206,6 +180,42 @@ const submitForm = async () => {
                                 {{ c }}
                             </option>
                         </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
+                    <div>
+                        <label class="block text-black font-medium mb-2">State</label>
+                        <v-select
+                            v-if="!form.country || form.country === 'India'"
+                            :options="$page.props.gst_states"
+                            label="display"
+                            :reduce="state => state.name"
+                            v-model="form.state"
+                            placeholder="Search & Select State"
+                            class="w-full"
+                            @keydown.enter="moveToNextInput"
+                        ></v-select>
+                        <input
+                            v-else
+                            type="text"
+                            name="state"
+                            v-model="form.state"
+                            @keydown.enter.prevent="moveToNextInput"
+                            class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                            placeholder="Enter State"
+                        />
+                    </div>
+                    <div v-if="!form.country || form.country === 'India'">
+                        <label class="block text-black font-medium mb-2">District</label>
+                        <v-select
+                            :options="availableDistricts"
+                            v-model="form.district"
+                            placeholder="Search & Select District"
+                            class="w-full"
+                            :disabled="!form.state"
+                            @keydown.enter="moveToNextInput"
+                        ></v-select>
                     </div>
                 </div>
 

@@ -241,6 +241,10 @@
       }
   }
 
+  $hasPhysicalItems = $estimate->items->contains(function ($item) {
+      return !$item->product || $item->product->type !== 'service';
+  });
+
   // Group items by GST rate for calculation
   $taxGroups = [];
   $totalQty = 0;
@@ -315,8 +319,8 @@
   <!-- Meta Info Table -->
   <table class="border-bottom meta-table">
     <tr>
-      <td class="border-right">
-        <table class="meta-sub-table">
+      <td class="{{ $hasPhysicalItems ? 'border-right' : '' }}" style="width: {{ $hasPhysicalItems ? '50%' : '100%' }};">
+        <table class="meta-sub-table" style="width: 100%;">
           <tr>
             <td class="bold" style="width: 35%;">Quotation No.</td>
             <td style="width: 5%;">:</td>
@@ -337,10 +341,18 @@
             <td>:</td>
             <td>{{ $posState }}</td>
           </tr>
+          @if(!$hasPhysicalItems)
+          <tr>
+            <td class="bold">Status</td>
+            <td>:</td>
+            <td class="bold" style="color: #2e2c92;">{{ strtoupper($estimate->status) }}</td>
+          </tr>
+          @endif
         </table>
       </td>
-      <td>
-        <table class="meta-sub-table">
+      @if($hasPhysicalItems)
+      <td style="width: 50%;">
+        <table class="meta-sub-table" style="width: 100%;">
           <tr>
             <td class="bold" style="width: 35%;">Transport</td>
             <td style="width: 5%;">:</td>
@@ -363,6 +375,7 @@
           </tr>
         </table>
       </td>
+      @endif
     </tr>
   </table>
 
@@ -566,7 +579,9 @@
           E. & O.E.
           <ol class="terms-list">
             <li>Quotation values are valid for 30 days from the date of issue.</li>
+            @if($hasPhysicalItems)
             <li>Subject to availability of stock at the time of order confirmation.</li>
+            @endif
           </ol>
         </div>
       </td>

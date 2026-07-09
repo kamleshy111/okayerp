@@ -50,12 +50,19 @@ const availableDistricts = computed(() => {
     return lookupKey ? statesData[lookupKey] : [];
 });
 
+watch(() => form.country, (newVal) => {
+    if (newVal && newVal !== 'India') {
+        form.state = "";
+        form.district = "";
+    }
+});
+
 watch(() => form.state, (newVal, oldVal) => {
     if (oldVal !== undefined) {
         form.district = "";
         form.city = "";
     }
-    if (newVal) {
+    if (newVal && (!form.country || form.country === 'India')) {
         form.country = "India";
     }
 });
@@ -151,10 +158,25 @@ const handleFileUpload = (event) => {
             <div class="border-t border-gray-200 pt-5">
                 <h3 class="text-sm font-semibold text-gray-700 mb-4">Address Details</h3>
                 <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <InputLabel for="country" value="Country" />
+                        <select
+                            id="country"
+                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm bg-white text-black p-2"
+                            v-model="form.country"
+                        >
+                            <option value="" disabled>Select Country</option>
+                            <option v-for="c in $page.props.countries" :key="c" :value="c">
+                                {{ c }}
+                            </option>
+                        </select>
+                        <InputError class="mt-1" :message="form.errors.country" />
+                    </div>
 
                     <div>
                         <InputLabel for="state" value="State" />
                         <v-select
+                            v-if="!form.country || form.country === 'India'"
                             id="state"
                             :options="$page.props.gst_states"
                             label="display"
@@ -163,10 +185,18 @@ const handleFileUpload = (event) => {
                             placeholder="Search & Select State"
                             class="w-full mt-1"
                         ></v-select>
+                        <TextInput
+                            v-else
+                            id="state"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.state"
+                            placeholder="Enter state"
+                        />
                         <InputError class="mt-1" :message="form.errors.state" />
                     </div>
 
-                    <div>
+                    <div v-if="!form.country || form.country === 'India'">
                         <InputLabel for="district" value="District" />
                         <v-select
                             id="district"
@@ -180,18 +210,6 @@ const handleFileUpload = (event) => {
                     </div>
 
                     <div>
-                        <InputLabel for="city" value="City" />
-                        <TextInput
-                            id="city"
-                            type="text"
-                            class="mt-1 block w-full"
-                            v-model="form.city"
-                            placeholder="Enter city"
-                        />
-                        <InputError class="mt-1" :message="form.errors.city" />
-                    </div>
-
-                    <div>
                         <InputLabel for="pin_code" value="Pin Code" />
                         <TextInput
                             id="pin_code"
@@ -202,21 +220,6 @@ const handleFileUpload = (event) => {
                             maxlength="10"
                         />
                         <InputError class="mt-1" :message="form.errors.pin_code" />
-                    </div>
-
-                    <div class="col-span-2">
-                        <InputLabel for="country" value="Country" />
-                        <select
-                            id="country"
-                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm bg-white text-black p-2"
-                            v-model="form.country"
-                        >
-                            <option value="" disabled>Select Country</option>
-                            <option v-for="c in $page.props.countries" :key="c" :value="c">
-                                {{ c }}
-                            </option>
-                        </select>
-                        <InputError class="mt-1" :message="form.errors.country" />
                     </div>
 
                 </div>

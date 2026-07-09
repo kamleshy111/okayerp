@@ -263,6 +263,33 @@ const newSupplier = ref({
   gstin: ''
 });
 
+const availableSupplierDistricts = computed(() => {
+    if (!newSupplier.value.state) return [];
+    const stateName = newSupplier.value.state;
+    const statesData = usePage().props.state_cities || {};
+    const lookupKey = Object.keys(statesData).find(
+        key => key.toLowerCase().replace(/[^a-z0-9]/g, '') === stateName.toLowerCase().replace(/[^a-z0-9]/g, '')
+    );
+    return lookupKey ? statesData[lookupKey] : [];
+});
+
+watch(() => newSupplier.value.country, (newVal) => {
+    if (newVal && newVal !== 'India') {
+        newSupplier.value.state = "";
+        newSupplier.value.district = "";
+    }
+});
+
+watch(() => newSupplier.value.state, (newVal, oldVal) => {
+    if (oldVal !== undefined) {
+        newSupplier.value.district = "";
+        newSupplier.value.city = "";
+    }
+    if (newVal && (!newSupplier.value.country || newSupplier.value.country === 'India')) {
+        newSupplier.value.country = "India";
+    }
+});
+
 const openSupplierModalWithName = (name) => {
   newSupplier.value = {
     name: name || '',
@@ -1027,23 +1054,46 @@ const handleProductSuccess = (createdProduct) => {
 
                 <div class="grid grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">City</label>
-                        <input type="text" v-model="newSupplier.city" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
+                        <select v-model="newSupplier.country"
+                            class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white text-black">
+                            <option value="" disabled>Select Country</option>
+                            <option v-for="c in $page.props.countries" :key="c" :value="c">
+                                {{ c }}
+                            </option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">District</label>
-                        <input type="text" v-model="newSupplier.district" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
+                        <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
+                        <vSelect
+                            v-if="!newSupplier.country || newSupplier.country === 'India'"
+                            :options="$page.props.gst_states"
+                            label="display"
+                            :reduce="state => state.name"
+                            v-model="newSupplier.state"
+                            placeholder="Search & Select State"
+                            class="w-full text-black bg-white"
+                        ></vSelect>
+                        <input
+                            v-else
+                            type="text"
+                            v-model="newSupplier.state"
+                            class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none"
+                            placeholder="Enter State"
+                        />
                     </div>
                 </div>
 
-                <div class="grid grid-cols-2 gap-4">
+                <div class="grid grid-cols-2 gap-4" v-if="!newSupplier.country || newSupplier.country === 'India'">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">State</label>
-                        <input type="text" v-model="newSupplier.state" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Country</label>
-                        <input type="text" v-model="newSupplier.country" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
+                        <label class="block text-sm font-medium text-gray-700 mb-1">District</label>
+                        <vSelect
+                            :options="availableSupplierDistricts"
+                            v-model="newSupplier.district"
+                            placeholder="Search & Select District"
+                            class="w-full text-black bg-white"
+                            :disabled="!newSupplier.state"
+                        ></vSelect>
                     </div>
                 </div>
 

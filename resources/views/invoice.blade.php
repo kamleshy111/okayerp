@@ -241,6 +241,10 @@
       }
   }
 
+  $hasPhysicalItems = $sale->saleItems->contains(function ($item) {
+      return !$item->product || $item->product->type !== 'service';
+  });
+
   // Group items by GST rate for calculation
   $taxGroups = [];
   $totalQty = 0;
@@ -315,8 +319,8 @@
   <!-- Meta Info Table -->
   <table class="border-bottom meta-table">
     <tr>
-      <td class="border-right">
-        <table class="meta-sub-table">
+      <td class="{{ $hasPhysicalItems ? 'border-right' : '' }}" style="width: {{ $hasPhysicalItems ? '50%' : '100%' }};">
+        <table class="meta-sub-table" style="width: 100%;">
           <tr>
             <td class="bold" style="width: 35%;">Invoice No.</td>
             <td style="width: 5%;">:</td>
@@ -339,8 +343,9 @@
           </tr>
         </table>
       </td>
-      <td>
-        <table class="meta-sub-table">
+      @if($hasPhysicalItems)
+      <td style="width: 50%;">
+        <table class="meta-sub-table" style="width: 100%;">
           <tr>
             <td class="bold" style="width: 35%;">Transport</td>
             <td style="width: 5%;">:</td>
@@ -363,6 +368,7 @@
           </tr>
         </table>
       </td>
+      @endif
     </tr>
   </table>
 
@@ -551,7 +557,7 @@
         <div style="font-size: 9px; color: #333;">
           E. & O.E.
           <ol class="terms-list">
-            <li>Goods once sold will not be taken back.</li>
+            <li>{{ $hasPhysicalItems ? 'Goods once sold will not be taken back.' : 'Services once rendered are not refundable.' }}</li>
             <li>Interest @ 18% p.a. will be charged if the payment is not made within the due date.</li>
           </ol>
         </div>
