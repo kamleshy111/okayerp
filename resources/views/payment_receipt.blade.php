@@ -7,9 +7,9 @@
     body {
       margin: 0;
       font-family: 'DejaVu Sans', sans-serif;
-      font-size: 11px;
+      font-size: 10px;
       color: #000;
-      line-height: 1.3;
+      line-height: 1.15;
     }
 
     .invoice-container {
@@ -25,7 +25,7 @@
     }
 
     td, th {
-      padding: 6px 8px;
+      padding: 4px 6px;
       vertical-align: top;
     }
 
@@ -54,20 +54,20 @@
     }
 
     .company-name {
-      font-size: 16px;
+      font-size: 13px;
       font-weight: bold;
-      margin-bottom: 2px;
+      margin-bottom: 1px;
       text-transform: uppercase;
       color: #2e2c92;
     }
 
     .receipt-title {
-      font-size: 14px;
+      font-size: 11px;
       font-weight: bold;
       text-align: center;
       background-color: #2e2c92;
       color: #ffffff;
-      padding: 6px;
+      padding: 4px;
       border-bottom: 1px solid #2e2c92;
       border-top: 1px solid #2e2c92;
       letter-spacing: 1px;
@@ -80,12 +80,12 @@
       border-bottom: 1px solid #2e2c92;
       font-weight: bold;
       text-align: center;
-      padding: 6px;
+      padding: 4px;
     }
 
     .receipt-table td {
       border-bottom: 1px solid #cbd5e1;
-      padding: 6px 8px;
+      padding: 4px 6px;
     }
 
     .text-emerald {
@@ -102,17 +102,17 @@
   <div class="invoice-container">
     <table>
       <tr>
-        <td class="text-center" style="padding: 10px;">
+        <td class="text-center" style="padding: 4px;">
             @php
                 $store = \Illuminate\Support\Facades\Auth::user();
             @endphp
             <div class="company-name">{{ $store->name ?? 'OKAY ERP' }}</div>
-            <div style="color: #4b5563;">{{ $store->address ?? '' }}</div>
+            <div style="color: #4b5563; font-size: 9px;">{{ $store->address ?? '' }}</div>
             @if(!empty($store->gstin))
-              <div class="bold" style="margin-top: 2px;">GSTIN: {{ $store->gstin }}</div>
+              <div class="bold" style="margin-top: 1px; font-size: 9px;">GSTIN: {{ $store->gstin }}</div>
             @endif
             @if(!empty($store->phone))
-              <div style="color: #4b5563;">Phone: {{ $store->phone }}</div>
+              <div style="color: #4b5563; font-size: 9px;">Phone: {{ $store->phone }}</div>
             @endif
         </td>
       </tr>
@@ -122,25 +122,25 @@
 
     <table>
       <tr>
-        <td width="50%" class="border-right border-bottom" style="padding: 8px;">
-          <div class="bold" style="color: #2e2c92; margin-bottom: 4px;">Received From :</div>
-          <div class="bold" style="font-size: 12px;">{{ $payment->customer_name }}</div>
+        <td width="50%" class="border-right border-bottom" style="padding: 4px 6px;">
+          <div class="bold" style="color: #2e2c92; margin-bottom: 2px;">Received From :</div>
+          <div class="bold" style="font-size: 11px;">{{ $payment->customer_name }}</div>
           @if(!empty($payment->phone))
-            <div style="color: #4b5563;">Phone: {{ $payment->phone }}</div>
+            <div style="color: #4b5563; font-size: 9px;">Phone: {{ $payment->phone }}</div>
           @endif
           @if(!empty($payment->email))
-            <div style="color: #4b5563;">Email: {{ $payment->email }}</div>
+            <div style="color: #4b5563; font-size: 9px;">Email: {{ $payment->email }}</div>
           @endif
         </td>
-        <td width="50%" class="border-bottom" style="padding: 8px;">
+        <td width="50%" class="border-bottom" style="padding: 4px 6px;">
           <table style="width: 100%; padding:0;">
             <tr>
-              <td class="bold" style="padding: 2px; width: 40%; color: #2e2c92;">Receipt No.</td>
-              <td style="padding: 2px; width: 5%;">:</td>
-              <td style="padding: 2px;" class="bold">{{ $payment->is_return ? 'RET-' : 'PAY-' }}{{ str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}</td>
+              <td class="bold" style="padding: 1px; width: 40%; color: #2e2c92;">Receipt No.</td>
+              <td style="padding: 1px; width: 5%;">:</td>
+              <td style="padding: 1px;" class="bold">{{ $payment->is_return ? 'RET-' : 'PAY-' }}{{ str_pad($payment->id, 5, '0', STR_PAD_LEFT) }}</td>
             </tr>
             <tr>
-              <td class="bold" style="padding: 2px; color: #2e2c92;">Receipt Date</td>
+              <td class="bold" style="padding: 1px; color: #2e2c92;">Receipt Date</td>
               <td>:</td>
               <td>{{ date('d-m-Y', strtotime($payment->created_at)) }}</td>
             </tr>
@@ -164,7 +164,7 @@
           <td class="border-right">
               <span class="bold">{{ $hist['reason'] }}</span>
               @if(!empty($hist['note']))
-                <div style="font-size: 9px; color: #4b5563; font-weight: normal; margin-top: 2px;">Note: {{ $hist['note'] }}</div>
+                <div style="font-size: 9px; color: #4b5563; font-weight: normal; margin-top: 1px;">Note: {{ $hist['note'] }}</div>
               @endif
           </td>
           <td class="border-right text-center" style="vertical-align: middle;">
@@ -181,21 +181,21 @@
         
         <!-- Totals & Balances -->
         <tr>
-          <td class="border-right bold text-right" style="border-top: 1px solid #2e2c92; border-bottom: none;" colspan="3">Total Amount Received</td>
-          <td class="bold text-right" style="border-top: 1px solid #2e2c92; border-bottom: none; color: #16a34a;">₹{{ number_format($payment->amount, 2) }}</td>
+          <td class="border-right bold text-right" style="border-top: 1px solid #2e2c92; border-bottom: none; padding: 4px 6px;" colspan="3">Total Amount Received</td>
+          <td class="bold text-right" style="border-top: 1px solid #2e2c92; border-bottom: none; color: #16a34a; padding: 4px 6px;">₹{{ number_format($payment->amount, 2) }}</td>
         </tr>
         @if(isset($payment->sale_id) && $payment->sale_id && isset($payment->sale_grand_total))
           <tr>
-            <td class="border-right bold text-right" style="border-bottom: none;" colspan="3">Sale Grand Total</td>
-            <td class="text-right bold" style="border-bottom: none;">₹{{ number_format($payment->sale_grand_total, 2) }}</td>
+            <td class="border-right bold text-right" style="border-bottom: none; padding: 4px 6px;" colspan="3">Sale Grand Total</td>
+            <td class="text-right bold" style="border-bottom: none; padding: 4px 6px;">₹{{ number_format($payment->sale_grand_total, 2) }}</td>
           </tr>
           <tr>
-            <td class="border-right bold text-right" style="border-bottom: none;" colspan="3">Total Paid</td>
-            <td class="text-right bold" style="border-bottom: none; color: #16a34a;">₹{{ number_format($payment->sale_total_paid, 2) }}</td>
+            <td class="border-right bold text-right" style="border-bottom: none; padding: 4px 6px;" colspan="3">Total Paid</td>
+            <td class="text-right bold" style="border-bottom: none; color: #16a34a; padding: 4px 6px;">₹{{ number_format($payment->sale_total_paid, 2) }}</td>
           </tr>
           <tr>
-            <td class="border-right bold text-right" style="border-bottom: none;" colspan="3">Balance Due</td>
-            <td class="text-right bold" style="border-bottom: none; color: {{ $payment->sale_remaining > 0 ? 'red' : 'green' }};">
+            <td class="border-right bold text-right" style="border-bottom: none; padding: 4px 6px;" colspan="3">Balance Due</td>
+            <td class="text-right bold" style="border-bottom: none; color: {{ $payment->sale_remaining > 0 ? 'red' : 'green' }}; padding: 4px 6px;">
                 ₹{{ number_format($payment->sale_remaining, 2) }}
             </td>
           </tr>
@@ -205,7 +205,7 @@
 
     <table>
       <tr class="border-top">
-        <td style="padding: 10px; width: 70%; vertical-align: middle;">
+        <td style="padding: 4px 6px; width: 70%; vertical-align: middle;">
           <div>
             <span class="bold" style="color: #2e2c92;">Amount in Words:</span><br>
             @php
@@ -248,9 +248,9 @@
             @endphp
           </div>
         </td>
-        <td class="text-center" style="padding: 10px; width: 30%;">
-          <br><br>
-          <div style="border-top: 1px solid #2e2c92; padding-top: 4px; font-weight: bold;">Authorized Signatory</div>
+        <td class="text-center" style="padding: 4px 6px; width: 30%; vertical-align: bottom;">
+          <br>
+          <div style="border-top: 1px solid #2e2c92; padding-top: 2px; font-weight: bold;">Authorized Signatory</div>
         </td>
       </tr>
     </table>

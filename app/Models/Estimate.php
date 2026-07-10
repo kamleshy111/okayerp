@@ -17,7 +17,9 @@ class Estimate extends Model
         'grand_total',
         'status',
         'accepted',
-        'notes'
+        'notes',
+        'currency',
+        'exchange_rate'
     ];
 
     public function customer()

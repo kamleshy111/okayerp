@@ -34,11 +34,15 @@ class PrivateSaleController extends Controller
 
         $userId = Auth::id();
 
-        // Get private sales (accepted = 0)
+        // Get private sales (accepted = 0 and currency is INR or null)
         $sales = Sale::whereHas('customer', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
         ->where('accepted', 0)
+        ->where(function($q) {
+            $q->whereNull('currency')
+              ->orWhere('currency', 'INR');
+        })
         ->with(['customer', 'saleReturns'])
         ->orderBy('created_at', 'desc')
         ->get()

@@ -32,6 +32,21 @@ class StockItemSummaryController extends Controller
         $fyLabel     = '1-Apr-' . substr((string)$fyStartYear, -2);
         $fyYear      = $fyStartYear . '-' . substr((string)($fyStartYear + 1), -2);
 
+        $driver = DB::connection()->getDriverName();
+        $inwardsMonthRaw = $driver === 'sqlite' 
+            ? "CAST(strftime('%m', COALESCE(purchases.purchase_date, purchases.created_at)) AS INTEGER) as month" 
+            : 'MONTH(COALESCE(purchases.purchase_date, purchases.created_at)) as month';
+        $inwardsYearRaw = $driver === 'sqlite' 
+            ? "CAST(strftime('%Y', COALESCE(purchases.purchase_date, purchases.created_at)) AS INTEGER) as year" 
+            : 'YEAR(COALESCE(purchases.purchase_date, purchases.created_at)) as year';
+
+        $outwardsMonthRaw = $driver === 'sqlite' 
+            ? "CAST(strftime('%m', sales.created_at) AS INTEGER) as month" 
+            : 'MONTH(sales.created_at) as month';
+        $outwardsYearRaw = $driver === 'sqlite' 
+            ? "CAST(strftime('%Y', sales.created_at) AS INTEGER) as year" 
+            : 'YEAR(sales.created_at) as year';
+
         // ── Monthly Inwards (accepted purchases within FY) ────────────────
         $inwardsRaw = DB::table('purchase_items')
             ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
@@ -44,8 +59,8 @@ class StockItemSummaryController extends Controller
                 [$fyStart, $fyEnd]
             )
             ->select(
-                DB::raw('MONTH(COALESCE(purchases.purchase_date, purchases.created_at)) as month'),
-                DB::raw('YEAR(COALESCE(purchases.purchase_date, purchases.created_at))  as year'),
+                DB::raw($inwardsMonthRaw),
+                DB::raw($inwardsYearRaw),
                 DB::raw('SUM(purchase_items.quantity) as total_qty'),
                 DB::raw('SUM(COALESCE(purchase_items.base_price, purchase_items.price, 0) * purchase_items.quantity) as total_value')
             )
@@ -62,8 +77,8 @@ class StockItemSummaryController extends Controller
             ->where('sale_items.product_id', $productId)
             ->whereBetween('sales.created_at', [$fyStart, $fyEnd])
             ->select(
-                DB::raw('MONTH(sales.created_at) as month'),
-                DB::raw('YEAR(sales.created_at)  as year'),
+                DB::raw($outwardsMonthRaw),
+                DB::raw($outwardsYearRaw),
                 DB::raw('SUM(sale_items.quantity) as total_qty'),
                 DB::raw('SUM(COALESCE(sale_items.base_price, sale_items.price, 0) * sale_items.quantity) as total_value')
             )

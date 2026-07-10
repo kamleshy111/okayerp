@@ -130,13 +130,19 @@ const form = ref({
     GstAmount: estimate.gst_amount,
     accepted: estimate.accepted == 1,
     total_amount: estimate.total_amount,
-    discount: estimate.discount,
+    discount: (parseFloat(estimate.discount) || 0) / (parseFloat(estimate.exchange_rate) || 1.0),
     notes: estimate.notes || "",
+    currency: estimate.currency || 'INR',
+    exchange_rate: parseFloat(estimate.exchange_rate) || 1.0000,
     estimate_items: estimate.items.map(item => {
         const sgst = parseFloat(item.sgst) || 0;
         const cgst = parseFloat(item.cgst) || 0;
         const totalProductRate = sgst + cgst;
-        const matchedRate = props.gstRates.find(r => parseFloat(r.rate) === totalProductRate);
+        const matchedRate = props.gstRates.find(r => {
+          const isIgst = r.name.toLowerCase().includes('igst');
+          const databaseIsIgst = totalProductRate > 0 && cgst === 0 && sgst === 0;
+          return parseFloat(r.rate) === totalProductRate && (databaseIsIgst ? isIgst : !isIgst);
+        });
         const computedId = matchedRate ? matchedRate.id : (props.gstRates[0]?.id || "");
         // If matched rate is IGST type, split evenly
         const rateObj = props.gstRates.find(r => r.id === computedId);
@@ -152,8 +158,8 @@ const form = ref({
             sgst: computedSgst,
             cgst: computedCgst,
             quantity: item.quantity || 1,
-            price: item.price || 0,
-            baseAmount: item.base_price || 0,
+            price: parseFloat(item.price || 0) / (parseFloat(estimate.exchange_rate) || 1.0),
+            baseAmount: parseFloat(item.base_price || 0) / (parseFloat(estimate.exchange_rate) || 1.0),
             gst_rate_id: computedId,
             last_product_id: item.product_id,
         };
@@ -397,6 +403,38 @@ watch(() => form.value.customer_id, (newVal) => {
   selectedCustomer.value = customers.value.find(c => c.id == newVal);
 });
 
+const isInternationalCustomer = computed(() => {
+  return selectedCustomer.value && selectedCustomer.value.country && selectedCustomer.value.country.toLowerCase() !== 'india';
+});
+
+const currencySymbol = computed(() => {
+  if (!isInternationalCustomer.value) return '₹';
+  switch (form.value.currency) {
+    case 'USD': return '$';
+    case 'GBP': return '£';
+    case 'EUR': return '€';
+    case 'SGD': return 'S$';
+    case 'SAR': return 'SR';
+    case 'CAD': return 'C$';
+    case 'AUD': return 'A$';
+    case 'AED': return 'AED';
+    case 'INR': return '₹';
+    default: return form.value.currency || '₹';
+  }
+});
+
+watch(isInternationalCustomer, (isInternational) => {
+  if (isInternational) {
+    form.value.accepted = false;
+    if (form.value.currency === 'INR') {
+      form.value.currency = 'USD';
+    }
+  } else {
+    form.value.currency = 'INR';
+  }
+  form.value.exchange_rate = 1.0000;
+});
+
 const page = usePage();
 const storeState = computed(() => page.props.auth?.user?.state || '');
 
@@ -555,11 +593,19 @@ const submitForm = async () => {
   }
 
   try {
+    const rate = parseFloat(form.value.exchange_rate) || 1.0;
     const payload = {
       ...form.value,
-      grand_total: grandTotal.value,
-      total_amount: totalAmount.value,
-      GstAmount: totalGST.value,
+      exchange_rate: rate,
+      discount: (parseFloat(form.value.discount) || 0) * rate,
+      grand_total: grandTotal.value * rate,
+      total_amount: totalAmount.value * rate,
+      GstAmount: totalGST.value * rate,
+      estimate_items: form.value.estimate_items.map(item => ({
+        ...item,
+        price: (parseFloat(item.price) || 0) * rate,
+        baseAmount: (parseFloat(item.baseAmount) || 0) * rate
+      }))
     };
 
     const response = await axios.post(`/estimate/update/${estimate.id}`, payload);
@@ -645,6 +691,27 @@ const submitForm = async () => {
                 <p><strong>Address:</strong> {{ selectedCustomer.address || '-' }}</p>
             </div>
 
+            <div v-if="isInternationalCustomer" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 p-4 bg-purple-50/30 border border-purple-100 rounded-xl">
+                <div>
+                    <label class="block text-black font-semibold mb-2">Currency</label>
+                    <select v-model="form.currency" class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black">
+                        <option value="USD">USD ($)</option>
+                        <option value="AED">AED (AED)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="SGD">SGD (S$)</option>
+                        <option value="SAR">SAR (SR)</option>
+                        <option value="CAD">CAD (C$)</option>
+                        <option value="AUD">AUD (A$)</option>
+                        <option value="INR">INR (₹)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-black font-semibold mb-2">Exchange Rate (1 {{ form.currency }} = ? INR)</label>
+                    <input type="number" v-model="form.exchange_rate" step="any" min="0.0001" class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black" />
+                </div>
+            </div>
+
             <!-- Line Items Table -->
             <div class="mt-6">
                 <h3 class="text-lg font-bold mb-3 text-[#292688]">Quotation Items</h3>
@@ -725,7 +792,7 @@ const submitForm = async () => {
                                 </td>
 
                                 <td class="px-4 py-3 font-semibold text-gray-800 text-right">
-                                    ₹ {{ (parseFloat(item.quantity || 0) * parseFloat(item.price || 0)).toFixed(2) }}
+                                    {{ currencySymbol }} {{ ((parseFloat(item.quantity || 0) * parseFloat(item.price || 0))).toFixed(2) }}
                                 </td>
 
                                 <td class="px-4 py-3 text-center space-x-1">
@@ -826,7 +893,7 @@ const submitForm = async () => {
                                 </div>
                                 <div>
                                     <span class="block text-gray-400">Net Amount</span>
-                                    <span class="text-gray-800 font-bold">₹ {{ (parseFloat(item.quantity || 0) * parseFloat(item.price || 0)).toFixed(2) }}</span>
+                                    <span class="text-gray-800 font-bold">{{ currencySymbol }} {{ ((parseFloat(item.quantity || 0) * parseFloat(item.price || 0))).toFixed(2) }}</span>
                                 </div>
                             </div>
                         </div>
@@ -843,15 +910,15 @@ const submitForm = async () => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 border-t border-gray-200 pt-6">
                 <!-- Notes and GST Config -->
                 <div class="space-y-4">
-                    <div class="flex items-center">
+                    <div v-if="!isInternationalCustomer" class="mb-4">
                         <label class="inline-flex items-center space-x-2.5 cursor-pointer">
-                            <input type="checkbox" v-model="form.accepted" class="form-checkbox h-5 w-5 text-[#292688] border-gray-300 rounded focus:ring-[#292688]">
+                            <input type="checkbox" v-model="form.accepted" class="form-checkbox h-5 w-5 text-[#292688] border-gray-300 rounded focus:ring-[#292688]" />
                             <span class="text-sm font-medium text-gray-800">Apply GST Taxes to Estimate</span>
                         </label>
                     </div>
 
                     <div>
-                        <label class="block text-gray-700 font-medium mb-1.5">Discount (₹)</label>
+                        <label class="block text-gray-700 font-medium mb-1.5">Discount ({{ currencySymbol }})</label>
                         <input type="number" step="0.01" v-model="form.discount" min="0"
                             class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                             placeholder="Discount amount" />
@@ -871,22 +938,22 @@ const submitForm = async () => {
 
                     <div class="flex justify-between items-center text-sm text-gray-600">
                         <span>Total Net (Subtotal):</span>
-                        <span class="font-medium">₹ {{ totalAmount.toFixed(2) }}</span>
+                        <span class="font-medium">{{ currencySymbol }} {{ totalAmount.toFixed(2) }}</span>
                     </div>
 
                     <div v-if="form.accepted" class="flex justify-between items-center text-sm text-gray-600">
                         <span>Total GST Amount:</span>
-                        <span class="font-medium text-blue-600">₹ {{ totalGST.toFixed(2) }}</span>
+                        <span class="font-medium text-blue-600">{{ currencySymbol }} {{ totalGST.toFixed(2) }}</span>
                     </div>
 
                     <div v-if="form.discount > 0" class="flex justify-between items-center text-sm text-gray-600">
                         <span>Discount Deducted:</span>
-                        <span class="font-medium text-red-600">- ₹ {{ parseFloat(form.discount || 0).toFixed(2) }}</span>
+                        <span class="font-medium text-red-600">- {{ currencySymbol }} {{ parseFloat(form.discount || 0).toFixed(2) }}</span>
                     </div>
 
                     <div class="flex justify-between items-center text-base font-bold text-gray-900 border-t border-gray-200 pt-3">
                         <span>Estimated Grand Total:</span>
-                        <span class="text-lg text-[#292688]">₹ {{ grandTotal.toFixed(2) }}</span>
+                        <span class="text-lg text-[#292688]">{{ currencySymbol }} {{ grandTotal.toFixed(2) }}</span>
                     </div>
 
                     <div class="pt-4 flex gap-3">

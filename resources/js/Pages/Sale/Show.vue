@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { onMounted, onUnmounted } from 'vue';
+import { onMounted, onUnmounted, computed } from 'vue';
 
 const props = defineProps({
   sale: {
@@ -21,6 +21,28 @@ const props = defineProps({
     default: () => []
   }
 });
+
+const isExport = computed(() => props.sale.currency && props.sale.currency !== 'INR' && props.sale.exchange_rate > 0);
+const exchangeRate = computed(() => isExport.value ? parseFloat(props.sale.exchange_rate) : 1);
+const currencySymbol = computed(() => {
+  if (!isExport.value) return '₹';
+  switch (props.sale.currency) {
+    case 'USD': return '$';
+    case 'GBP': return '£';
+    case 'EUR': return '€';
+    case 'SGD': return 'S$';
+    case 'SAR': return 'SR';
+    case 'CAD': return 'C$';
+    case 'AUD': return 'A$';
+    case 'AED': return 'AED';
+    default: return props.sale.currency || '₹';
+  }
+});
+
+const formatAmount = (value) => {
+  const amt = parseFloat(value) || 0;
+  return `${currencySymbol.value}${amt.toFixed(2)}`;
+};
 
 // Format dates nicely
 const formatDate = (dateStr) => {
@@ -148,7 +170,7 @@ onUnmounted(() => {
                   ₹{{ parseFloat(item.price).toFixed(2) }}
                 </td>
                 <td class="px-6 py-4 text-right text-gray-600">
-                  ₹{{ parseFloat(item.base_price).toFixed(2) }}
+                  {{ formatAmount(item.base_price) }}
                 </td>
                 <td class="px-6 py-4 text-right font-semibold text-gray-900">
                   ₹{{ (parseFloat(item.price) * parseFloat(item.quantity)).toFixed(2) }}
@@ -175,7 +197,7 @@ onUnmounted(() => {
                 <span class="text-gray-500 font-medium">Total Amount</span>
                 <span class="text-gray-900 font-semibold">₹{{ parseFloat(sale.total_amount).toFixed(2) }}</span>
               </div>
-              <div class="flex justify-between py-3">
+              <div v-if="sale.accepted" class="flex justify-between py-3">
                 <span class="text-gray-500 font-medium">GST Amount</span>
                 <span class="text-gray-900 font-semibold">₹{{ parseFloat(sale.gst_amount).toFixed(2) }}</span>
               </div>

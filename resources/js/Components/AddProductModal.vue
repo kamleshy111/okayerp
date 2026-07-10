@@ -30,6 +30,7 @@ const productNameInput = ref(null);
 
 const form = ref({
   name: '',
+  type: 'product',
   category_id: '',
   unit_type: '',
   sgst: 0,
@@ -47,6 +48,7 @@ watch(
     if (newVal) {
       form.value = {
         name: props.initialName || '',
+        type: 'product',
         category_id: '',
         unit_type: '',
         sgst: 0,
@@ -129,6 +131,10 @@ const submitProduct = async () => {
       toast.error("Unit Type is required!");
       return;
     }
+    if (!form.value.type) {
+      toast.error("Type is required!");
+      return;
+    }
 
     const formData = new FormData();
     for (const [key, value] of Object.entries(form.value)) {
@@ -174,6 +180,13 @@ const submitProduct = async () => {
 
         <div class="grid grid-cols-2 gap-4">
           <div>
+            <label class="block text-sm font-medium text-gray-755 mb-1">Type <span class="text-red-500">*</span></label>
+            <select v-model="form.type" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white">
+              <option value="product">Product</option>
+              <option value="service">Service</option>
+            </select>
+          </div>
+          <div>
             <label class="block text-sm font-medium text-gray-755 mb-1">Category <span class="text-red-500">*</span></label>
             <select v-model="form.category_id" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white">
               <option value="">Select Category</option>
@@ -182,6 +195,9 @@ const submitProduct = async () => {
               </option>
             </select>
           </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4">
           <div>
             <label class="block text-sm font-medium text-gray-755 mb-1">Unit Type <span class="text-red-500">*</span></label>
             <select v-model="form.unit_type" required class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none bg-white">
@@ -191,17 +207,15 @@ const submitProduct = async () => {
               </option>
             </select>
           </div>
-        </div>
-
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-755 mb-1">HSN/SAC Code</label>
-            <input type="text" v-model="form.hsn_code" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
-          </div>
           <div>
             <label class="block text-sm font-medium text-gray-755 mb-1">Sale Price (₹)</label>
             <input type="number" step="0.01" v-model="form.price" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
           </div>
+        </div>
+
+        <div>
+          <label class="block text-sm font-medium text-gray-755 mb-1">HSN/SAC Code</label>
+          <input type="text" v-model="form.hsn_code" class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] focus:outline-none" />
         </div>
 
         <div>

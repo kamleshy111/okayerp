@@ -304,7 +304,7 @@ watch(() => form.value.supplier_id, (newVal) => {
                 </div>
                 <div>
                     <label class="block text-black font-medium mb-2">Amount <span class="text-red-500">*</span></label>
-                    <input type="number" name="amount" v-model="form.amount"
+                    <input type="number" step="any" name="amount" v-model="form.amount"
                         @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Amount" />

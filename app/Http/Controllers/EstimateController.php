@@ -113,6 +113,8 @@ class EstimateController extends Controller
                 'status' => 'Draft',
                 'accepted' => $request->input('accepted') ?? 1,
                 'notes' => $request->input('notes'),
+                'currency' => $request->input('currency') ?: 'INR',
+                'exchange_rate' => $request->input('exchange_rate') ?: 1.0000,
             ]);
 
             // Create items
@@ -211,6 +213,8 @@ class EstimateController extends Controller
                 'grand_total' => $request->input('grand_total') ?? 0.00,
                 'accepted' => $request->input('accepted') ?? 1,
                 'notes' => $request->input('notes'),
+                'currency' => $request->input('currency') ?: 'INR',
+                'exchange_rate' => $request->input('exchange_rate') ?: 1.0000,
             ]);
 
             // Re-sync items
@@ -253,10 +257,11 @@ class EstimateController extends Controller
 
     public function downloadPdf($id)
     {
-        $userId = Auth::id();
-        $estimate = Estimate::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-            ->with(['items.product', 'customer.user'])
-            ->find($id);
+        $query = Estimate::query()->with(['items.product', 'customer.user']);
+        if (Auth::user()->role !== 'admin') {
+            $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
+        }
+        $estimate = $query->find($id);
 
         if (!$estimate) {
             abort(403, 'Quotation not found or unauthorized access');

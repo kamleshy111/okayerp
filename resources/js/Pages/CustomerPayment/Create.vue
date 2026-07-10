@@ -1,7 +1,7 @@
 <script setup>
-import { ref, onMounted, onUnmounted, nextTick, watch } from 'vue';
+import { ref, computed, onMounted, onUnmounted, nextTick, watch } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { Head } from '@inertiajs/vue3';
+import { Head, usePage } from '@inertiajs/vue3';
 import { toast } from "vue3-toastify";
 import "vue3-toastify/dist/index.css";
 import axios from 'axios';
@@ -378,7 +378,7 @@ onUnmounted(() => {
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-7">
                 <div>
                     <label class="block text-black font-medium mb-2">Cash/Bank Amount <span class="text-red-500">*</span></label>
-                    <input type="number" name="amount" v-model="form.amount"
+                    <input type="number" step="any" name="amount" v-model="form.amount"
                         @keydown.enter.prevent="moveToNextInput"
                         class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Enter remaining cash/bank amount" />

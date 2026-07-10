@@ -168,7 +168,7 @@
 @php
   // Indian number to words helper logic
   if (!function_exists('convertNumberToWords')) {
-      function convertNumberToWords($number) {
+      function convertNumberToWords($number, $currencyCode = 'INR') {
           $decimal = round($number - ($no = floor($number)), 2) * 100;
           $hundred = null;
           $digits_length = strlen($no);
@@ -197,9 +197,36 @@
                   $str [] = ($number < 21) ? $words[$number].' '. $digits[$counter].$plural.' '.$hundred:$words[floor($number / 10) * 10].' '.$words[$number % 10]. ' '.$digits[$counter].$plural.' '.$hundred;
               } else $str[] = null;
           }
-          $Rupees = implode('', array_reverse($str));
-          $paise = ($decimal > 0) ? "and " . ($words[$decimal / 10] . " " . $words[$decimal % 10]) . ' Paise ' : '';
-          return ($Rupees ? $Rupees . 'Rupees ' : '') . $paise . 'Only';
+          $mainUnits = implode('', array_reverse($str));
+          if ($currencyCode !== 'INR') {
+              $paise = ($decimal > 0) ? "and " . ($words[$decimal / 10] . " " . $words[$decimal % 10]) . ' Cents ' : '';
+              return ($mainUnits ? $mainUnits . $currencyCode . ' ' : '') . $paise . 'Only';
+          } else {
+              $paise = ($decimal > 0) ? "and " . ($words[$decimal / 10] . " " . $words[$decimal % 10]) . ' Paise ' : '';
+              return ($mainUnits ? $mainUnits . 'Rupees ' : '') . $paise . 'Only';
+          }
+      }
+  }
+
+  $customer = $sale->customer;
+  $isExport = $customer && !empty($customer->country) && strtolower(trim($customer->country)) !== 'india';
+  $currencySymbol = '₹';
+  $currencyCode = 'INR';
+  $exchangeRate = 1.0000;
+
+  if ($isExport && isset($sale->currency) && !empty($sale->currency) && isset($sale->exchange_rate) && $sale->exchange_rate > 0) {
+      $currencyCode = $sale->currency;
+      $exchangeRate = (double) $sale->exchange_rate;
+      switch ($currencyCode) {
+          case 'USD': $currencySymbol = '$'; break;
+          case 'GBP': $currencySymbol = '£'; break;
+          case 'EUR': $currencySymbol = '€'; break;
+          case 'SGD': $currencySymbol = 'S$'; break;
+          case 'SAR': $currencySymbol = 'SR'; break;
+          case 'CAD': $currencySymbol = 'C$'; break;
+          case 'AUD': $currencySymbol = 'A$'; break;
+          case 'AED': $currencySymbol = 'AED'; break;
+          default: $currencySymbol = $currencyCode; break;
       }
   }
 
@@ -300,7 +327,7 @@
         @endif
       </td>
       <td class="company-details">
-        <div class="bold text-center" style="font-size: 10px; margin-bottom: 2px; letter-spacing: 1px;">TAX INVOICE</div>
+        <div class="bold text-center" style="font-size: 10px; margin-bottom: 2px; letter-spacing: 1px;">{{ ($isExport || ($sale->gst_amount ?? 0) <= 0) ? 'INVOICE' : 'TAX INVOICE' }}</div>
         <div class="company-name">{{ $store ? $store->name : 'Your Store Name' }}</div>
         <div>{{ $store ? $store->address : 'Store Address' }}</div>
         @if($store && $store->gstin)
@@ -331,6 +358,7 @@
             <td>:</td>
             <td>{{ $sale->created_at->format('d-m-Y') }}</td>
           </tr>
+          @if($hasPhysicalItems)
           <tr>
             <td class="bold">Place of Supply</td>
             <td>:</td>
@@ -341,6 +369,7 @@
             <td>:</td>
             <td>N</td>
           </tr>
+          @endif
         </table>
       </td>
       @if($hasPhysicalItems)
@@ -410,7 +439,7 @@
         <th class="border-right" style="width: 10%;">Qty.</th>
         <th class="border-right" style="width: 8%;">Unit</th>
         <th class="border-right" style="width: 10%;">Price</th>
-        <th style="width: 10%;">Amount(₹)</th>
+        <th style="width: 10%;">Amount({{ $isExport ? $currencyCode : '₹' }})</th>
       </tr>
     </thead>
     <tbody>
@@ -421,8 +450,20 @@
         <td class="text-center border-right">{{ optional($item->product)->hsn_code ?? 'N/A' }}</td>
         <td class="text-right border-right">{{ number_format($item->quantity, 2) }}</td>
         <td class="text-center border-right">{{ $item->unit_type ?? 'Pcs.' }}</td>
-        <td class="text-right border-right">{{ number_format($item->price, 2) }}</td>
-        <td class="text-right">{{ number_format($item->base_price, 2) }}</td>
+        <td class="text-right border-right">
+          @if($isExport)
+            {{ number_format($item->price / $exchangeRate, 2) }}
+          @else
+            {{ number_format($item->price, 2) }}
+          @endif
+        </td>
+        <td class="text-right">
+          @if($isExport)
+            {{ number_format($item->base_price / $exchangeRate, 2) }}
+          @else
+            {{ number_format($item->base_price, 2) }}
+          @endif
+        </td>
       </tr>
       @endforeach
 
@@ -446,11 +487,17 @@
         <td class="text-right border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
-        <td class="text-right bold">{{ number_format($subtotal, 2) }}</td>
+        <td class="text-right bold">
+          @if($isExport)
+            {{ number_format($subtotal / $exchangeRate, 2) }}
+          @else
+            {{ number_format($subtotal, 2) }}
+          @endif
+        </td>
       </tr>
 
       <!-- Total GST -->
-      @if($sale->gst_amount > 0)
+      @if(!$isExport && $sale->gst_amount > 0)
       <tr class="total-row">
         <td class="border-right">&nbsp;</td>
         <td class="bold border-right text-right" colspan="2">Total GST</td>
@@ -469,7 +516,13 @@
         <td class="text-right border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
-        <td class="text-right bold">-{{ number_format($sale->discount, 2) }}</td>
+        <td class="text-right bold">
+          @if($isExport)
+            -{{ number_format($sale->discount / $exchangeRate, 2) }}
+          @else
+            -{{ number_format($sale->discount, 2) }}
+          @endif
+        </td>
       </tr>
       @endif
 
@@ -480,7 +533,9 @@
         <td class="text-right border-right bold">{{ number_format($totalQty, 2) }}</td>
         <td class="text-center border-right bold">Pcs.</td>
         <td class="border-right">&nbsp;</td>
-        <td class="text-right bold"> ₹&nbsp;{{ number_format($roundedGrandTotal, 2) }} </td>
+        <td class="text-right bold">
+          {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($roundedGrandTotal / $exchangeRate, 2) }}@else{{ number_format($roundedGrandTotal, 2) }}@endif
+        </td>
       </tr>
     </tbody>
   </table>
@@ -488,6 +543,7 @@
   <!-- Tax Rate Summary Table & Rupees in Words Box -->
   <table class="border-bottom">
     <tr>
+      @if(!$isExport && ($sale->gst_amount ?? 0) > 0)
       <td class="border-right" style="width: 50%; padding: 8px;">
         <div class="bold" style="margin-bottom: 6px;">Tax Summary :</div>
         <table class="tax-summary-table">
@@ -521,33 +577,36 @@
           </tbody>
         </table>
       </td>
-      <td style="width: 50%; padding: 8px; vertical-align: middle;">
-        <div style="font-size: 11px; margin-bottom: 4px;"><span class="bold">Rupees in Words:</span></div>
+      @endif
+      <td style="width: {{ ($isExport || ($sale->gst_amount ?? 0) <= 0) ? '100%' : '50%' }}; padding: 8px; vertical-align: middle;">
+        <div style="font-size: 11px; margin-bottom: 4px;"><span class="bold">Amount in Words:</span></div>
         <div class="bold" style="font-size: 12px; text-transform: capitalize; color: #111;">
-          {{ convertNumberToWords($roundedGrandTotal) }}
+          @if($isExport)
+            {{ convertNumberToWords($roundedGrandTotal / $exchangeRate, $currencyCode) }}
+          @else
+            {{ convertNumberToWords($roundedGrandTotal) }}
+          @endif
         </div>
       </td>
     </tr>
   </table>
 
   <!-- Bank Details Row -->
+  @if($store && $store->bank_name)
   <div class="border-bottom bank-details-box">
     <table style="width: 100%;">
       <tr>
         <td style="padding: 0; width: 10%;" class="bold">Bank Details :</td>
         <td style="padding: 0; width: 90%;">
-          @if($store && $store->bank_name)
-            BANK : <span class="bold">{{ $store->bank_name }}</span>,
-            BRANCH : <span class="bold">{{ $store->branch_name ?? 'N/A' }}</span>,
-            A/C NO. : <span class="bold">{{ $store->account_number }}</span>,
-            IFSC : <span class="bold">{{ $store->ifsc_code }}</span>
-          @else
-            <span style="color: #6b7280; font-style: italic;">Bank details not configured in Store Profile settings.</span>
-          @endif
+          BANK : <span class="bold">{{ $store->bank_name }}</span>,
+          BRANCH : <span class="bold">{{ $store->branch_name ?? 'N/A' }}</span>,
+          A/C NO. : <span class="bold">{{ $store->account_number }}</span>,
+          IFSC : <span class="bold">{{ $store->ifsc_code }}</span>
         </td>
       </tr>
     </table>
   </div>
+  @endif
 
   <!-- Footer Section -->
   <table class="footer-table">
@@ -558,7 +617,6 @@
           E. & O.E.
           <ol class="terms-list">
             <li>{{ $hasPhysicalItems ? 'Goods once sold will not be taken back.' : 'Services once rendered are not refundable.' }}</li>
-            <li>Interest @ 18% p.a. will be charged if the payment is not made within the due date.</li>
           </ol>
         </div>
       </td>

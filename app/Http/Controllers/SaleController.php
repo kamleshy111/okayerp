@@ -26,11 +26,19 @@ class SaleController extends Controller
         //             ->get();
 
         $userId = Auth::id();
-        $sales = Sale::whereHas('customer', function ($q) use ($userId) {
-            $q->where('user_id', $userId);
-        })
-        ->where('accepted', 1)
-        ->with(['customer', 'saleReturns', 'saleReturnItems'])
+        $query = Sale::query();
+        if (Auth::user()->role !== 'admin') {
+            $query->whereHas('customer', function ($q) use ($userId) {
+                $q->where('user_id', $userId);
+            });
+            if (session('private_ledger_unlocked') !== true) {
+                $query->where(function($q) {
+                    $q->where('accepted', 1)
+                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
+                });
+            }
+        }
+        $sales = $query->with(['customer', 'saleReturns', 'saleReturnItems'])
         ->get()
         ->map(function ($item) {
             $dueDeductions = $item->saleReturnItems ? $item->saleReturnItems->sum('due_deduction') : 0;
@@ -135,6 +143,8 @@ class SaleController extends Controller
                 'payment_method' => $request->input('payment_method') ?? "",
                 'payment_status' => $request->input('payment_status') ?? "Unpaid",
                 'discount'  => $request->input('discount') ?? 0,
+                'currency' => $request->input('currency') ?: 'INR',
+                'exchange_rate' => $request->input('exchange_rate') ?: 1.0000,
             ]);
 
             // Update Estimate status to Invoiced if estimate_id is passed
@@ -228,11 +238,16 @@ class SaleController extends Controller
             return response()->json(['message' => 'Customer not found or unauthorized access.'], 403);
         }
 
-        $sale = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-                    ->where('accepted', 1)
+        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
                     ->where('customer_id', $id)
-                    ->with('saleReturns')
-                    ->get();
+                    ->with('saleReturns');
+        if (session('private_ledger_unlocked') !== true) {
+            $query->where(function($q) {
+                $q->where('accepted', 1)
+                  ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
+            });
+        }
+        $sale = $query->get();
 
         $dueAmount = 0;
         $advanceAmount = 0;
@@ -273,10 +288,15 @@ class SaleController extends Controller
 
     public function edit($id){
 
-        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
-                    ->with(['saleItems.product', 'customer']);
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
+        $query = Sale::query()->with(['saleItems.product', 'customer']);
+        if (Auth::user()->role !== 'admin') {
+            $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
+            if (session('private_ledger_unlocked') !== true) {
+                $query->where(function($q) {
+                    $q->where('accepted', 1)
+                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
+                });
+            }
         }
         $sales = $query->find($id);
 
@@ -293,6 +313,7 @@ class SaleController extends Controller
                 'quantity' => $item->quantity,
                 'unit_type' => $item->unit_type,
                 'price' => $item->price,
+                'base_price' => $item->base_price,
                 'total' => $item->quantity * $item->price,
             ];
         });
@@ -379,9 +400,15 @@ class SaleController extends Controller
         $userId = Auth::id();
 
         // Validate sale exists and belongs to the user
-        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId));
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
+        $query = Sale::query();
+        if (Auth::user()->role !== 'admin') {
+            $query->whereHas('customer', fn($q) => $q->where('user_id', $userId));
+            if (session('private_ledger_unlocked') !== true) {
+                $query->where(function($q) {
+                    $q->where('accepted', 1)
+                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
+                });
+            }
         }
         $sale = $query->where('id', $id)->first();
 
@@ -432,6 +459,8 @@ class SaleController extends Controller
                     'payment_method' => $request->input('payment_method') ?? "",
                     'payment_status' => $request->input('payment_status') ?? "Unpaid",
                     'discount'  => $request->input('discount') ?? 0,
+                    'currency' => $request->input('currency') ?: 'INR',
+                    'exchange_rate' => $request->input('exchange_rate') ?: 1.0000,
                 ]);
 
                 //SaleItem old get and product in update quantity
@@ -548,10 +577,15 @@ class SaleController extends Controller
 
     public function downloadInvoice(Request $request,$id){
 
-        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
-                    ->with(['saleItems.product', 'customer.user']);
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
+        $query = Sale::query()->with(['saleItems.product', 'customer.user']);
+        if (Auth::user()->role !== 'admin') {
+            $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
+            if (session('private_ledger_unlocked') !== true) {
+                $query->where(function($q) {
+                    $q->where('accepted', 1)
+                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
+                });
+            }
         }
         $sale = $query->find($id);
 
@@ -599,16 +633,31 @@ class SaleController extends Controller
         $allocatedPayment = round($allocatedPayment, 2);
         $returnDueDeduction = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
 
-        $pdf = Pdf::loadView('invoice', compact('sale', 'allocatedPayment', 'returnDueDeduction'))->setPaper('a4');
+        $customer = $sale->customer;
+        $isExport = $customer && !empty($customer->country) && strtolower(trim($customer->country)) !== 'india';
+        $isA5 = !$isExport && ($sale->gst_amount ?? 0) <= 0;
+
+        $viewName = $isA5 ? 'a5_invoice' : 'invoice';
+        $paperSize = $isA5 ? 'a5' : 'a4';
+        $paperOrientation = $isA5 ? 'landscape' : 'portrait';
+
+        $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction'))
+            ->setPaper($paperSize, $paperOrientation);
 
         return $pdf->stream("invoice_{$sale->id}.pdf");
     }
 
     public function destroy($id){
 
-        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
+        $query = Sale::query();
+        if (Auth::user()->role !== 'admin') {
+            $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
+            if (session('private_ledger_unlocked') !== true) {
+                $query->where(function($q) {
+                    $q->where('accepted', 1)
+                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
+                });
+            }
         }
         $sale = $query->find($id);
 
@@ -675,10 +724,15 @@ class SaleController extends Controller
 
     public function show($id)
     {
-        $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', Auth::id()))
-                    ->with(['saleItems.product', 'customer.user']);
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
+        $query = Sale::query()->with(['saleItems.product', 'customer.user']);
+        if (Auth::user()->role !== 'admin') {
+            $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
+            if (session('private_ledger_unlocked') !== true) {
+                $query->where(function($q) {
+                    $q->where('accepted', 1)
+                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
+                });
+            }
         }
         $sale = $query->find($id);
 

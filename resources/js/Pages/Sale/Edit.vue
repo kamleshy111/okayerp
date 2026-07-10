@@ -189,39 +189,66 @@ const form = ref({
     grand_total: "",
     GstAmount: "",
     accepted: sales.accepted  === 1,
-    paid: sales.paid,
+    paid: parseFloat(sales.paid) / (parseFloat(sales.exchange_rate) || 1.0),
     payment_method: sales.payment_method,
-    discount: sales.discount || 0,
+    discount: (parseFloat(sales.discount) || 0) / (parseFloat(sales.exchange_rate) || 1.0),
+    currency: sales.currency || 'INR',
+    exchange_rate: parseFloat(sales.exchange_rate) || 1.0000,
     sale_items: productItems.map(item => {
-                    const sgst = parseFloat(item.sgst) || 0;
-                    const cgst = parseFloat(item.cgst) || 0;
-                    const totalProductRate = sgst + cgst;
-                    const matchedRate = props.gstRates.find(r =>
-                      parseFloat(r.rate) === totalProductRate &&
-                      (isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst'))
-                    );
-                    console.log("GST Debug: ", {
-                      totalProductRate,
-                      isInterstate: isInterstate.value,
-                      storeState: storeState.value,
-                      customerState: selectedCustomer.value?.state,
-                      matchedRate,
-                      gstRates: props.gstRates
-                    });
-                    const defaultRate = props.gstRates.find(r =>
-                      isInterstate.value ? r.name.toLowerCase().includes('igst') : !r.name.toLowerCase().includes('igst')
-                    );
-                    return {
-                        product_id: item.product_id,
-                        quantity: item.quantity,
-                        price: item.price,
-                        unit_type: item.unit_type,
-                        sgst: sgst,
-                        cgst: cgst,
-                        gst_rate_id: matchedRate ? matchedRate.id : (defaultRate?.id || ""),
-                        last_product_id: item.product_id,
-                    };
+        const sgst = parseFloat(item.sgst) || 0;
+        const cgst = parseFloat(item.cgst) || 0;
+        const gstRate = sgst + cgst;
+        const matchedRate = props.gstRates.find(r => {
+          const isIgst = r.name.toLowerCase().includes('igst');
+          const databaseIsIgst = gstRate > 0 && cgst === 0 && sgst === 0;
+          return parseFloat(r.rate) === gstRate && (databaseIsIgst ? isIgst : !isIgst);
+        });
+        const defaultRate = props.gstRates.find(r => parseFloat(r.rate) === 18);
+        return {
+            id: item.id,
+            product_id: item.product_id,
+            quantity: item.quantity,
+            price: parseFloat(item.price) / (parseFloat(sales.exchange_rate) || 1.0),
+            baseAmount: parseFloat(item.base_price || 0) / (parseFloat(sales.exchange_rate) || 1.0),
+            unit_type: item.unit_type,
+            sgst: item.sgst,
+            cgst: item.cgst,
+            gst_rate_id: matchedRate ? matchedRate.id : (defaultRate?.id || ""),
+            last_product_id: item.product_id,
+        };
     }),
+});
+
+const isInternationalCustomer = computed(() => {
+  return selectedCustomer.value && selectedCustomer.value.country && selectedCustomer.value.country.toLowerCase() !== 'india';
+});
+
+const currencySymbol = computed(() => {
+  if (!isInternationalCustomer.value) return '₹';
+  switch (form.value.currency) {
+    case 'USD': return '$';
+    case 'GBP': return '£';
+    case 'EUR': return '€';
+    case 'SGD': return 'S$';
+    case 'SAR': return 'SR';
+    case 'CAD': return 'C$';
+    case 'AUD': return 'A$';
+    case 'AED': return 'AED';
+    case 'INR': return '₹';
+    default: return form.value.currency || '₹';
+  }
+});
+
+watch(isInternationalCustomer, (isInternational) => {
+  if (isInternational) {
+    form.value.accepted = false;
+    if (form.value.currency === 'INR') {
+      form.value.currency = 'USD';
+    }
+  } else {
+    form.value.currency = 'INR';
+  }
+  form.value.exchange_rate = 1.0000;
 });
 
 watchEffect(() => {
@@ -415,15 +442,15 @@ const finalBalance = computed(() => {
 
   const paidNow = parseFloat(form.value.paid) || 0;
   // Use allocatedPayment since this is Edit mode where payments might already be allocated
-  const paidValue = paidNow + (parseFloat(props.allocatedPayment) || 0);
+  const paidValue = paidNow + (parseFloat(props.allocatedPayment) / (parseFloat(form.value.exchange_rate) || 1.0));
   const currentNet = paidValue - grandTotal.value;
 
-  if (currentNet > 0) {
+  if (currentNet > 0.01) {
     return { type: 'advance', amount: currentNet };
-  } else if (currentNet < 0) {
+  } else if (currentNet < -0.01) {
     return { type: 'due', amount: Math.abs(currentNet) };
   } else {
-    return { type: 'none', amount: 0 };
+    return { type: 'clear', amount: 0 };
   }
 });
 
@@ -440,12 +467,12 @@ const dueReduced = computed(() => {
 });
 
 const paymentStatus = computed(() => {
-  const paidValue = (parseFloat(form.value.paid) || 0) + (parseFloat(props.allocatedPayment) || 0);
+  const paidValue = (parseFloat(form.value.paid) || 0) + (parseFloat(props.allocatedPayment) / (parseFloat(form.value.exchange_rate) || 1.0));
   const currentNet = paidValue - grandTotal.value;
 
   if (paidValue === 0) return 'Unpaid';
-  else if (currentNet < 0) return 'Partial';
-  else if (currentNet > 0) return 'Advance';
+  else if (currentNet < -0.01) return 'Partial';
+  else if (currentNet > 0.01) return 'Advance';
   else return 'Paid';
 });
 
@@ -551,13 +578,21 @@ watch(showPaymentModal, async (isOpen) => {
 // Submit the form data
 const submitForm = async () => {
   try {
-
+    const rate = parseFloat(form.value.exchange_rate) || 1.0;
     const payload = {
       ...form.value,
-      grand_total: grandTotal.value,
-      total_amount: totalAmount.value,
-      GstAmount: totalGST.value,
+      exchange_rate: rate,
+      discount: (parseFloat(form.value.discount) || 0) * rate,
+      paid: (parseFloat(form.value.paid) || 0) * rate,
+      grand_total: grandTotal.value * rate,
+      total_amount: totalAmount.value * rate,
+      GstAmount: totalGST.value * rate,
       payment_status: paymentStatus.value,
+      sale_items: form.value.sale_items.map(item => ({
+        ...item,
+        price: (parseFloat(item.price) || 0) * rate,
+        baseAmount: (parseFloat(item.baseAmount) || 0) * rate
+      }))
     };
 
     const response = await axios.post(`/sale/update/${form.value.id}`, payload);
@@ -636,6 +671,27 @@ const submitForm = async () => {
                 </div>
             </div>
 
+            <div v-if="isInternationalCustomer" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 p-4 bg-purple-50/30 border border-purple-100 rounded-xl">
+                <div>
+                    <label class="block text-black font-semibold mb-2">Currency</label>
+                    <select v-model="form.currency" class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black">
+                        <option value="USD">USD ($)</option>
+                        <option value="AED">AED (AED)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="SGD">SGD (S$)</option>
+                        <option value="SAR">SAR (SR)</option>
+                        <option value="CAD">CAD (C$)</option>
+                        <option value="AUD">AUD (A$)</option>
+                        <option value="INR">INR (₹)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-black font-semibold mb-2">Exchange Rate (1 {{ form.currency }} = ? INR)</label>
+                    <input type="number" v-model="form.exchange_rate" step="any" min="0.0001" class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black" />
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div v-if="selectedCustomer" class="mt-4 p-4 border rounded bg-gray-100 text-black">
                 <p><strong>Name:</strong> {{ selectedCustomer.name }}</p>
@@ -705,7 +761,7 @@ const submitForm = async () => {
                                 placeholder="Price" />
                         </td>
                         <td class="border-t px-4 py-3">
-                            ₹  {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}
+                            {{ currencySymbol }} {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2) }}
                         </td>
 
                         <td class="border-t px-4 py-2">
@@ -798,7 +854,7 @@ const submitForm = async () => {
                             </div>
                             <div>
                                 <span class="block text-gray-400">Net Amount</span>
-                                <span class="text-gray-800 font-bold">₹ {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}</span>
+                                 <span class="text-gray-800 font-bold">{{ currencySymbol }} {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2) }}</span>
                             </div>
                         </div>
                     </div>
@@ -835,12 +891,12 @@ const submitForm = async () => {
                 <label class="text-gray-700 font-medium">Discount</label>
                 <input type="number" ref="paymentDiscountInput" v-model="form.discount"
                     class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                    placeholder="₹0.00" min="0" step="any" />
+                    :placeholder="currencySymbol + '0.00'" min="0" step="any" />
             </div>
 
             <div class="space-y-4 border-t pt-4">
 
-                <div class="flex justify-between items-center">
+                <div v-if="!isInternationalCustomer" class="flex justify-between items-center">
                     <label class="inline-flex items-center space-x-2">
                         <input type="checkbox" v-model="form.accepted" class="form-checkbox h-5 w-5 text-[#292688]">
                         <span class="text-sm text-gray-700 font-semibold">Apply To GST</span>
@@ -849,17 +905,17 @@ const submitForm = async () => {
 
                 <div v-if="form.accepted" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">GST</span>
-                    <span class="text-gray-800 font-bold">₹ {{ totalGST.toFixed(2) }}</span>
+                    <span class="text-gray-800 font-bold">{{ currencySymbol }} {{ totalGST.toFixed(2) }}</span>
                 </div>
 
                 <div class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Total Net Amount</span>
-                    <span class="text-gray-800 font-bold">₹ {{ totalAmount.toFixed(2) }}</span>
+                    <span class="text-gray-800 font-bold">{{ currencySymbol }} {{ totalAmount.toFixed(2) }}</span>
                 </div>
 
                 <div class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Grand Total</span>
-                    <span class="text-black font-bold text-lg">₹ {{ grandTotal.toFixed(2) }}</span>
+                    <span class="text-black font-bold text-lg">{{ currencySymbol }} {{ grandTotal.toFixed(2) }}</span>
                 </div>
 
                 <!-- Payment Method -->
@@ -884,25 +940,25 @@ const submitForm = async () => {
                 </div>
 
                 <!-- Allocated General Payments -->
-                <div v-if="parseFloat(props.allocatedPayment) > 0" class="flex justify-between items-center text-sm text-gray-500">
-                    <span>Customer Payments Applied</span>
-                    <span class="font-medium text-[#292688]">₹ {{ props.allocatedPayment }}</span>
+                <div v-if="props.allocatedPayment > 0" class="flex justify-between items-center text-sm text-gray-500">
+                    <span>Allocated Payment</span>
+                    <span class="font-medium text-[#292688]">{{ currencySymbol }} {{ (parseFloat(props.allocatedPayment) / (parseFloat(form.exchange_rate) || 1.0)).toFixed(2) }}</span>
                 </div>
 
                 <!-- Final Balance after this payment -->
                 <div v-if="finalBalance?.type === 'advance'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Advance Amount</span>
-                    <span class="text-green-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
+                    <span class="text-green-600 font-bold">{{ currencySymbol }} {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
 
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Due Amount</span>
-                    <span class="text-red-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
+                    <span class="text-red-600 font-bold">{{ currencySymbol }} {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
 
-                <div v-if="finalBalance?.type === 'none'" class="flex justify-between items-center">
-                    <span class="text-gray-700 font-semibold">Final Balance</span>
-                    <span class="text-gray-600 font-bold">₹ 0.00 (Clear)</span>
+                <div v-if="finalBalance?.type === 'clear'" class="flex justify-between items-center">
+                    <span class="text-gray-700 font-semibold">Balance Amount</span>
+                    <span class="text-gray-600 font-bold">{{ currencySymbol }} 0.00 (Clear)</span>
                 </div>
 
                 <div class="flex justify-between items-center pb-4 border-b border-gray-100">

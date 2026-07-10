@@ -163,6 +163,8 @@ const form = ref({
     discount: 0,
     payment_method: '',
     payment_status: "",
+    currency: 'INR',
+    exchange_rate: 1.0000,
     sale_items: [{
             product_id: "",
             unit_type: "",
@@ -478,6 +480,38 @@ watch(() => form.value.customer_id, (newVal) => {
   selectedCustomer.value = customers.value.find(s => s.id == newVal);
 });
 
+const isInternationalCustomer = computed(() => {
+  return selectedCustomer.value && selectedCustomer.value.country && selectedCustomer.value.country.toLowerCase() !== 'india';
+});
+
+const currencySymbol = computed(() => {
+  if (!isInternationalCustomer.value) return '₹';
+  switch (form.value.currency) {
+    case 'USD': return '$';
+    case 'GBP': return '£';
+    case 'EUR': return '€';
+    case 'SGD': return 'S$';
+    case 'SAR': return 'SR';
+    case 'CAD': return 'C$';
+    case 'AUD': return 'A$';
+    case 'AED': return 'AED';
+    case 'INR': return '₹';
+    default: return form.value.currency || '₹';
+  }
+});
+
+watch(isInternationalCustomer, (isInternational) => {
+  if (isInternational) {
+    form.value.accepted = false;
+    if (form.value.currency === 'INR') {
+      form.value.currency = 'USD';
+    }
+  } else {
+    form.value.currency = 'INR';
+  }
+  form.value.exchange_rate = 1.0000;
+});
+
 const page = usePage();
 const storeState = computed(() => page.props.auth?.user?.state || '');
 
@@ -730,17 +764,23 @@ const finalBalance = computed(() => {
   }
 });
 
-//end
-
-
 const submitForm = async () => {
   try {
+    const rate = parseFloat(form.value.exchange_rate) || 1.0;
     const payload = {
       ...form.value,
-      grand_total: grandTotal.value,
-      total_amount: totalAmount.value,
-      GstAmount: totalGST.value,
+      exchange_rate: rate,
+      discount: (parseFloat(form.value.discount) || 0) * rate,
+      paid: (parseFloat(form.value.paid) || 0) * rate,
+      grand_total: grandTotal.value * rate,
+      total_amount: totalAmount.value * rate,
+      GstAmount: totalGST.value * rate,
       payment_status: paymentStatus.value,
+      sale_items: form.value.sale_items.map(item => ({
+        ...item,
+        price: (parseFloat(item.price) || 0) * rate,
+        baseAmount: (parseFloat(item.baseAmount) || 0) * rate
+      }))
     };
 
     const response = await axios.post(`/sale/store`, payload);
@@ -751,7 +791,6 @@ const submitForm = async () => {
     const invoiceUrl = response.data.invoice_url;
     window.open(invoiceUrl, '_blank');
 
-    // Reset form
     form.value = {
       customer_id: "",
       referral_user_id: "",
@@ -764,6 +803,8 @@ const submitForm = async () => {
       discount: 0,
       payment_method: '',
       payment_status: "",
+      currency: 'INR',
+      exchange_rate: 1.0000,
       sale_items: [{
         product_id: "",
         unit_type: "",
@@ -772,6 +813,8 @@ const submitForm = async () => {
         quantity: "",
         price: "",
         baseAmount: "",
+        gst_rate_id: "",
+        last_product_id: "",
       }],
     };
   } catch (error) {
@@ -780,7 +823,6 @@ const submitForm = async () => {
   }
 };
 
-// Add Product Modal State
 const showProductModal = ref(false);
 const activeProductRowIndex = ref(null);
 
@@ -791,7 +833,6 @@ const openProductModal = (rowIndex, search) => {
   showProductModal.value = true;
 };
 
-// Watch showProductModal to restore focus on close
 watch(showProductModal, async (isOpen) => {
   if (!isOpen && lastActiveElement.value) {
     await nextTick();
@@ -810,18 +851,15 @@ const handleProductSuccess = (createdProduct) => {
 };
 </script>
 <template>
-
     <Head title="Sale">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     </Head>
-
     <AuthenticatedLayout>
     <div class="bg-white p-8 rounded-xl shadow-md space-y-6">
         <div class="main-back-class">
             <a :href="route('sale')"><i style="font-size: 14px;" class="bi bi-chevron-left"></i><span style="margin-left: 5px;">Sale</span></a>
         </div>
             <h2 class="text-2xl font-bold mb-4 text-[#292688]">Add Sale</h2>
-
             <div v-if="prefilledFromEstimateNo" class="p-4 mb-6 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg flex items-center justify-between shadow-sm">
                 <div class="flex items-center gap-2">
                     <span class="text-lg">⚡</span>
@@ -832,7 +870,6 @@ const handleProductSuccess = (createdProduct) => {
                 </button>
             </div>
         <div>
-
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                     <label class="block text-black font-medium mb-2">Customer <span class="text-red-500">*</span></label>
@@ -846,7 +883,6 @@ const handleProductSuccess = (createdProduct) => {
                         @keydown.enter="onEnterKey"
                         @search="onCustomerSearch"
                     >
-                        <!-- Shown when there are no options at all -->
                         <template #no-options>
                             <div class="px-3 py-2 text-gray-500">
                                 <span v-if="!customerSearchQuery">Type to search customer name...</span>
@@ -894,7 +930,26 @@ const handleProductSuccess = (createdProduct) => {
                     </vSelect>
                 </div>
             </div>
-
+            <div v-if="isInternationalCustomer" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 p-4 bg-purple-50/30 border border-purple-100 rounded-xl">
+                <div>
+                    <label class="block text-black font-semibold mb-2">Currency</label>
+                    <select v-model="form.currency" class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black">
+                        <option value="USD">USD ($)</option>
+                        <option value="AED">AED (AED)</option>
+                        <option value="GBP">GBP (£)</option>
+                        <option value="EUR">EUR (€)</option>
+                        <option value="SGD">SGD (S$)</option>
+                        <option value="SAR">SAR (SR)</option>
+                        <option value="CAD">CAD (C$)</option>
+                        <option value="AUD">AUD (A$)</option>
+                        <option value="INR">INR (₹)</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-black font-semibold mb-2">Exchange Rate (1 {{ form.currency }} = ? INR)</label>
+                    <input type="number" v-model="form.exchange_rate" step="any" min="0.0001" class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black" />
+                </div>
+            </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div v-if="selectedCustomer" class="mt-4 p-4 border rounded bg-gray-100 text-black">
                 <p><strong>Phone:</strong> {{ selectedCustomer.phone }}</p>
@@ -902,10 +957,7 @@ const handleProductSuccess = (createdProduct) => {
                 <p><strong>Address:</strong> {{ selectedCustomer.address }}</p>
                 </div>
             </div>
-
             <div class="mt-6"> <h3 class="text-2xl font-bold mb-4 text-[#292688]">Sale Items</h3> </div>
-
-            <!-- Desktop view: Table layout -->
             <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
                 <thead class="bg-[#292688] text-white">
                     <tr>
@@ -978,15 +1030,13 @@ const handleProductSuccess = (createdProduct) => {
                                 placeholder="Price" />
                         </td>
                         <td class="border-t px-4 py-3">
-                            ₹  {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}
+                            {{ currencySymbol }} {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2) }}
                         </td>
-
                         <td class="border-t px-4 py-2 flex items-center gap-2">
                             <button @click="removeRow(index)" type="button"
                                 class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition flex items-center justify-center">
                                 <i class="bi bi-trash"></i>
                             </button>
-
                             <button v-if="index === form.sale_items.length - 1" @click="addRow" type="button"
                                 class="bg-green-600 text-white px-3 py-1 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2"
                             >
@@ -996,8 +1046,6 @@ const handleProductSuccess = (createdProduct) => {
                     </tr>
                 </tbody>
             </table>
-
-            <!-- Mobile view: Card list of items -->
             <div class="md:hidden space-y-4">
                 <div v-for="(item, index) in form.sale_items" :key="'mobile-' + index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                     <div class="flex justify-between items-center pb-2 border-b border-gray-100">
@@ -1006,7 +1054,6 @@ const handleProductSuccess = (createdProduct) => {
                             <i class="bi bi-trash"></i>
                         </button>
                     </div>
-
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Product <span class="text-red-500">*</span></label>
@@ -1035,7 +1082,6 @@ const handleProductSuccess = (createdProduct) => {
                                 </template>
                             </vSelect>
                         </div>
-
                         <div class="grid grid-cols-3 gap-2">
                             <div class="col-span-2">
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">GST Rate</label>
@@ -1051,7 +1097,6 @@ const handleProductSuccess = (createdProduct) => {
                                 </select>
                             </div>
                         </div>
-
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity <span class="text-red-500">*</span></label>
@@ -1066,7 +1111,6 @@ const handleProductSuccess = (createdProduct) => {
                                     placeholder="Price" />
                             </div>
                         </div>
-
                         <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500">
                             <div>
                                 <span class="block text-gray-400">GST</span>
@@ -1083,18 +1127,16 @@ const handleProductSuccess = (createdProduct) => {
                             </div>
                             <div>
                                 <span class="block text-gray-400">Net Amount</span>
-                                <span class="text-gray-800 font-bold">₹ {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}</span>
+                                <span class="text-gray-800 font-bold">{{ currencySymbol }} {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2) }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
-
                 <button @click="addRow" type="button"
                     class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-sm">
                     <i class="fa fa-plus-circle"></i> Add Items
                 </button>
             </div>
-
             <div class="flex justify-end mt-6">
                 <button @click="openPaymentModal" class="w-full md:w-auto bg-[#2E2C92] hover:bg-[#1d1b6a] text-white px-6 py-3 rounded-xl font-semibold transition shadow-md hover:shadow-lg">
                     Submit & Proceed to Payment
@@ -1102,7 +1144,6 @@ const handleProductSuccess = (createdProduct) => {
             </div>
         </div>
     </div>
-    <!-- Payment Modal -->
     <div v-if="showPaymentModal"
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
@@ -1114,39 +1155,31 @@ const handleProductSuccess = (createdProduct) => {
                     <i class="fa fa-close"></i>
                 </button>
             </div>
-
-            <!-- Discount Amount -->
             <div class="flex justify-between items-center">
                 <label class="text-gray-700 font-medium">Discount</label>
                 <input type="number" ref="paymentDiscountInput" v-model="form.discount"
                     class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                    placeholder="₹0.00" min="0" step="any" />
+                    :placeholder="currencySymbol + '0.00'" min="0" step="any" />
             </div>
-
             <div class="space-y-4 border-t pt-4">
-                <div class="flex justify-between items-center">
+                <div v-if="!isInternationalCustomer" class="flex justify-between items-center">
                     <label class="inline-flex items-center space-x-2">
                         <input type="checkbox" v-model="form.accepted" class="form-checkbox h-5 w-5 text-[#292688]">
                         <span class="text-sm text-gray-700 font-semibold">Apply To GST</span>
                     </label>
                 </div>
-
                 <div v-if="form.accepted" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">GST</span>
-                    <span class="text-gray-800 font-bold">₹ {{ totalGST.toFixed(2) }}</span>
+                    <span class="text-gray-800 font-bold">{{ currencySymbol }} {{ totalGST.toFixed(2) }}</span>
                 </div>
-
                 <div class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Total Net Amount</span>
-                    <span class="text-gray-800 font-bold">₹ {{ totalAmount.toFixed(2) }}</span>
+                    <span class="text-gray-800 font-bold">{{ currencySymbol }} {{ totalAmount.toFixed(2) }}</span>
                 </div>
-
                 <div class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Grand Total</span>
-                    <span class="text-black font-bold text-lg">₹ {{ grandTotal.toFixed(2) }}</span>
+                    <span class="text-black font-bold text-lg">{{ currencySymbol }} {{ grandTotal.toFixed(2) }}</span>
                 </div>
-
-                <!-- Payment Method -->
                 <div class="flex justify-between items-center">
                     <label class="text-gray-700 font-medium">Payment Method</label>
                     <select v-model="form.payment_method"
@@ -1158,27 +1191,20 @@ const handleProductSuccess = (createdProduct) => {
                         <option value="Bank Transfer">Bank Transfer</option>
                     </select>
                 </div>
-
-                <!-- Paid Amount -->
                 <div class="flex justify-between items-center">
                     <label class="text-gray-700 font-medium">Paid Amount</label>
                     <input type="number" v-model.number="form.paid"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                         placeholder="Amount" min="0" step="any" />
                 </div>
-
-                <!-- Final Balance after this payment -->
                 <div v-if="finalBalance?.type === 'advance'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Advance Amount</span>
-                    <span class="text-green-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
+                    <span class="text-green-600 font-bold">{{ currencySymbol }} {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
-
                 <div v-if="finalBalance?.type === 'due'" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Due Amount</span>
-                    <span class="text-red-600 font-bold">₹ {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
+                    <span class="text-red-600 font-bold">{{ currencySymbol }} {{ typeof finalBalance.amount === 'number' ? finalBalance.amount.toFixed(2) : finalBalance.amount }}</span>
                 </div>
-
-                <!-- Payment Status -->
                 <div class="flex justify-between items-center pb-4 border-b border-gray-100">
                     <span class="text-gray-700 font-semibold">Payment Status</span>
                     <span class="text-blue-600 font-bold">{{ paymentStatus }}</span>
