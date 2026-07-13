@@ -453,7 +453,19 @@
       @foreach ($estimate->items as $index => $item)
       <tr class="item-row">
         <td class="text-center border-right">{{ $index + 1 }}.</td>
-        <td class="border-right">{{ optional($item->product)->name ?? 'N/A' }}</td>
+        <td class="border-right">
+          {{ optional($item->product)->name ?? 'N/A' }}
+          @if((!empty($item->width) && !empty($item->height)) || !empty($item->alternate_quantity))
+            <div style="font-size: 9px; color: #555; margin-top: 2px; font-weight: normal; font-style: italic;">
+              @if(!empty($item->width) && !empty($item->height))
+                Size: {{ (float)$item->width }} x {{ (float)$item->height }}
+              @endif
+              @if(!empty($item->alternate_quantity))
+                {{ (!empty($item->width) && !empty($item->height)) ? ' | ' : '' }}Alt Qty: {{ (float)$item->alternate_quantity }} {{ $item->alternate_unit_type ?? 'pcs' }}
+              @endif
+            </div>
+          @endif
+        </td>
         <td class="text-center border-right">{{ optional($item->product)->hsn_code ?? 'N/A' }}</td>
         <td class="text-right border-right">{{ number_format($item->quantity, 2) }}</td>
         <td class="text-center border-right">{{ $item->unit_type ?? 'Pcs.' }}</td>
@@ -617,7 +629,7 @@
   </table>
 
   <!-- Bank Details Row -->
-  @if($store && $store->bank_name)
+  @if($store && $store->bank_name && !($store->hide_bank_details ?? false))
   <div class="border-bottom bank-details-box">
     <table style="width: 100%;">
       <tr>

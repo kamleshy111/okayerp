@@ -14,6 +14,9 @@ const form = ref({
     name: "",
     category_id: "",
     unit_type: "",
+    width: "",
+    height: "",
+    alternate_unit_type: "",
     hsn_code: "",
     price: "",
     type: "product",
@@ -175,6 +178,9 @@ const submitForm = async () => {
       name: "",
       category_id: "",
       unit_type: "",
+      width: "",
+      height: "",
+      alternate_unit_type: "",
       hsn_code: "",
       price: "",
       type: "product",
@@ -271,6 +277,35 @@ const submitForm = async () => {
                             No units found
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- Size and Alternate Unit Type Fields -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mt-7">
+                <div>
+                    <label class="block text-black font-medium mb-2">Width (e.g. for Plywood size)</label>
+                    <input type="number" step="any" name="width" v-model="form.width"
+                        @keydown.enter.prevent="moveToNextInput"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="e.g. 8" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Height (e.g. for Plywood size)</label>
+                    <input type="number" step="any" name="height" v-model="form.height"
+                        @keydown.enter.prevent="moveToNextInput"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        placeholder="e.g. 4" />
+                </div>
+                <div>
+                    <label class="block text-black font-medium mb-2">Alternate Unit Type</label>
+                    <select name="alternate_unit_type" v-model="form.alternate_unit_type"
+                        @keydown.enter.prevent="moveToNextInput"
+                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition">
+                        <option value="">None</option>
+                        <option v-for="(label, key) in unitTypes" :key="key" :value="key">
+                            {{ label }}
+                        </option>
+                    </select>
                 </div>
             </div>
 

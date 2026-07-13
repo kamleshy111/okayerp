@@ -254,7 +254,19 @@
         @foreach ($sale['items'] as $itemIndex => $item)
           <tr class="item-row">
             <td class="text-center border-right">{{ $itemIndex + 1 }}.</td>
-            <td class="border-right">{{ $item['product_name'] }}</td>
+            <td class="border-right">
+              {{ $item['product_name'] }}
+              @if((!empty($item['width']) && !empty($item['height'])) || !empty($item['alternate_quantity']))
+                <div style="font-size: 8px; color: #555; margin-top: 1px; font-weight: normal; font-style: italic;">
+                  @if(!empty($item['width']) && !empty($item['height']))
+                    Size: {{ (float)$item['width'] }} x {{ (float)$item['height'] }}
+                  @endif
+                  @if(!empty($item['alternate_quantity']))
+                    {{ (!empty($item['width']) && !empty($item['height'])) ? ' | ' : '' }}Alt Qty: {{ (float)$item['alternate_quantity'] }} {{ $item['alternate_unit_type'] ?? 'pcs' }}
+                  @endif
+                </div>
+              @endif
+            </td>
             <td class="text-right border-right">{{ number_format($item['quantity'], 2) }}</td>
             <td class="text-right border-right">{{ number_format($item['price'], 2) }}</td>
             <td class="text-right border-right">{{ $item['sgst'] }}%</td>

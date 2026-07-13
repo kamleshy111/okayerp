@@ -138,11 +138,19 @@ const form = ref({
         unit_type: "",
         sgst: 0,
         cgst: 0,
-        quantity: 1,
+        quantity: "",
         price: 0,
         baseAmount: 0,
         gst_rate_id: "",
         last_product_id: "",
+        width: "",
+        height: "",
+        alternate_quantity: "",
+        alternate_unit_type: "",
+        last_width: "",
+        last_height: "",
+        last_alternate_quantity: "",
+        last_quantity: ""
     }],
 });
 
@@ -470,11 +478,45 @@ watch(() => form.value.estimate_items, (newItems) => {
     if (prod) {
       if (!item.last_product_id || item.last_product_id !== item.product_id) {
         item.unit_type = prod.unit_type;
+        item.width = prod.width || "";
+        item.height = prod.height || "";
+        item.alternate_unit_type = prod.alternate_unit_type || "";
+        item.alternate_quantity = "";
+        item.quantity = "";
         item.last_product_id = item.product_id;
         item.gst_rate_id = "";
         item.cgst = 0;
         item.sgst = 0;
         item.price = prod.price || "";
+        
+        item.last_width = item.width;
+        item.last_height = item.height;
+        item.last_alternate_quantity = item.alternate_quantity;
+        item.last_quantity = item.quantity;
+      }
+
+      // Check what changed and recalculate accordingly
+      const currentWidth = parseFloat(item.width) || 0;
+      const currentHeight = parseFloat(item.height) || 0;
+      const currentAltQty = parseFloat(item.alternate_quantity) || 0;
+      const currentQty = parseFloat(item.quantity) || 0;
+
+      if (item.width !== item.last_width || item.height !== item.last_height || item.alternate_quantity !== item.last_alternate_quantity) {
+        if (currentWidth > 0 && currentHeight > 0) {
+          const calculatedQty = currentAltQty * currentWidth * currentHeight;
+          item.quantity = calculatedQty % 1 === 0 ? calculatedQty.toString() : calculatedQty.toFixed(2);
+        }
+        item.last_width = item.width;
+        item.last_height = item.height;
+        item.last_alternate_quantity = item.alternate_quantity;
+        item.last_quantity = item.quantity;
+      } else if (item.quantity !== item.last_quantity) {
+        if (currentWidth > 0 && currentHeight > 0) {
+          const calculatedAltQty = currentQty / (currentWidth * currentHeight);
+          item.alternate_quantity = calculatedAltQty % 1 === 0 ? calculatedAltQty.toString() : calculatedAltQty.toFixed(2);
+        }
+        item.last_quantity = item.quantity;
+        item.last_alternate_quantity = item.alternate_quantity;
       }
 
       const qty = parseFloat(item.quantity) || 0;
@@ -506,11 +548,19 @@ const addRow = () => {
         unit_type: "",
         sgst: 0,
         cgst: 0,
-        quantity: 1,
+        quantity: "",
         price: 0,
         baseAmount: 0,
         gst_rate_id: "",
         last_product_id: "",
+        width: "",
+        height: "",
+        alternate_quantity: "",
+        alternate_unit_type: "",
+        last_width: "",
+        last_height: "",
+        last_alternate_quantity: "",
+        last_quantity: ""
     });
 };
 
@@ -700,6 +750,7 @@ const submitForm = async () => {
                             <tr>
                                 <th class="px-4 py-3 text-left w-1/3">Product <span class="text-red-500">*</span></th>
                                 <th class="px-4 py-3 text-left">GST</th>
+                                <th class="px-4 py-3 text-left w-48">Alt Qty / Size</th>
                                 <th class="px-4 py-3 text-left w-20">Qty <span class="text-red-500">*</span></th>
                                 <th class="px-4 py-3 text-left">Unit</th>
                                 <th class="px-4 py-3 text-left w-32">Price <span class="text-red-500">*</span></th>
@@ -750,6 +801,21 @@ const submitForm = async () => {
                                             {{ rate.name }}
                                         </option>
                                     </select>
+                                </td>
+
+                                <td class="px-4 py-3">
+                                    <div v-if="item.alternate_unit_type" class="flex flex-col gap-2">
+                                        <div class="flex items-center gap-1">
+                                            <input type="number" step="any" v-model="item.alternate_quantity" class="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="Alt Qty" />
+                                            <span class="text-xs text-gray-500 font-medium">{{ item.alternate_unit_type }}</span>
+                                        </div>
+                                        <div class="flex items-center gap-1 text-xs text-gray-500">
+                                            <input type="number" step="any" v-model="item.width" class="w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="W" />
+                                            <span>x</span>
+                                            <input type="number" step="any" v-model="item.height" class="w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="H" />
+                                        </div>
+                                    </div>
+                                    <div v-else class="text-gray-400 text-xs">-</div>
                                 </td>
 
                                 <td class="px-4 py-3">
@@ -826,7 +892,7 @@ const submitForm = async () => {
                             </div>
 
                             <div class="grid grid-cols-3 gap-2">
-                                <div class="col-span-2">
+                                <div class="col-span-3">
                                     <label class="block text-xs font-semibold text-gray-500 mb-1">GST Rate</label>
                                     <select
                                         v-model="item.gst_rate_id"
@@ -841,10 +907,25 @@ const submitForm = async () => {
                                 </div>
                             </div>
 
+                            <div v-if="item.alternate_unit_type" class="grid grid-cols-3 gap-2 bg-gray-100 p-2 rounded-lg border border-gray-200">
+                                <div>
+                                    <label class="block text-xxs font-semibold text-gray-500 mb-1">Alt Qty ({{ item.alternate_unit_type }})</label>
+                                    <input type="number" step="any" v-model="item.alternate_quantity" class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-black" placeholder="Alt Qty" />
+                                </div>
+                                <div>
+                                    <label class="block text-xxs font-semibold text-gray-500 mb-1">Width</label>
+                                    <input type="number" step="any" v-model="item.width" class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-black text-center" placeholder="W" />
+                                </div>
+                                <div>
+                                    <label class="block text-xxs font-semibold text-gray-500 mb-1">Height</label>
+                                    <input type="number" step="any" v-model="item.height" class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-black text-center" placeholder="H" />
+                                </div>
+                            </div>
+
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-xs font-semibold text-gray-500 mb-1">Quantity</label>
-                                    <input type="number" v-model="item.quantity" min="1" required
+                                    <input type="number" v-model="item.quantity" required
                                         class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition text-sm text-center" />
                                 </div>
                                 <div>

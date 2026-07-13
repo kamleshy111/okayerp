@@ -38,6 +38,9 @@ const form = useForm({
     ifsc_code: user.ifsc_code || '',
     branch_name: user.branch_name || '',
     gstin: user.gstin || '',
+    invoice_title_without_gst: user.invoice_title_without_gst || '',
+    invoice_title_with_gst: user.invoice_title_with_gst || '',
+    hide_bank_details: !!user.hide_bank_details,
 });
 
 const availableDistricts = computed(() => {
@@ -314,6 +317,48 @@ const handleFileUpload = (event) => {
                             placeholder="Enter GSTIN"
                         />
                         <InputError class="mt-2" :message="form.errors.gstin" />
+                    </div>
+                </div>
+            </div>
+
+            <div v-if="user.role === 'store'" class="border-t border-gray-200 pt-6">
+                <h3 class="text-md font-semibold text-gray-800 mb-4">Invoice Configuration</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <InputLabel for="invoice_title_without_gst" value="Invoice Title (Without GST)" />
+                        <TextInput
+                            id="invoice_title_without_gst"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.invoice_title_without_gst"
+                            placeholder="Default: INVOICE"
+                        />
+                        <InputError class="mt-2" :message="form.errors.invoice_title_without_gst" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="invoice_title_with_gst" value="Invoice Title (With GST)" />
+                        <TextInput
+                            id="invoice_title_with_gst"
+                            type="text"
+                            class="mt-1 block w-full"
+                            v-model="form.invoice_title_with_gst"
+                            placeholder="Default: TAX INVOICE"
+                        />
+                        <InputError class="mt-2" :message="form.errors.invoice_title_with_gst" />
+                    </div>
+
+                    <div class="md:col-span-2 flex items-center mt-2">
+                        <input
+                            id="hide_bank_details"
+                            type="checkbox"
+                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 h-4 w-4"
+                            v-model="form.hide_bank_details"
+                        />
+                        <label for="hide_bank_details" class="ml-2 block text-sm font-medium text-gray-700">
+                            Hide Bank Details in Invoices / Estimates
+                        </label>
+                        <InputError class="mt-2" :message="form.errors.hide_bank_details" />
                     </div>
                 </div>
             </div>

@@ -239,7 +239,13 @@
           @endif
         </td>
         <td class="company-details">
-          <div class="bold text-center" style="font-size: 10px; margin-bottom: 1px; letter-spacing: 1px;">INVOICE</div>
+          <div class="bold text-center" style="font-size: 10px; margin-bottom: 1px; letter-spacing: 1px;">
+            @if (($sale->gst_amount ?? 0) <= 0)
+              {{ !empty($store->invoice_title_without_gst) ? $store->invoice_title_without_gst : 'INVOICE' }}
+            @else
+              {{ !empty($store->invoice_title_with_gst) ? $store->invoice_title_with_gst : 'TAX INVOICE' }}
+            @endif
+          </div>
           <div class="company-name">{{ $store ? $store->name : 'Your Store Name' }}</div>
           <div style="font-size: 9px; color: #4b5563;">{{ $store ? $store->address : 'Store Address' }}</div>
         </td>
@@ -324,7 +330,19 @@
         @foreach($sale->saleItems as $index => $item)
         <tr class="item-row border-bottom">
           <td class="text-center border-right">{{ $index + 1 }}</td>
-          <td class="border-right bold">{{ optional($item->product)->name ?? 'N/A' }}</td>
+          <td class="border-right bold">
+            {{ optional($item->product)->name ?? 'N/A' }}
+            @if((!empty($item->width) && !empty($item->height)) || !empty($item->alternate_quantity))
+              <div style="font-size: 8px; color: #555; margin-top: 1px; font-weight: normal; font-style: italic;">
+                @if(!empty($item->width) && !empty($item->height))
+                  Size: {{ (float)$item->width }} x {{ (float)$item->height }}
+                @endif
+                @if(!empty($item->alternate_quantity))
+                  {{ (!empty($item->width) && !empty($item->height)) ? ' | ' : '' }}Alt Qty: {{ (float)$item->alternate_quantity }} {{ $item->alternate_unit_type ?? 'pcs' }}
+                @endif
+              </div>
+            @endif
+          </td>
           <td class="text-right border-right">{{ number_format($item->quantity, 2) }}</td>
           <td class="text-center border-right">{{ $item->unit_type ?? 'Pcs.' }}</td>
           <td class="text-right border-right">{{ number_format($item->price, 2) }}</td>
@@ -367,7 +385,7 @@
     </table>
 
     <!-- Bank Details Row -->
-    @if($store && $store->bank_name)
+    @if($store && $store->bank_name && !($store->hide_bank_details ?? false))
     <div class="border-bottom bank-details-box" style="padding: 4px 6px;">
       <table style="width: 100%;">
         <tr>

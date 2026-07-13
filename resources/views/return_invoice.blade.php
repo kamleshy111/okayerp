@@ -430,6 +430,7 @@
   </table>
 
   <!-- Bank Details Row -->
+  @if(!($store->hide_bank_details ?? false))
   <div class="border-bottom bank-details-box">
     <table style="width: 100%;">
       <tr>
@@ -447,6 +448,7 @@
       </tr>
     </table>
   </div>
+  @endif
 
   <!-- Footer Section -->
   <table class="footer-table">
