@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\Supplier;
 use App\Models\PurchasePayment;
 use App\Models\PurchaseReturn;
+use App\Models\Purchase;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class SupplierPaymentController extends Controller
@@ -88,37 +89,9 @@ class SupplierPaymentController extends Controller
 
     public function history($id) {
         $userId = Auth::id();
-
         $supplier = Supplier::where('user_id', $userId)->findOrFail($id);
 
-        // Fetch payments for this supplier
-        $paymentsQuery = PurchasePayment::where('supplier_id', $id);
-        $payments = $paymentsQuery->get()->map(function ($item) {
-            return [
-                'amount' => (float)$item->amount,
-                'payment_date' => $item->payment_date,
-                'payment_method' => $item->payment_method,
-                'source' => $item->purchase_id ? 'Purchase (Bill #' . $item->purchase_id . ')' : 'Supplier Payment',
-            ];
-        });
-
-        $returnsQuery = PurchaseReturn::where(function ($q) use ($id) {
-            $q->where('supplier_id', $id)
-              ->orWhereHas('purchase', function ($p) use ($id) {
-                  $p->where('supplier_id', $id);
-              });
-        })->where('user_id', $userId);
-        $returns = $returnsQuery->get()->map(function ($item) {
-            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
-            return [
-                'amount' => -1 * $totalRefund,
-                'payment_date' => $item->return_date,
-                'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
-                'source' => 'Return (Bill #' . $item->purchase_id . ')',
-            ];
-        });
-
-        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
+        $history = $this->getSupplierLedgerHistory($id, $userId);
 
         return Inertia::render('SupplierPayment/History', [
             'supplier' => $supplier,
@@ -128,52 +101,96 @@ class SupplierPaymentController extends Controller
 
     public function downloadHistoryPdf($id) {
         $userId = Auth::id();
-
         $supplier = Supplier::with('user')->where('user_id', $userId)->findOrFail($id);
 
-        // Fetch payments for this supplier
-        $paymentsQuery = PurchasePayment::where('supplier_id', $id);
-        $payments = $paymentsQuery->get()->map(function ($item) {
-            return [
-                'amount' => (float)$item->amount,
-                'payment_date' => $item->payment_date,
-                'payment_method' => $item->payment_method,
-                'source' => $item->purchase_id ? 'Purchase (Bill #' . $item->purchase_id . ')' : 'Supplier Payment',
-            ];
-        });
+        $history = $this->getSupplierLedgerHistory($id, $userId);
 
-        $returnsQuery = PurchaseReturn::where(function ($q) use ($id) {
-            $q->where('supplier_id', $id)
-              ->orWhereHas('purchase', function ($p) use ($id) {
-                  $p->where('supplier_id', $id);
-              });
-        })->where('user_id', $userId);
-        $returns = $returnsQuery->get()->map(function ($item) {
-            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
-            return [
-                'amount' => -1 * $totalRefund,
-                'payment_date' => $item->return_date,
-                'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
-                'source' => 'Return (Bill #' . $item->purchase_id . ')',
-            ];
-        });
+        $totalDebits = collect($history)->sum('debit');
+        $totalCredits = collect($history)->sum('credit');
+        $currentBalance = count($history) > 0 ? $history[0]['running_balance'] : 0.0;
 
-        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
-
-        // Calculate summary stats
-        $totalPaid = 0.0;
-        $totalRefunded = 0.0;
-        foreach ($history as $item) {
-            if ($item['amount'] > 0) {
-                $totalPaid += $item['amount'];
-            } else {
-                $totalRefunded += abs($item['amount']);
-            }
-        }
-        $netAmount = $totalPaid - $totalRefunded;
-
-        $pdf = Pdf::loadView('supplier_payment_history_pdf', compact('supplier', 'history', 'totalPaid', 'totalRefunded', 'netAmount'))->setPaper('a4');
+        $pdf = Pdf::loadView('supplier_payment_history_pdf', compact('supplier', 'history', 'totalDebits', 'totalCredits', 'currentBalance'))->setPaper('a4');
         return $pdf->stream("payment_history_" . str_replace(' ', '_', strtolower($supplier->name)) . ".pdf");
+    }
+
+    private function getSupplierLedgerHistory($supplierId, $userId)
+    {
+        $purchases = Purchase::where('supplier_id', $supplierId)
+            ->whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+            ->get();
+
+        $payments = PurchasePayment::where('supplier_id', $supplierId)->get();
+
+        $returns = PurchaseReturn::whereHas('purchase', fn($q) => $q->where('supplier_id', $supplierId))
+            ->where('user_id', $userId)
+            ->get();
+
+        $transactions = collect();
+
+        foreach ($purchases as $purchase) {
+            $transactions->push([
+                'date' => $purchase->purchase_date ?? $purchase->created_at->toDateString(),
+                'created_at' => $purchase->created_at ? $purchase->created_at->toDateTimeString() : null,
+                'particulars' => "Bill #" . $purchase->id,
+                'source' => 'Purchase',
+                'debit' => 0.0,
+                'credit' => (float)$purchase->grand_total,
+                'type' => 'Purchase',
+                'ref_id' => $purchase->id,
+                'payment_method' => 'Bill',
+            ]);
+        }
+
+        foreach ($payments as $payment) {
+            $particulars = "Payment made" . ($payment->note ? " - " . $payment->note : "");
+            $transactions->push([
+                'date' => $payment->payment_date ?? $payment->created_at->toDateString(),
+                'created_at' => $payment->created_at ? $payment->created_at->toDateTimeString() : null,
+                'particulars' => $particulars,
+                'source' => $payment->purchase_id ? 'Due Clearance' : 'Supplier Payment',
+                'debit' => (float)$payment->amount,
+                'credit' => 0.0,
+                'type' => 'Payment',
+                'ref_id' => $payment->id,
+                'purchase_id' => $payment->purchase_id,
+                'payment_method' => $payment->payment_method,
+            ]);
+        }
+
+        foreach ($returns as $return) {
+            $totalRefund = (float)$return->refund_amount + (float)$return->gst_refund_amount;
+            $transactions->push([
+                'date' => $return->return_date ?? $return->created_at->toDateString(),
+                'created_at' => $return->created_at ? $return->created_at->toDateTimeString() : null,
+                'particulars' => "Purchase Return #" . ($return->return_no ?? $return->id),
+                'source' => 'Return',
+                'debit' => $totalRefund,
+                'credit' => 0.0,
+                'type' => 'Return',
+                'ref_id' => $return->id,
+                'payment_method' => $return->refund_method,
+            ]);
+        }
+
+        // Sort chronologically (oldest first)
+        $sortedArray = $transactions->sort(function ($a, $b) {
+            $dateCompare = strcmp($a['date'], $b['date']);
+            if ($dateCompare !== 0) {
+                return $dateCompare;
+            }
+            return strcmp($a['created_at'], $b['created_at']);
+        })->values()->all();
+
+        // Calculate running balance (Credit - Debit for supplier)
+        $runningBalance = 0.0;
+        foreach ($sortedArray as &$tx) {
+            $runningBalance += ($tx['credit'] - $tx['debit']);
+            $tx['running_balance'] = $runningBalance;
+        }
+        unset($tx);
+
+        // Sort newest first for table presentation
+        return array_reverse($sortedArray);
     }
 
     public function create(){
