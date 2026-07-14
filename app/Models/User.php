@@ -32,6 +32,9 @@ class User extends Authenticatable
         'ifsc_code',
         'branch_name',
         'gstin',
+        'invoice_title_without_gst',
+        'invoice_title_with_gst',
+        'hide_bank_details',
         'city',
         'district',
         'state',
@@ -64,6 +67,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'ledger_pin' => 'hashed',
+            'hide_bank_details' => 'boolean',
         ];
     }
 

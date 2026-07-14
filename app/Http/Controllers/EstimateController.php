@@ -128,6 +128,10 @@ class EstimateController extends Controller
                     'base_price' => $item['baseAmount'] ?? 0.00,
                     'sgst' => $item['sgst'] ?? 0,
                     'cgst' => $item['cgst'] ?? 0,
+                    'width' => $item['width'] ?? null,
+                    'height' => $item['height'] ?? null,
+                    'alternate_quantity' => $item['alternate_quantity'] ?? null,
+                    'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
                 ]);
             }
 
@@ -229,6 +233,10 @@ class EstimateController extends Controller
                     'base_price' => $item['baseAmount'] ?? 0.00,
                     'sgst' => $item['sgst'] ?? 0,
                     'cgst' => $item['cgst'] ?? 0,
+                    'width' => $item['width'] ?? null,
+                    'height' => $item['height'] ?? null,
+                    'alternate_quantity' => $item['alternate_quantity'] ?? null,
+                    'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
                 ]);
             }
 

@@ -155,6 +155,10 @@ class CustomersController extends Controller
                         'quantity' => $item->quantity,
                         'price' => $item->price,
                         'total' => $item->quantity * $item->price,
+                        'width' => $item->width,
+                        'height' => $item->height,
+                        'alternate_quantity' => $item->alternate_quantity,
+                        'alternate_unit_type' => $item->alternate_unit_type,
                     ];
                 }),
             ];

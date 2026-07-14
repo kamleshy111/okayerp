@@ -29,6 +29,9 @@ class ProductController extends Controller
                 'stockQuantity' => $item->stock_quantity ?? '',
                 'categoryName' => $item->categoryName ?? '----',
                 'unit_type' => $item->unit_type,
+                'width' => $item->width,
+                'height' => $item->height,
+                'alternate_unit_type' => $item->alternate_unit_type,
                 'price' => $item->price ?? 0.00,
                 'type' => $item->type ?? 'product',
                 'image' => $item->image ? '/storage/' . $item->image : null,
@@ -96,6 +99,9 @@ class ProductController extends Controller
             'name' => $request->input('name'),
             'category_id' => $request->input('category_id'),
             'unit_type' => $request->input('unit_type') ?? '',
+            'width' => $request->input('width'),
+            'height' => $request->input('height'),
+            'alternate_unit_type' => $request->input('alternate_unit_type'),
             'hsn_code' => $request->input('hsn_code'),
             'price' => $request->input('price') ?? 0.00,
             'type' => $request->input('type'),
@@ -125,6 +131,9 @@ class ProductController extends Controller
             'id'   => $data->id ?? 0,
             'name' => $data->name ?? '',
             'unit_type' => $data->unit_type ?? '',
+            'width' => $data->width ?? '',
+            'height' => $data->height ?? '',
+            'alternate_unit_type' => $data->alternate_unit_type ?? '',
             'hsn_code' => $data->hsn_code ?? '',
             'price' => $data->price ?? 0.00,
             'type' => $data->type ?? 'product',
@@ -167,6 +176,9 @@ class ProductController extends Controller
         if($product){
             $product->name = $request->input("name");
             $product->unit_type = $request->input("unit_type");
+            $product->width = $request->input("width");
+            $product->height = $request->input("height");
+            $product->alternate_unit_type = $request->input("alternate_unit_type");
             $product->hsn_code = $request->input("hsn_code");
             $product->price = $request->input("price") ?? 0.00;
             $product->type = $request->input("type");

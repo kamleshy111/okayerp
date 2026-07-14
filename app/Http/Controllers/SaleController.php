@@ -167,6 +167,10 @@ class SaleController extends Controller
                     'base_price' => $item['baseAmount'] ?? 0.00,
                     'sgst' => $item['sgst'] ?? 0,
                     'cgst' => $item['cgst'] ?? 0,
+                    'width' => $item['width'] ?? null,
+                    'height' => $item['height'] ?? null,
+                    'alternate_quantity' => $item['alternate_quantity'] ?? null,
+                    'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
                 ]);
 
                 // Update Stock Quantity of product
@@ -312,6 +316,10 @@ class SaleController extends Controller
                 'cgst' => $item->cgst,
                 'quantity' => $item->quantity,
                 'unit_type' => $item->unit_type,
+                'width' => $item->width,
+                'height' => $item->height,
+                'alternate_quantity' => $item->alternate_quantity,
+                'alternate_unit_type' => $item->alternate_unit_type,
                 'price' => $item->price,
                 'base_price' => $item->base_price,
                 'total' => $item->quantity * $item->price,
@@ -497,6 +505,10 @@ class SaleController extends Controller
                         'base_price' => $item['baseAmount'] ?? 0.00,
                         'sgst' => $item['sgst'] ?? 0,
                         'cgst' => $item['cgst'] ?? 0,
+                        'width' => $item['width'] ?? null,
+                        'height' => $item['height'] ?? null,
+                        'alternate_quantity' => $item['alternate_quantity'] ?? null,
+                        'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
                     ];
 
                     // Update Stock Quantity of product

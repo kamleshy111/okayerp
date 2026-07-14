@@ -39,6 +39,9 @@ class ProfileUpdateRequest extends FormRequest
             'ifsc_code' => ['nullable', 'string', 'max:255'],
             'branch_name' => ['nullable', 'string', 'max:255'],
             'gstin' => ['nullable', 'string', 'max:255'],
+            'invoice_title_without_gst' => ['nullable', 'string', 'max:255'],
+            'invoice_title_with_gst' => ['nullable', 'string', 'max:255'],
+            'hide_bank_details' => ['nullable', 'boolean'],
         ];
     }
 }

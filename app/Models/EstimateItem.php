@@ -14,7 +14,11 @@ class EstimateItem extends Model
         'price',
         'base_price',
         'sgst',
-        'cgst'
+        'cgst',
+        'width',
+        'height',
+        'alternate_quantity',
+        'alternate_unit_type'
     ];
 
     public function estimate()
