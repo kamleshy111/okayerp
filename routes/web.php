@@ -36,6 +36,7 @@ use App\Http\Controllers\StockItemSummaryController;
 use App\Http\Controllers\StockItemMonthDetailController;
 use App\Http\Controllers\ReferralUserController;
 use App\Http\Controllers\OfferController;
+use App\Http\Controllers\WhatsAppController;
 
 
 
@@ -250,6 +251,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/purchase/{id}', [PurchasesController::class, 'show'])->name('purchase.show');
         Route::post('/purchase/update/{id}', [PurchasesController::class, 'update'])->name('purchase.update');
         Route::delete('/purchase/destroy/{id}', [PurchasesController::class, 'destroy'])->name('purchase.destroy');
+        Route::get('/purchase/{id}/download-pdf', [PurchasesController::class, 'downloadInvoice'])->name('purchase.invoice.download');
 
         // Purchase Payment Information
         Route::get('/purchase/payment/{id}', [PurchasesController::class, 'payment'])->name('suppliers.payment');
@@ -300,6 +302,13 @@ Route::middleware(['auth', 'role:store'])->group(function () {
 
 
     Route::post('/bulk-delete', [BulkDeleteController::class, 'destroy'])->name('bulk-delete');
+
+    // WhatsApp Messaging
+    Route::post('/whatsapp/send-sale-invoice/{id}', [WhatsAppController::class, 'sendSaleInvoice'])->name('whatsapp.sale-invoice');
+    Route::post('/whatsapp/send-purchase-invoice/{id}', [WhatsAppController::class, 'sendPurchaseInvoice'])->name('whatsapp.purchase-invoice');
+    Route::post('/whatsapp/send-statement/{customerId}', [WhatsAppController::class, 'sendCustomerStatement'])->name('whatsapp.customer-statement');
+    Route::post('/whatsapp/send-supplier-statement/{supplierId}', [WhatsAppController::class, 'sendSupplierStatement'])->name('whatsapp.supplier-statement');
+    Route::post('/whatsapp/send-custom', [WhatsAppController::class, 'sendCustom'])->name('whatsapp.send-custom');
 });
    
 require __DIR__.'/auth.php';

@@ -1,7 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head, router } from '@inertiajs/vue3';
-import { computed } from 'vue';
+import { computed, ref } from 'vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
+
 
 const props = defineProps({
   customer: {
@@ -47,6 +50,26 @@ const handleRowClick = (item) => {
     window.open(route('sale-return.pdf', item.ref_id), '_blank');
   }
 };
+
+const sendingWhatsApp = ref(false);
+
+const sendStatementWhatsApp = async () => {
+  if (sendingWhatsApp.value) return;
+  const phone = props.customer?.phone || '';
+  if (!phone) {
+    Swal.fire('No Phone Number', 'This customer does not have a phone number on file.', 'warning');
+    return;
+  }
+  sendingWhatsApp.value = true;
+  try {
+    const response = await axios.post(`/whatsapp/send-statement/${props.customer.id}`);
+    Swal.fire('Sent!', response.data.message, 'success');
+  } catch (error) {
+    Swal.fire('Error', error.response?.data?.message || 'Failed to send WhatsApp message.', 'error');
+  } finally {
+    sendingWhatsApp.value = false;
+  }
+};
 </script>
 
 <template>
@@ -75,6 +98,15 @@ const handleRowClick = (item) => {
                 >
                   <i class="fa fa-file-pdf-o"></i> Download Statement PDF
                 </a>
+                <!-- WhatsApp Statement -->
+                <button
+                  @click="sendStatementWhatsApp"
+                  :disabled="sendingWhatsApp"
+                  class="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200"
+                >
+                  <i :class="sendingWhatsApp ? 'fa fa-spinner fa-spin' : 'fa fa-whatsapp'"></i>
+                  {{ sendingWhatsApp ? 'Sending...' : 'Send on WhatsApp' }}
+                </button>
               </div>
             </div>
 

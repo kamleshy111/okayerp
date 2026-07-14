@@ -596,4 +596,20 @@ class PurchasesController extends Controller
             'returnDueDeduction' => $returnDueDeduction,
         ]);
     }
+
+    /**
+     * Generate and stream a Purchase Bill as PDF.
+     */
+    public function downloadInvoice($id)
+    {
+        $userId = Auth::id();
+        $purchase = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
+            ->with(['items.product', 'supplier.user'])
+            ->findOrFail($id);
+
+        $pdf = Pdf::loadView('purchase_invoice', compact('purchase'))
+            ->setPaper('a4', 'portrait');
+
+        return $pdf->stream("purchase_bill_{$purchase->id}.pdf");
+    }
 }

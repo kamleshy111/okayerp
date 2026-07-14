@@ -1,6 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
+import { onMounted } from 'vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
 
 defineProps({
   customers: {
@@ -70,14 +73,51 @@ const columns = [
         searchable: false,
         render: (data, type, row) => {
             let sourceParam = data.source === 'Return' ? 'return' : 'payment';
+            const phone = data.phone || row.phone || '';
+            const whatsappBtn = phone
+              ? `<button class="text-white bg-green-600 hover:bg-green-700 rounded whatsapp-statement-btn px-2 py-1" data-customer-id="${data.id}" data-phone="${phone}" title="Send Statement on WhatsApp" style="font-size:13px;"><i class="fa fa-whatsapp"></i></button>`
+              : `<span class="text-gray-300 px-2" title="No phone number"><i class="fa fa-whatsapp"></i></span>`;
             return `
-            <div class="flex">
+            <div class="flex gap-2">
               <a href="/paymentsCustomer/receipt/${sourceParam}/${data.transaction_id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Invoice"><i class="fa fa-eye"></i></a>
+              <a href="/paymentsCustomer/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Statement"><i class="fa fa-list"></i></a>
+              ${whatsappBtn}
             </div>
             `;
         }
     }
 ];
+
+onMounted(() => {
+  document.addEventListener('click', function (event) {
+    const button = event.target.closest('.whatsapp-statement-btn');
+    if (button) {
+      const customerId = button.dataset.customerId;
+      const phone = button.dataset.phone;
+      Swal.fire({
+        title: 'Send Statement on WhatsApp?',
+        text: `Send account statement to ${phone}?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="fa fa-whatsapp"></i> Yes, Send!',
+        cancelButtonText: 'Cancel'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({ title: 'Sending...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          axios.post(`/whatsapp/send-statement/${customerId}`)
+            .then((response) => {
+              Swal.fire('Sent!', response.data.message, 'success');
+            })
+            .catch((error) => {
+              Swal.fire('Error', error.response?.data?.message || 'Failed to send.', 'error');
+            });
+        }
+      });
+    }
+  });
+});
 </script>
 
 <template>

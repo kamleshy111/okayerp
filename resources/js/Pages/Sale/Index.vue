@@ -155,11 +155,16 @@ const columns = [
             if (row.is_deletable) {
                 deleteBtn = `<button class="text-white bg-red-600 hover:bg-red-800 rounded action-btn delete-btn px-3 py-1" data-id="${data.id}"><i class="fa fa-trash"></i></button>`;
             }
+            const phone = data.phone || row.phone || '';
+            const whatsappBtn = phone
+              ? `<button class="text-white bg-green-600 hover:bg-green-700 rounded action-btn whatsapp-btn px-3 py-1" data-id="${data.id}" data-phone="${phone}" title="Send Invoice on WhatsApp"><i class="fa fa-whatsapp"></i></button>`
+              : `<span class="text-gray-300 px-3 py-1" title="No phone number"><i class="fa fa-whatsapp"></i></span>`;
             return `
             <div class="flex gap-2">
               <a href="sale/${data.id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Sale"><i class="fa fa-eye"></i></a>
               <a href="sale/${data.id}/download-pdf" class="btn btn-primary text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-file-pdf-o"></i></a>
               <a  href="sale/${data.id}/edit" class="btn btn-light text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
+              ${whatsappBtn}
               ${deleteBtn}
             </div>
             `;
@@ -171,6 +176,7 @@ const columns = [
 onMounted(() => {
   setupDeleteButton();
   setupBulkDeleteListeners();
+  setupWhatsAppButton();
 });
 
 function setupDeleteButton() {
@@ -203,6 +209,41 @@ function deleteSale(saleId) {
           const errMsg = error.response?.data?.message || 'Failed to delete the sale. Please try again.';
           Swal.fire('Error!', errMsg, 'error');
         });
+    }
+  });
+}
+
+function setupWhatsAppButton() {
+  document.addEventListener('click', function (event) {
+    const button = event.target.closest('.whatsapp-btn');
+    if (button) {
+      const saleId = button.dataset.id;
+      const phone  = button.dataset.phone;
+      if (!phone) {
+        Swal.fire('No Phone', 'This customer has no phone number.', 'warning');
+        return;
+      }
+      Swal.fire({
+        title: 'Send WhatsApp Invoice?',
+        text: `Send invoice #${saleId} to ${phone} on WhatsApp?`,
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#16a34a',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: '<i class="fa fa-whatsapp"></i> Yes, Send!',
+        cancelButtonText: 'Cancel'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({ title: 'Sending...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          axios.post(`/whatsapp/send-sale-invoice/${saleId}`)
+            .then((response) => {
+              Swal.fire('Sent!', response.data.message, 'success');
+            })
+            .catch((error) => {
+              Swal.fire('Error', error.response?.data?.message || 'Failed to send.', 'error');
+            });
+        }
+      });
     }
   });
 }

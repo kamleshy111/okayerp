@@ -1,7 +1,10 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { onMounted, onUnmounted, computed } from 'vue';
+import { onMounted, onUnmounted, computed, ref } from 'vue';
+import axios from 'axios';
+import Swal from 'sweetalert2';
+
 
 const props = defineProps({
   sale: {
@@ -23,6 +26,27 @@ const props = defineProps({
 });
 
 const isExport = computed(() => props.sale.currency && props.sale.currency !== 'INR' && props.sale.exchange_rate > 0);
+
+const sendingWhatsApp = ref(false);
+
+const sendWhatsApp = async () => {
+  if (sendingWhatsApp.value) return;
+  const phone = props.sale.customer?.phone || '';
+  if (!phone) {
+    Swal.fire('No Phone Number', 'This customer does not have a phone number on file.', 'warning');
+    return;
+  }
+  sendingWhatsApp.value = true;
+  try {
+    const response = await axios.post(`/whatsapp/send-sale-invoice/${props.sale.id}`);
+    Swal.fire('Sent!', response.data.message, 'success');
+  } catch (error) {
+    Swal.fire('Error', error.response?.data?.message || 'Failed to send WhatsApp message.', 'error');
+  } finally {
+    sendingWhatsApp.value = false;
+  }
+};
+
 const exchangeRate = computed(() => isExport.value ? parseFloat(props.sale.exchange_rate) : 1);
 const currencySymbol = computed(() => {
   if (!isExport.value) return '₹';
@@ -98,7 +122,17 @@ onUnmounted(() => {
           >
             <i class="fa fa-file-pdf-o"></i> Download PDF
           </a>
+          <!-- Send WhatsApp -->
+          <button
+            @click="sendWhatsApp"
+            :disabled="sendingWhatsApp"
+            class="flex items-center justify-center gap-2 px-4 py-2 bg-green-600 hover:bg-green-700 disabled:opacity-60 disabled:cursor-not-allowed text-white rounded-lg text-sm font-semibold shadow-sm transition-colors duration-200 w-full sm:w-auto"
+          >
+            <i :class="sendingWhatsApp ? 'fa fa-spinner fa-spin' : 'fa fa-whatsapp'"></i>
+            {{ sendingWhatsApp ? 'Sending...' : 'Send WhatsApp' }}
+          </button>
         </div>
+
       </div>
 
       <!-- Invoice Content Container -->
