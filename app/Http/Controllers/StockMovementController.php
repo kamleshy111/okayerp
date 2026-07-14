@@ -118,4 +118,31 @@ class StockMovementController extends Controller
             return response()->json(['message' => 'Failed to adjust stock. Please try again.', 'error' => $e->getMessage()], 500);
         }
     }
+
+    public function destroy($id)
+    {
+        $userId = Auth::id();
+        $movement = StockMovement::where('user_id', $userId)->where('reference_type', 'Manual')->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            $product = Product::where('user_id', $userId)->find($movement->product_id);
+            if ($product) {
+                if ($movement->type === 'Addition') {
+                    $product->stock_quantity -= $movement->quantity;
+                } else {
+                    $product->stock_quantity += $movement->quantity;
+                }
+                $product->save();
+            }
+
+            $movement->delete();
+            DB::commit();
+
+            return response()->json(['message' => 'Stock adjustment deleted successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to delete stock adjustment: ' . $e->getMessage()], 500);
+        }
+    }
 }

@@ -138,3 +138,58 @@ table.dataTable > tbody > tr > th, table.dataTable > tbody > tr > td {
 .Toastify__toast-container {
   z-index: 9999999 !important;
 }
+
+/* ══════════════ DATATABLES STYLING ══════════════ */
+.dt-length select, .dataTables_length select {
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  padding: 0.35rem 2rem 0.35rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  line-height: 1.25rem !important;
+  color: #374151 !important;
+  background-color: #fff !important;
+  cursor: pointer !important;
+  outline: none !important;
+  margin-right: 0.5rem !important;
+  margin-left: 0.5rem !important;
+  box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05) !important;
+  transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out !important;
+}
+.dt-length select:focus, .dataTables_length select:focus {
+  border-color: #2e2c92 !important;
+  box-shadow: 0 0 0 3px rgba(46, 44, 146, 0.15) !important;
+}
+.dt-length label, .dataTables_length label {
+  font-size: 0.875rem !important;
+  color: #4b5563 !important;
+  font-weight: 500 !important;
+}
+.dt-container {
+  padding-top: 1rem !important;
+}
+.dt-layout-row {
+  display: flex !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+  margin-bottom: 1rem !important;
+  flex-wrap: wrap !important;
+  gap: 1rem !important;
+}
+/* Align search input */
+.dt-search input {
+  border: 1px solid #d1d5db !important;
+  border-radius: 0.5rem !important;
+  padding: 0.35rem 0.75rem !important;
+  font-size: 0.875rem !important;
+  color: #374151 !important;
+  outline: none !important;
+}
+.dt-search input:focus {
+  border-color: #2e2c92 !important;
+}
+.dt-search label {
+  font-size: 0.875rem !important;
+  color: #4b5563 !important;
+  font-weight: 500 !important;
+  margin-right: 0.5rem !important;
+}

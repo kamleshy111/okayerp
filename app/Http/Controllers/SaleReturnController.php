@@ -489,4 +489,64 @@ class SaleReturnController extends Controller
         $pdf = Pdf::loadView('return_invoice', compact('return'))->setPaper('a4');
         return $pdf->stream("return_invoice_{$return->return_no}.pdf");
     }
+
+    public function destroy($id)
+    {
+        $userId = Auth::id();
+        $saleReturn = SaleReturn::where('user_id', $userId)->with('items')->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            // Find all involved sale IDs to recalculate payment statuses later
+            $saleIds = $saleReturn->items->pluck('sale_id')->unique()->filter()->toArray();
+
+            // Reverse stock updates and remove movements
+            foreach ($saleReturn->items as $item) {
+                $product = Product::where('user_id', $userId)->find($item->product_id);
+                if ($product) {
+                    $product->stock_quantity -= $item->quantity;
+                    $product->save();
+                }
+
+                // Delete StockMovement
+                StockMovement::where('user_id', $userId)
+                    ->where('product_id', $item->product_id)
+                    ->where('reference_type', 'SaleReturn')
+                    ->where('reference_id', $saleReturn->id)
+                    ->delete();
+            }
+
+            // Reverse ledger entries
+            $accountingService = new AccountingService($userId);
+            $accountingService->clearEntries('SaleReturn', $saleReturn->id);
+
+            // Delete return items and return record
+            $saleReturn->items()->delete();
+            $saleReturn->delete();
+
+            // Update payment status for each involved sale
+            if (!empty($saleIds)) {
+                $sales = Sale::whereIn('id', $saleIds)->get();
+                foreach ($sales as $sale) {
+                    $totalDueDeductions = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
+                    $effectiveBalance = max(0, (float)$sale->grand_total - (float)$sale->paid - $totalDueDeductions);
+
+                    if ($effectiveBalance <= 0) {
+                        $sale->payment_status = 'Paid';
+                    } elseif ((float)$sale->paid + $totalDueDeductions <= 0) {
+                        $sale->payment_status = 'Unpaid';
+                    } else {
+                        $sale->payment_status = 'Partial';
+                    }
+                    $sale->save();
+                }
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Sale return deleted successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to delete sale return: ' . $e->getMessage()], 500);
+        }
+    }
 }

@@ -9,6 +9,7 @@ use App\Models\Customer;
 use App\Models\SalePayment;
 use App\Models\SaleReturn;
 use App\Models\Sale;
+use Illuminate\Support\Facades\DB;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerPaymentsController extends Controller
@@ -530,5 +531,47 @@ class CustomerPaymentsController extends Controller
 
         $pdf = Pdf::loadView('payment_receipt', compact('payment'))->setPaper('a5', 'landscape');
         return $pdf->stream('payment_receipt_' . $id . '.pdf');
+    }
+
+    public function destroy($id)
+    {
+        $userId = Auth::id();
+        $payment = SalePayment::whereHas('customer', function($q) use ($userId) {
+            $q->where('user_id', $userId);
+        })->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            if ($payment->sale_id) {
+                $sale = Sale::find($payment->sale_id);
+                if ($sale) {
+                    $sale->paid = max(0, (float)$sale->paid - (float)$payment->amount);
+                    
+                    $totalDueDeductions = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
+                    $effectiveBalance = max(0, (float)$sale->grand_total - (float)$sale->paid - $totalDueDeductions);
+
+                    if ($effectiveBalance <= 0) {
+                        $sale->payment_status = 'Paid';
+                    } elseif ((float)$sale->paid + $totalDueDeductions <= 0) {
+                        $sale->payment_status = 'Unpaid';
+                    } else {
+                        $sale->payment_status = 'Partial';
+                    }
+                    $sale->save();
+                }
+            }
+
+            // Clear Ledger entries
+            $accountingService = new \App\Services\AccountingService($userId);
+            $accountingService->clearEntries('SalePayment', $payment->id);
+
+            $payment->delete();
+            DB::commit();
+
+            return response()->json(['message' => 'Payment record deleted successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to delete payment record: ' . $e->getMessage()], 500);
+        }
     }
 }

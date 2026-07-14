@@ -400,4 +400,64 @@ class PurchaseReturnController extends Controller
         $pdf = Pdf::loadView('purchase_return_invoice', compact('return'))->setPaper('a4');
         return $pdf->stream("purchase_return_invoice_{$return->return_no}.pdf");
     }
+
+    public function destroy($id)
+    {
+        $userId = Auth::id();
+        $purchaseReturn = PurchaseReturn::where('user_id', $userId)->with('items')->findOrFail($id);
+
+        DB::beginTransaction();
+        try {
+            // Find all involved purchase IDs to recalculate payment statuses later
+            $purchaseIds = $purchaseReturn->items->pluck('purchase_id')->unique()->filter()->toArray();
+
+            // Reverse stock updates and remove movements
+            foreach ($purchaseReturn->items as $item) {
+                $product = Product::where('user_id', $userId)->find($item->product_id);
+                if ($product) {
+                    $product->stock_quantity += $item->quantity; // since it was returned (decreased), deleting return means increasing it back
+                    $product->save();
+                }
+
+                // Delete StockMovement
+                StockMovement::where('user_id', $userId)
+                    ->where('product_id', $item->product_id)
+                    ->where('reference_type', 'PurchaseReturn')
+                    ->where('reference_id', $purchaseReturn->id)
+                    ->delete();
+            }
+
+            // Reverse ledger entries
+            $accountingService = new AccountingService($userId);
+            $accountingService->clearEntries('PurchaseReturn', $purchaseReturn->id);
+
+            // Delete return items and return record
+            $purchaseReturn->items()->delete();
+            $purchaseReturn->delete();
+
+            // Update payment status for each involved purchase
+            if (!empty($purchaseIds)) {
+                $purchases = \App\Models\Purchase::whereIn('id', $purchaseIds)->get();
+                foreach ($purchases as $sp) {
+                    $totalDueDeductions = \App\Models\PurchaseReturnItem::where('purchase_id', $sp->id)->sum('due_deduction');
+                    $effectiveBalance = max(0, (float)$sp->grand_total - (float)$sp->paid - $totalDueDeductions);
+
+                    if ($effectiveBalance <= 0) {
+                        $sp->payment_status = 'Paid';
+                    } elseif ((float)$sp->paid + $totalDueDeductions <= 0) {
+                        $sp->payment_status = 'Unpaid';
+                    } else {
+                        $sp->payment_status = 'Partial';
+                    }
+                    $sp->save();
+                }
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Purchase return deleted successfully.']);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json(['message' => 'Failed to delete purchase return: ' . $e->getMessage()], 500);
+        }
+    }
 }

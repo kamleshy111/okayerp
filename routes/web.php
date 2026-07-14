@@ -23,6 +23,7 @@ use App\Http\Controllers\ExpenseCategoryController;
 use App\Http\Controllers\ExpenseController;
 use App\Http\Controllers\IncomeCategoryController;
 use App\Http\Controllers\IncomeController;
+use App\Http\Controllers\BulkDeleteController;
 use App\Http\Controllers\EstimateController;
 use App\Http\Controllers\StockMovementController;
 use App\Http\Controllers\AgingReportController;
@@ -200,6 +201,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/stock-adjustment', [StockMovementController::class, 'index'])->name('stock-adjustment.index');
         Route::get('/stock-adjustment/create', [StockMovementController::class, 'create'])->name('stock-adjustment.create');
         Route::post('/stock-adjustment/store', [StockMovementController::class, 'store'])->name('stock-adjustment.store');
+        Route::delete('/stock-adjustment/destroy/{id}', [StockMovementController::class, 'destroy'])->name('stock-adjustment.destroy');
     });
 
     // Sales
@@ -236,6 +238,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/sale-return/sale/{id}/details', [SaleReturnController::class, 'getSaleDetails'])->name('sale-return.sale-details');
         Route::post('/sale-return/store', [SaleReturnController::class, 'store'])->name('sale-return.store');
         Route::get('/sale-return/{id}/download-pdf', [SaleReturnController::class, 'downloadReturnPdf'])->name('sale-return.pdf');
+        Route::delete('/sale-return/destroy/{id}', [SaleReturnController::class, 'destroy'])->name('sale-return.destroy');
     });
 
 
@@ -257,6 +260,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/purchase-return/purchase/{id}/details', [PurchaseReturnController::class, 'getPurchaseDetails'])->name('purchase-return.purchase-details');
         Route::post('/purchase-return/store', [PurchaseReturnController::class, 'store'])->name('purchase-return.store');
         Route::get('/purchase-return/{id}/download-pdf', [PurchaseReturnController::class, 'downloadReturnPdf'])->name('purchase-return.pdf');
+        Route::delete('/purchase-return/destroy/{id}', [PurchaseReturnController::class, 'destroy'])->name('purchase-return.destroy');
     });
 
     //supplier_payment
@@ -266,6 +270,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/paymentSupplier/store', [SupplierPaymentController::class, 'store'])->name('paymentSupplier.store');
         Route::get('/paymentSupplier/{id}/history', [SupplierPaymentController::class, 'history'])->name('paymentSupplier.history');
         Route::get('/paymentSupplier/{id}/history/download-pdf', [SupplierPaymentController::class, 'downloadHistoryPdf'])->name('paymentSupplier.history.pdf');
+        Route::delete('/paymentSupplier/destroy/{id}', [SupplierPaymentController::class, 'destroy'])->name('paymentSupplier.destroy');
     });
 
     //customer_payment 
@@ -279,6 +284,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/paymentsCustomer/receipt/{source}/{id}/pdf', [CustomerPaymentsController::class, 'downloadReceiptPdf'])->name('paymentsCustomer.receipt.pdf');
         
         Route::get('/customer/{id}/payment-info', [CustomerPaymentsController::class, 'paymentInfo'])->name('customer.payment.info');
+        Route::delete('/paymentsCustomer/destroy/{id}', [CustomerPaymentsController::class, 'destroy'])->name('paymentsCustomer.destroy');
     });
 
     // AR/AP Aging Report
@@ -293,6 +299,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::post('/reports/ledger/close-year', [LedgerController::class, 'closeYear'])->name('reports.ledger.close-year');
 
 
+    Route::post('/bulk-delete', [BulkDeleteController::class, 'destroy'])->name('bulk-delete');
 });
    
 require __DIR__.'/auth.php';
