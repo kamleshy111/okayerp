@@ -218,7 +218,7 @@
         @endif
       </td>
       <td class="company-details">
-        <div class="bold text-center" style="font-size: 10px; margin-bottom: 2px; letter-spacing: 1px;">PAYMENT STATEMENT</div>
+        <div class="bold text-center" style="font-size: 10px; margin-bottom: 2px; letter-spacing: 1px;">ACCOUNT STATEMENT</div>
         <div class="company-name">{{ $store ? $store->name : 'Your Store Name' }}</div>
         <div>{{ $store ? $store->address : 'Store Address' }}</div>
         @if($store && $store->gstin)
@@ -229,7 +229,7 @@
         @endif
       </td>
       <td class="invoice-type text-right bold">
-        Statement Copy
+        Ledger Copy
       </td>
     </tr>
   </table>
@@ -282,17 +282,17 @@
   <table class="border-bottom stats-table">
     <tr>
       <td>
-        <span class="stats-label">Total Received</span>
-        <span class="stats-value text-emerald">+ ₹{{ number_format($totalReceived, 2) }}</span>
+        <span class="stats-label">Total Invoiced (Dr)</span>
+        <span class="stats-value" style="color:#4b5563;">₹{{ number_format($totalDebits, 2) }}</span>
       </td>
       <td>
-        <span class="stats-label">Total Refunded</span>
-        <span class="stats-value text-rose">- ₹{{ number_format($totalRefunded, 2) }}</span>
+        <span class="stats-label">Total Credits (Cr)</span>
+        <span class="stats-value" style="color:#4b5563;">₹{{ number_format($totalCredits, 2) }}</span>
       </td>
       <td>
-        <span class="stats-label">Net Balance</span>
-        <span class="stats-value {{ $netAmount < 0 ? 'text-rose' : 'text-emerald' }}">
-          {{ $netAmount < 0 ? '-' : '+' }} ₹{{ number_format(abs($netAmount), 2) }}
+        <span class="stats-label">Outstanding Due</span>
+        <span class="stats-value {{ $currentBalance >= 0 ? 'text-rose' : 'text-emerald' }}">
+          ₹{{ number_format(abs($currentBalance), 2) }} {{ $currentBalance >= 0 ? 'Dr' : 'Cr' }}
         </span>
       </td>
     </tr>
@@ -302,70 +302,61 @@
   <table class="items-table">
     <thead>
       <tr>
-        <th class="border-right" style="width: 7%;">S.N.</th>
-        <th class="border-right" style="width: 25%;">Source</th>
-        <th class="border-right" style="width: 18%;">Payment Date</th>
-        <th class="border-right" style="width: 30%;">Payment Method</th>
-        <th style="width: 20%;">Amount(₹)</th>
+        <th class="border-right" style="width: 12%;">Date</th>
+        <th class="border-right" style="width: 12%;">Vch Type</th>
+        <th class="border-right" style="width: 36%;">Particulars</th>
+        <th class="border-right" style="width: 13%;">Debit (Dr)</th>
+        <th class="border-right" style="width: 13%;">Credit (Cr)</th>
+        <th style="width: 14%;">Balance</th>
       </tr>
     </thead>
     <tbody>
-      @foreach ($history as $index => $item)
+      @foreach ($history as $item)
       <tr class="item-row">
-        <td class="text-center border-right">{{ $index + 1 }}.</td>
-        <td class="border-right" style="padding: 4px 6px;">
-          @php
-            $src = $item['source'];
-          @endphp
-          @if(str_starts_with($src, 'Sale'))
+        <td class="text-center border-right">
+          {{ \Carbon\Carbon::parse($item['date'])->format('d-m-Y') }}
+        </td>
+        <td class="border-right text-center" style="padding: 4px 6px;">
+          @if($item['type'] === 'Sale')
             <span class="badge badge-sale">Sale</span>
-            @if(strlen($src) > 4)
-              <span style="font-size: 9px; color: #374151;">{{ str_replace('Sale ', '', $src) }}</span>
-            @endif
-          @elseif(str_starts_with($src, 'Return'))
+          @elseif($item['type'] === 'Payment')
+            <span class="badge badge-payment">Receipt</span>
+          @elseif($item['type'] === 'Return')
             <span class="badge badge-return">Return</span>
-            @if(strlen($src) > 6)
-              <span style="font-size: 9px; color: #374151;">{{ str_replace('Return ', '', $src) }}</span>
-            @endif
-          @elseif(str_starts_with($src, 'Due Clearance'))
-            <span class="badge badge-due">Due Clearance</span>
-            @if(strlen($src) > 13)
-              <span style="font-size: 9px; color: #374151;">{{ str_replace('Due Clearance ', '', $src) }}</span>
-            @endif
-          @elseif($src === 'Customer Payment')
-            <span class="badge badge-payment">Direct Payment</span>
           @else
-            <span class="badge" style="background-color:#e2e8f0; color:#1f2937;">{{ $src }}</span>
+            <span class="badge" style="background-color:#e2e8f0; color:#1f2937;">{{ $item['type'] }}</span>
           @endif
         </td>
-        <td class="text-center border-right">
-          {{ \Carbon\Carbon::parse($item['payment_date'])->format('d-m-Y') }}
-        </td>
         <td class="border-right" style="padding: 4px 6px;">
-          {{ $item['payment_method'] }}
+          {{ $item['particulars'] }}
+          @if($item['payment_method'] && $item['payment_method'] !== 'Invoice')
+            <span style="font-size: 8px; color: #6b7280;">({{ $item['payment_method'] }})</span>
+          @endif
+        </td>
+        <td class="text-right border-right text-rose bold">
+          {{ $item['debit'] > 0 ? '₹' . number_format($item['debit'], 2) : '--' }}
+        </td>
+        <td class="text-right border-right text-emerald bold">
+          {{ $item['credit'] > 0 ? '₹' . number_format($item['credit'], 2) : '--' }}
         </td>
         <td class="text-right bold">
-          @if($item['amount'] < 0)
-            <span class="text-rose">- ₹{{ number_format(abs($item['amount']), 2) }}</span>
-          @else
-            <span class="text-emerald">+ ₹{{ number_format($item['amount'], 2) }}</span>
-          @endif
+          ₹{{ number_format(abs($item['running_balance']), 2) }} {{ $item['running_balance'] >= 0 ? 'Dr' : 'Cr' }}
         </td>
       </tr>
       @endforeach
 
-
-
       <!-- Summary row -->
       <tr class="summary-row">
         <td class="border-right">&nbsp;</td>
-        <td class="border-right text-right bold" colspan="3">Net Balance</td>
-        <td class="text-right bold" style="font-size: 12px;">
-          @if($netAmount < 0)
-            <span class="text-rose">- ₹{{ number_format(abs($netAmount), 2) }}</span>
-          @else
-            <span class="text-emerald">+ ₹{{ number_format(abs($netAmount), 2) }}</span>
-          @endif
+        <td class="border-right text-right bold" colspan="2">Outstanding Balance</td>
+        <td class="border-right text-right bold text-rose">
+          ₹{{ number_format($totalDebits, 2) }}
+        </td>
+        <td class="border-right text-right bold text-emerald">
+          ₹{{ number_format($totalCredits, 2) }}
+        </td>
+        <td class="text-right bold" style="font-size: 11px;">
+          ₹{{ number_format(abs($currentBalance), 2) }} {{ $currentBalance >= 0 ? 'Dr' : 'Cr' }}
         </td>
       </tr>
     </tbody>

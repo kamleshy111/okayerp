@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\Customer;
 use App\Models\SalePayment;
 use App\Models\SaleReturn;
+use App\Models\Sale;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerPaymentsController extends Controller
@@ -119,56 +120,9 @@ class CustomerPaymentsController extends Controller
 
     public function history($id) {
         $userId = Auth::id();
-
         $customer = Customer::where('user_id', $userId)->findOrFail($id);
 
-        // Fetch payments for this customer
-        $paymentsQuery = SalePayment::where('customer_id', $id)
-            ->whereNotIn('payment_method', ['Wallet', 'Advance Deduction']);
-        $paymentsRaw = $paymentsQuery->get();
-        $saleIds = $paymentsRaw->pluck('sale_id')->filter()->unique()->toArray();
-        $firstPayments = [];
-        if (!empty($saleIds)) {
-            $firstPayments = SalePayment::whereIn('sale_id', $saleIds)
-                ->selectRaw('sale_id, MIN(id) as first_id')
-                ->groupBy('sale_id')
-                ->pluck('first_id', 'sale_id')
-                ->toArray();
-        }
-
-        $payments = $paymentsRaw->map(function ($item) use ($firstPayments) {
-            $source = 'Customer Payment';
-            if ($item->sale_id) {
-                $firstId = $firstPayments[$item->sale_id] ?? null;
-                if ($item->id == $firstId) {
-                    $source = 'Sale (Invoice #' . $item->sale_id . ')';
-                } else {
-                    $source = 'Due Clearance (Invoice #' . $item->sale_id . ')';
-                }
-            }
-            return [
-                'amount' => (float)$item->amount,
-                'payment_date' => $item->payment_date,
-                'payment_method' => $item->payment_method,
-                'source' => $source,
-            ];
-        });
-
-        // Fetch returns for this customer
-        $returnsQuery = SaleReturn::whereHas('sale', function ($q) use ($id) {
-            $q->where('customer_id', $id);
-        })->where('user_id', $userId);
-        $returns = $returnsQuery->get()->map(function ($item) {
-            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
-            return [
-                'amount' => -1 * $totalRefund,
-                'payment_date' => $item->return_date,
-                'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
-                'source' => 'Return (Invoice #' . $item->sale_id . ')',
-            ];
-        });
-
-        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
+        $history = $this->getCustomerLedgerHistory($id, $userId);
 
         return Inertia::render('CustomerPayment/History', [
             'customer' => $customer,
@@ -178,71 +132,97 @@ class CustomerPaymentsController extends Controller
 
     public function downloadHistoryPdf($id) {
         $userId = Auth::id();
-
         $customer = Customer::where('user_id', $userId)->findOrFail($id);
 
-        // Fetch payments for this customer
-        $paymentsQuery = SalePayment::where('customer_id', $id)
-            ->whereNotIn('payment_method', ['Wallet', 'Advance Deduction']);
-        $paymentsRaw = $paymentsQuery->get();
-        $saleIds = $paymentsRaw->pluck('sale_id')->filter()->unique()->toArray();
-        $firstPayments = [];
-        if (!empty($saleIds)) {
-            $firstPayments = SalePayment::whereIn('sale_id', $saleIds)
-                ->selectRaw('sale_id, MIN(id) as first_id')
-                ->groupBy('sale_id')
-                ->pluck('first_id', 'sale_id')
-                ->toArray();
-        }
+        $history = $this->getCustomerLedgerHistory($id, $userId);
 
-        $payments = $paymentsRaw->map(function ($item) use ($firstPayments) {
-            $source = 'Customer Payment';
-            if ($item->sale_id) {
-                $firstId = $firstPayments[$item->sale_id] ?? null;
-                if ($item->id == $firstId) {
-                    $source = 'Sale (Invoice #' . $item->sale_id . ')';
-                } else {
-                    $source = 'Due Clearance (Invoice #' . $item->sale_id . ')';
-                }
-            }
-            return [
-                'amount' => (float)$item->amount,
-                'payment_date' => $item->payment_date,
-                'payment_method' => $item->payment_method,
-                'source' => $source,
-            ];
-        });
+        $totalDebits = collect($history)->sum('debit');
+        $totalCredits = collect($history)->sum('credit');
+        $currentBalance = count($history) > 0 ? $history[0]['running_balance'] : 0.0;
 
-        // Fetch returns for this customer
-        $returnsQuery = SaleReturn::whereHas('sale', function ($q) use ($id) {
-            $q->where('customer_id', $id);
-        })->where('user_id', $userId);
-        $returns = $returnsQuery->get()->map(function ($item) {
-            $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
-            return [
-                'amount' => -1 * $totalRefund,
-                'payment_date' => $item->return_date,
-                'payment_method' => 'Refund (' . $item->refund_method . ')' . ($item->return_no ? ' - Return #' . $item->return_no : ''),
-                'source' => 'Return (Invoice #' . $item->sale_id . ')',
-            ];
-        });
-
-        $history = $payments->concat($returns)->sortByDesc('created_at')->values()->all();
-
-        // Calculate summary stats
-        $totalReceived = 0.0;
-        $totalRefunded = 0.0;
-        foreach ($history as $item) {
-            if ($item['amount'] > 0) {
-                $totalReceived += $item['amount'];
-            } else {
-                $totalRefunded += abs($item['amount']);
-            }
-        }
-        $netAmount = $totalReceived - $totalRefunded;
-
-        $pdf = Pdf::loadView('customer_payment_history_pdf', compact('customer', 'history', 'totalReceived', 'totalRefunded', 'netAmount'))->setPaper('a4');
+        $pdf = Pdf::loadView('customer_payment_history_pdf', compact('customer', 'history', 'totalDebits', 'totalCredits', 'currentBalance'))->setPaper('a4');
         return $pdf->stream("payment_history_" . str_replace(' ', '_', strtolower($customer->name)) . ".pdf");
+    }
+
+    private function getCustomerLedgerHistory($customerId, $userId)
+    {
+        $sales = Sale::where('customer_id', $customerId)
+            ->whereHas('customer', fn($q) => $q->where('user_id', $userId))
+            ->get();
+
+        $payments = SalePayment::where('customer_id', $customerId)
+            ->whereNotIn('payment_method', ['Wallet', 'Advance Deduction'])
+            ->get();
+
+        $returns = SaleReturn::whereHas('sale', fn($q) => $q->where('customer_id', $customerId))
+            ->where('user_id', $userId)
+            ->get();
+
+        $transactions = collect();
+
+        foreach ($sales as $sale) {
+            $transactions->push([
+                'date' => $sale->sale_date ?? $sale->created_at->toDateString(),
+                'created_at' => $sale->created_at ? $sale->created_at->toDateTimeString() : null,
+                'particulars' => "Invoice #" . $sale->id,
+                'source' => 'Sale',
+                'debit' => (float)$sale->grand_total,
+                'credit' => 0.0,
+                'type' => 'Sale',
+                'ref_id' => $sale->id,
+                'payment_method' => 'Invoice',
+            ]);
+        }
+
+        foreach ($payments as $payment) {
+            $particulars = "Payment received" . ($payment->note ? " - " . $payment->note : "");
+            $transactions->push([
+                'date' => $payment->payment_date ?? $payment->created_at->toDateString(),
+                'created_at' => $payment->created_at ? $payment->created_at->toDateTimeString() : null,
+                'particulars' => $particulars,
+                'source' => $payment->sale_id ? 'Due Clearance' : 'Customer Payment',
+                'debit' => 0.0,
+                'credit' => (float)$payment->amount,
+                'type' => 'Payment',
+                'ref_id' => $payment->id,
+                'payment_method' => $payment->payment_method,
+            ]);
+        }
+
+        foreach ($returns as $return) {
+            $totalRefund = (float)$return->refund_amount + (float)$return->gst_refund_amount;
+            $transactions->push([
+                'date' => $return->return_date ?? $return->created_at->toDateString(),
+                'created_at' => $return->created_at ? $return->created_at->toDateTimeString() : null,
+                'particulars' => "Sales Return #" . ($return->return_no ?? $return->id),
+                'source' => 'Return',
+                'debit' => 0.0,
+                'credit' => $totalRefund,
+                'type' => 'Return',
+                'ref_id' => $return->id,
+                'payment_method' => $return->refund_method,
+            ]);
+        }
+
+        // Sort chronologically (oldest first)
+        $sortedArray = $transactions->sort(function ($a, $b) {
+            $dateCompare = strcmp($a['date'], $b['date']);
+            if ($dateCompare !== 0) {
+                return $dateCompare;
+            }
+            return strcmp($a['created_at'], $b['created_at']);
+        })->values()->all();
+
+        // Calculate running balance
+        $runningBalance = 0.0;
+        foreach ($sortedArray as &$tx) {
+            $runningBalance += ($tx['debit'] - $tx['credit']);
+            $tx['running_balance'] = $runningBalance;
+        }
+        unset($tx);
+
+        // Sort newest first for table presentation
+        return array_reverse($sortedArray);
     }
 
     public function create(){
