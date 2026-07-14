@@ -15,15 +15,7 @@ class SuppliersController extends Controller
         $userId = Auth::id();
 
         $suppliers = Supplier::where('user_id', $userId)
-            ->with(['purchases' => function ($q) {
-                if (session('private_ledger_unlocked') !== true) {
-                    $q->where('accepted', 1);
-                }
-            }, 'purchasePayments' => function ($q) {
-                if (session('private_ledger_unlocked') !== true) {
-                    $q->where('accepted', 1);
-                }
-            }, 'purchases.purchaseReturns'])
+            ->with(['purchases', 'purchasePayments', 'purchases.purchaseReturns'])
             ->get();
 
         $suppliers = $suppliers->map(function ($supplier) {
@@ -32,9 +24,6 @@ class SuppliersController extends Controller
 
             foreach ($supplier->purchases as $purchase) {
                 $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $purchase->id);
-                if (session('private_ledger_unlocked') !== true) {
-                    $paymentsSum->where('accepted', 1);
-                }
                 $actualPaid = $paymentsSum->sum('amount');
 
                 // Sum of due_deduction for returns on this purchase

@@ -16,15 +16,7 @@ class CustomersController extends Controller
         $userId = Auth::id();
 
         $customers = Customer::where('user_id', $userId)
-            ->with(['sales' => function ($q) {
-                if (session('private_ledger_unlocked') !== true) {
-                    $q->where('accepted', 1);
-                }
-            }, 'payments' => function ($q) {
-                if (session('private_ledger_unlocked') !== true) {
-                    $q->where('accepted', 1);
-                }
-            }, 'sales.saleReturns'])
+            ->with(['sales', 'payments', 'sales.saleReturns'])
             ->get();
 
         $customers = $customers->map(function ($customer) {
@@ -33,9 +25,6 @@ class CustomersController extends Controller
 
             foreach ($customer->sales as $sale) {
                 $paymentsSum = \App\Models\SalePayment::where('sale_id', $sale->id);
-                if (session('private_ledger_unlocked') !== true) {
-                    $paymentsSum->where('accepted', 1);
-                }
                 $actualPaid = $paymentsSum->sum('amount');
 
                 $dueDeductionsSum = (float)$sale->saleReturnItems->sum('due_deduction');
@@ -133,7 +122,7 @@ class CustomersController extends Controller
     public function downloadInvoice($id){
 
         $customer = Customer::where('user_id', Auth::id())
-            ->with(['sales' => fn($q) => $q->where('accepted', 1)->with('saleItems.product')])
+            ->with(['sales' => fn($q) => $q->with('saleItems.product')])
             ->find($id);
 
         if (!$customer) {

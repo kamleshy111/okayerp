@@ -25,7 +25,6 @@ class GstReportController extends Controller
 
         // 1. Fetch Sales (Output GST)
         $salesQuery = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-            ->where('accepted', 1)
             ->with(['saleItems.product', 'customer']);
 
         if ($startDate) {
@@ -39,9 +38,6 @@ class GstReportController extends Controller
 
         // 1b. Fetch Sales Returns
         $saleReturnsQuery = SaleReturn::where('user_id', $userId)
-            ->whereHas('sale', function($q) {
-                $q->where('accepted', 1);
-            })
             ->with(['sale.saleItems', 'sale.customer', 'items']);
 
         if ($startDate) {
@@ -55,7 +51,6 @@ class GstReportController extends Controller
 
         // 2. Fetch Purchases (Input GST)
         $purchasesQuery = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
-            ->where('accepted', 1)
             ->with(['items.product', 'supplier']);
 
         if ($startDate) {
@@ -69,9 +64,6 @@ class GstReportController extends Controller
 
         // 2b. Fetch Purchase Returns
         $purchaseReturnsQuery = PurchaseReturn::where('user_id', $userId)
-            ->whereHas('purchase', function($q) {
-                $q->where('accepted', 1);
-            })
             ->with(['purchase.items', 'purchase.supplier', 'items']);
 
         if ($startDate) {

@@ -24,7 +24,7 @@ class AccountingService
             [
                 'user_id' => $this->userId,
                 'name' => $name,
-                'accepted' => $accepted,
+                'accepted' => 1,
             ],
             [
                 'type' => $type,
@@ -36,16 +36,16 @@ class AccountingService
     public function getDefaultAccounts($accepted)
     {
         return [
-            'Cash' => $this->getAccount('Cash', 'Asset', '1000', $accepted),
-            'AR' => $this->getAccount('Accounts Receivable', 'Asset', '1200', $accepted),
-            'Inventory' => $this->getAccount('Inventory Asset', 'Asset', '1500', $accepted),
-            'AP' => $this->getAccount('Accounts Payable', 'Liability', '2000', $accepted),
-            'GST_Liability' => $this->getAccount('GST Output (Liability)', 'Liability', '2200', $accepted),
-            'GST_Receivable' => $this->getAccount('GST Input (Asset)', 'Asset', '1300', $accepted),
-            'Sales' => $this->getAccount('Sales Revenue', 'Revenue', '4000', $accepted),
-            'Purchases' => $this->getAccount('Purchase Expenses', 'Expense', '5000', $accepted),
-            'OperatingExpenses' => $this->getAccount('Operating Expenses', 'Expense', '6000', $accepted),
-            'OtherIncome' => $this->getAccount('Other Income', 'Revenue', '4500', $accepted),
+            'Cash' => $this->getAccount('Cash', 'Asset', '1000', 1),
+            'AR' => $this->getAccount('Accounts Receivable', 'Asset', '1200', 1),
+            'Inventory' => $this->getAccount('Inventory Asset', 'Asset', '1500', 1),
+            'AP' => $this->getAccount('Accounts Payable', 'Liability', '2000', 1),
+            'GST_Liability' => $this->getAccount('GST Output (Liability)', 'Liability', '2200', 1),
+            'GST_Receivable' => $this->getAccount('GST Input (Asset)', 'Asset', '1300', 1),
+            'Sales' => $this->getAccount('Sales Revenue', 'Revenue', '4000', 1),
+            'Purchases' => $this->getAccount('Purchase Expenses', 'Expense', '5000', 1),
+            'OperatingExpenses' => $this->getAccount('Operating Expenses', 'Expense', '6000', 1),
+            'OtherIncome' => $this->getAccount('Other Income', 'Revenue', '4500', 1),
         ];
     }
 
@@ -65,7 +65,7 @@ class AccountingService
             'amount' => $amount,
             'entry_date' => $date,
             'description' => $description,
-            'accepted' => $accepted,
+            'accepted' => 1,
         ]);
     }
 

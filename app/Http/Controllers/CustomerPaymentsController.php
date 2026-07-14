@@ -19,9 +19,6 @@ class CustomerPaymentsController extends Controller
         $paymentsQuery = SalePayment::join('customers', 'sale_payments.customer_id', '=', 'customers.id')
             ->where('customers.user_id', $userId)
             ->whereNotIn('sale_payments.payment_method', ['Wallet', 'Advance Deduction']);
-        if (session('private_ledger_unlocked') !== true) {
-            $paymentsQuery->where('sale_payments.accepted', 1);
-        }
 
         $paymentsRaw = $paymentsQuery->select(
             'sale_payments.id as transaction_id',
@@ -77,9 +74,6 @@ class CustomerPaymentsController extends Controller
         $returnsQuery = SaleReturn::join('sales', 'sale_returns.sale_id', '=', 'sales.id')
             ->join('customers', 'sales.customer_id', '=', 'customers.id')
             ->where('sale_returns.user_id', $userId);
-        if (session('private_ledger_unlocked') !== true) {
-            $returnsQuery->where('sales.accepted', 1);
-        }
 
         $returns = $returnsQuery->select(
             'sale_returns.id as transaction_id',
@@ -131,9 +125,6 @@ class CustomerPaymentsController extends Controller
         // Fetch payments for this customer
         $paymentsQuery = SalePayment::where('customer_id', $id)
             ->whereNotIn('payment_method', ['Wallet', 'Advance Deduction']);
-        if (session('private_ledger_unlocked') !== true) {
-            $paymentsQuery->where('accepted', 1);
-        }
         $paymentsRaw = $paymentsQuery->get();
         $saleIds = $paymentsRaw->pluck('sale_id')->filter()->unique()->toArray();
         $firstPayments = [];
@@ -167,11 +158,6 @@ class CustomerPaymentsController extends Controller
         $returnsQuery = SaleReturn::whereHas('sale', function ($q) use ($id) {
             $q->where('customer_id', $id);
         })->where('user_id', $userId);
-        if (session('private_ledger_unlocked') !== true) {
-            $returnsQuery->whereHas('sale', function ($q) {
-                $q->where('accepted', 1);
-            });
-        }
         $returns = $returnsQuery->get()->map(function ($item) {
             $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
             return [
@@ -198,9 +184,6 @@ class CustomerPaymentsController extends Controller
         // Fetch payments for this customer
         $paymentsQuery = SalePayment::where('customer_id', $id)
             ->whereNotIn('payment_method', ['Wallet', 'Advance Deduction']);
-        if (session('private_ledger_unlocked') !== true) {
-            $paymentsQuery->where('accepted', 1);
-        }
         $paymentsRaw = $paymentsQuery->get();
         $saleIds = $paymentsRaw->pluck('sale_id')->filter()->unique()->toArray();
         $firstPayments = [];
@@ -234,11 +217,6 @@ class CustomerPaymentsController extends Controller
         $returnsQuery = SaleReturn::whereHas('sale', function ($q) use ($id) {
             $q->where('customer_id', $id);
         })->where('user_id', $userId);
-        if (session('private_ledger_unlocked') !== true) {
-            $returnsQuery->whereHas('sale', function ($q) {
-                $q->where('accepted', 1);
-            });
-        }
         $returns = $returnsQuery->get()->map(function ($item) {
             $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
             return [
@@ -284,9 +262,6 @@ class CustomerPaymentsController extends Controller
 
         foreach ($customer->sales as $sale) {
             $paymentsSum = SalePayment::where('sale_id', $sale->id);
-            if (session('private_ledger_unlocked') !== true) {
-                $paymentsSum->where('accepted', 1);
-            }
             $actualPaid = $paymentsSum->sum('amount');
 
             $dueDeductionsSum = (float)\App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
@@ -364,7 +339,7 @@ class CustomerPaymentsController extends Controller
                 'payment_date' => $request->input('payment_date'),
                 'payment_method' => 'Wallet',
                 'note' => 'Due amount paid from advance balance' . ($request->input('note') ? ' - ' . $request->input('note') : ''),
-                'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
+                'accepted' => 1,
             ]);
 
             // 2. Negative payment to decrease the overall advance pool
@@ -375,7 +350,7 @@ class CustomerPaymentsController extends Controller
                 'payment_date' => $request->input('payment_date'),
                 'payment_method' => 'Advance Deduction',
                 'note' => 'Applied to Invoice #' . $sale->id,
-                'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
+                'accepted' => 1,
             ]);
 
             // Do not update the sale record in the database; it should remain exactly as it was when first created.
@@ -400,7 +375,7 @@ class CustomerPaymentsController extends Controller
                 'payment_date' => $request->input('payment_date'),
                 'payment_method' => $method,
                 'note' => $request->input('note'),
-                'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
+                'accepted' => 1,
             ]);
 
             // Do not update the sale record in the database; it should remain exactly as it was when first created.
@@ -427,9 +402,6 @@ class CustomerPaymentsController extends Controller
                 ->where('customers.user_id', $userId)
                 ->where('sale_payments.id', $id)
                 ->whereNotIn('sale_payments.payment_method', ['Wallet', 'Advance Deduction']);
-            if (session('private_ledger_unlocked') !== true) {
-                $paymentQuery->where('sale_payments.accepted', 1);
-            }
             $payment = $paymentQuery->select('sale_payments.*', 'customers.name as customer_name', 'customers.phone', 'customers.email', 'customers.address', 'customers.gst_number')->firstOrFail();
             $payment->is_return = false;
             $payment->sale_grand_total = null;
@@ -444,9 +416,6 @@ class CustomerPaymentsController extends Controller
                     // Sum payments for this sale up to this payment ID
                     $paidQuery = SalePayment::where('sale_id', $payment->sale_id)
                         ->where('id', '<=', $payment->id);
-                    if (session('private_ledger_unlocked') !== true) {
-                        $paidQuery->where('accepted', 1);
-                    }
                     $payment->sale_total_paid = (float)$paidQuery->sum('amount');
                     $payment->sale_remaining = $payment->sale_grand_total - $payment->sale_total_paid;
                 }
@@ -458,9 +427,6 @@ class CustomerPaymentsController extends Controller
                 $historyQuery = SalePayment::where('sale_id', $payment->sale_id)
                     ->where('id', '<=', $payment->id)
                     ->orderBy('id', 'asc');
-                if (session('private_ledger_unlocked') !== true) {
-                    $historyQuery->where('accepted', 1);
-                }
                 $payment->payment_history = $historyQuery->get()->map(function ($item) use ($firstPaymentId) {
                     $reason = ($item->id == $firstPaymentId)
                         ? "Initial Payment against Invoice #" . $item->sale_id
@@ -483,9 +449,6 @@ class CustomerPaymentsController extends Controller
                     ->whereNull('sale_id')
                     ->where('id', '<=', $payment->id)
                     ->orderBy('id', 'asc');
-                if (session('private_ledger_unlocked') !== true) {
-                    $historyQuery->where('accepted', 1);
-                }
                 $payment->payment_history = $historyQuery->get()->map(function ($item) {
                     return [
                         'id' => $item->id,
@@ -505,9 +468,6 @@ class CustomerPaymentsController extends Controller
                 ->join('customers', 'sales.customer_id', '=', 'customers.id')
                 ->where('sale_returns.user_id', $userId)
                 ->where('sale_returns.id', $id);
-            if (session('private_ledger_unlocked') !== true) {
-                $returnQuery->where('sales.accepted', 1);
-            }
             $payment = $returnQuery->select('sale_returns.*', 'customers.name as customer_name', 'customers.phone', 'customers.email', 'customers.address', 'customers.gst_number')->firstOrFail();
 
             $payment->amount = $payment->refund_amount + $payment->gst_refund_amount;

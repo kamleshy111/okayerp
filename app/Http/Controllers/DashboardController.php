@@ -139,7 +139,6 @@ class DashboardController extends Controller
                             ->join('customers', 'sales.customer_id', '=', 'customers.id')
                             ->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
                             ->where('customers.user_id', $userId)
-                            ->where('sales.accepted', 1)
                             ->sum('sale_items.quantity');
 
         $returnedSaleProducts = \DB::table('sale_returns')
@@ -154,7 +153,6 @@ class DashboardController extends Controller
                             ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
                             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
                             ->where('suppliers.user_id', $userId)
-                            ->where('purchases.accepted', 1)
                             ->whereMonth('purchase_items.created_at', $previousMonth->month)
                             ->whereYear('purchase_items.created_at', $previousMonth->year)
                             ->sum('purchase_items.quantity');
@@ -172,7 +170,6 @@ class DashboardController extends Controller
                             ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
                             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
                             ->where('suppliers.user_id', $userId)
-                            ->where('purchases.accepted', 1)
                             ->whereMonth('purchase_items.created_at', $now->month)
                             ->whereYear('purchase_items.created_at', $now->year)
                             ->sum('purchase_items.quantity');
@@ -198,7 +195,6 @@ class DashboardController extends Controller
                             ->join('customers', 'sales.customer_id', '=', 'customers.id')
                             ->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
                             ->where('customers.user_id', $userId)
-                            ->where('sales.accepted', 1)
                             ->whereMonth('sales.created_at', $previousMonth->month)
                             ->whereYear('sales.created_at', $previousMonth->year)
                             ->sum('sale_items.quantity');
@@ -216,7 +212,6 @@ class DashboardController extends Controller
                             ->join('customers', 'sales.customer_id', '=', 'customers.id')
                             ->join('sale_items', 'sale_items.sale_id', '=', 'sales.id')
                             ->where('customers.user_id', $userId)
-                            ->where('sales.accepted', 1)
                             ->whereMonth('sales.created_at', $now->month)
                             ->whereYear('sales.created_at', $now->year)
                             ->sum('sale_items.quantity');
@@ -280,7 +275,6 @@ class DashboardController extends Controller
             $monthName = $date->format('M Y');
 
             $salesSum = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
-                ->where('accepted', 1)
                 ->whereMonth('created_at', $month)
                 ->whereYear('created_at', $year)
                 ->sum('grand_total');
@@ -294,7 +288,6 @@ class DashboardController extends Controller
             $netSales = max(0, $salesSum - $salesReturnSum);
 
             $purchasesSum = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
-                ->where('accepted', 1)
                 ->whereMonth('created_at', $month)
                 ->whereYear('created_at', $year)
                 ->sum('grand_total');
@@ -332,15 +325,7 @@ class DashboardController extends Controller
         $privateLedgerUnlocked = session('private_ledger_unlocked') === true;
 
         $customers = Customer::where('user_id', $userId)
-            ->with(['sales' => function ($q) use ($privateLedgerUnlocked) {
-                if (!$privateLedgerUnlocked) {
-                    $q->where('accepted', 1);
-                }
-            }, 'payments' => function ($q) use ($privateLedgerUnlocked) {
-                if (!$privateLedgerUnlocked) {
-                    $q->where('accepted', 1);
-                }
-            }, 'sales.saleReturns'])
+            ->with(['sales', 'payments', 'sales.saleReturns'])
             ->get();
         
         $totalCustomerDue = $customers->sum(function ($customer) use ($privateLedgerUnlocked) {
@@ -348,9 +333,6 @@ class DashboardController extends Controller
             $advanceAmount = 0;
             foreach ($customer->sales as $sale) {
                 $paymentsSum = \App\Models\SalePayment::where('sale_id', $sale->id);
-                if (!$privateLedgerUnlocked) {
-                    $paymentsSum->where('accepted', 1);
-                }
                 $actualPaid = $paymentsSum->sum('amount');
 
                 $dueDeductionsSum = (float)$sale->saleReturnItems->sum('due_deduction');
@@ -378,15 +360,7 @@ class DashboardController extends Controller
         });
 
         $suppliers = Supplier::where('user_id', $userId)
-            ->with(['purchases' => function ($q) use ($privateLedgerUnlocked) {
-                if (!$privateLedgerUnlocked) {
-                    $q->where('accepted', 1);
-                }
-            }, 'purchasePayments' => function ($q) use ($privateLedgerUnlocked) {
-                if (!$privateLedgerUnlocked) {
-                    $q->where('accepted', 1);
-                }
-            }, 'purchases.purchaseReturns'])
+            ->with(['purchases', 'purchasePayments', 'purchases.purchaseReturns'])
             ->get();
 
         $totalSupplierDue = $suppliers->sum(function ($supplier) use ($privateLedgerUnlocked) {
@@ -394,9 +368,6 @@ class DashboardController extends Controller
             $advanceAmount = 0;
             foreach ($supplier->purchases as $purchase) {
                 $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $purchase->id);
-                if (!$privateLedgerUnlocked) {
-                    $paymentsSum->where('accepted', 1);
-                }
                 $actualPaid = $paymentsSum->sum('amount');
 
                 // Sum of due_deduction for returns on this purchase

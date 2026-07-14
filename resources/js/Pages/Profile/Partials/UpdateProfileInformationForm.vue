@@ -228,26 +228,6 @@ const handleFileUpload = (event) => {
                 </div>
             </div>
 
-            <div v-if="user.role === 'store'">
-                <InputLabel for="ledger_pin" value="Private Ledger PIN (4-digit numeric)" />
-
-                <TextInput
-                    id="ledger_pin"
-                    type="password"
-                    pattern="[0-9]*"
-                    inputmode="numeric"
-                    maxlength="4"
-                    class="mt-1 block w-full"
-                    v-model="form.ledger_pin"
-                    autocomplete="new-password"
-                    placeholder="Enter 4-digit PIN to secure private ledger"
-                />
-
-                <InputError class="mt-2" :message="form.errors.ledger_pin" />
-                <p class="mt-1 text-xs text-gray-500">
-                    This PIN is used to secure the Private Ledger. Leave blank if you do not want to change it.
-                </p>
-            </div>
 
             <!-- Bank Details -->
             <div v-if="user.role === 'store'" class="border-t border-gray-200 pt-6">

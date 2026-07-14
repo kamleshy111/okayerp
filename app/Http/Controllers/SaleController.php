@@ -31,12 +31,6 @@ class SaleController extends Controller
             $query->whereHas('customer', function ($q) use ($userId) {
                 $q->where('user_id', $userId);
             });
-            if (session('private_ledger_unlocked') !== true) {
-                $query->where(function($q) {
-                    $q->where('accepted', 1)
-                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
-                });
-            }
         }
         $sales = $query->with(['customer', 'saleReturns', 'saleReturnItems'])
         ->get()
@@ -138,7 +132,7 @@ class SaleController extends Controller
                 'grand_total' => $request->input('grand_total') ?? 0.00,
                 'total_amount' => $request->input('total_amount') ?? 0.00,
                 'gst_amount' => $request->input('GstAmount') ?? 0.00,
-                'accepted' => $request->input('accepted') ?? 0,
+                'accepted' => 1,
                 'paid'  => $request->input('paid') ?? 0.00,
                 'payment_method' => $request->input('payment_method') ?? "",
                 'payment_status' => $request->input('payment_status') ?? "Unpaid",
@@ -245,12 +239,6 @@ class SaleController extends Controller
         $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId))
                     ->where('customer_id', $id)
                     ->with('saleReturns');
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where(function($q) {
-                $q->where('accepted', 1)
-                  ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
-            });
-        }
         $sale = $query->get();
 
         $dueAmount = 0;
@@ -258,9 +246,6 @@ class SaleController extends Controller
 
         foreach ($sale as $s) {
             $paymentsSum = SalePayment::where('sale_id', $s->id);
-            if (session('private_ledger_unlocked') !== true) {
-                $paymentsSum->where('accepted', 1);
-            }
             $actualPaid = $paymentsSum->sum('amount');
             $saleBalance = $actualPaid - $s->grand_total;
             if ($saleBalance < 0) {
@@ -273,9 +258,6 @@ class SaleController extends Controller
         $paymentQuery = SalePayment::whereHas('customer', fn($q) => $q->where('user_id', $userId))
                                       ->where('customer_id', $id)
                                       ->whereNull('sale_id');
-        if (session('private_ledger_unlocked') !== true) {
-            $paymentQuery->where('accepted', 1);
-        }
         $totalDirectPaid = $paymentQuery->sum('amount');
 
         $advanceAmount += $totalDirectPaid;
@@ -295,12 +277,6 @@ class SaleController extends Controller
         $query = Sale::query()->with(['saleItems.product', 'customer']);
         if (Auth::user()->role !== 'admin') {
             $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
-            if (session('private_ledger_unlocked') !== true) {
-                $query->where(function($q) {
-                    $q->where('accepted', 1)
-                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
-                });
-            }
         }
         $sales = $query->find($id);
 
@@ -326,13 +302,10 @@ class SaleController extends Controller
             ];
         });
 
-        $allocatedPayment = 0.0;
         $totalPayments = \App\Models\SalePayment::where('customer_id', $sales->customer_id)
-            ->where('accepted', $sales->accepted)
             ->whereNull('sale_id')
             ->sum('amount');
         $allSales = Sale::where('customer_id', $sales->customer_id)
-            ->where('accepted', $sales->accepted)
             ->orderBy('created_at', 'asc')
             ->get();
 
@@ -411,12 +384,6 @@ class SaleController extends Controller
         $query = Sale::query();
         if (Auth::user()->role !== 'admin') {
             $query->whereHas('customer', fn($q) => $q->where('user_id', $userId));
-            if (session('private_ledger_unlocked') !== true) {
-                $query->where(function($q) {
-                    $q->where('accepted', 1)
-                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
-                });
-            }
         }
         $sale = $query->where('id', $id)->first();
 
@@ -449,9 +416,6 @@ class SaleController extends Controller
             DB::transaction(function () use ($request, $id, $userId) {
 
                 $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId));
-                if (session('private_ledger_unlocked') !== true) {
-                    $query->where('accepted', 1);
-                }
                 $sale = $query->where('id', $id)->first();
 
                 // Update purchase data
@@ -460,7 +424,7 @@ class SaleController extends Controller
                     'referral_user_id' => $request->input('referral_user_id') ?: null,
                     'sale_date' => $request->input('sale_date') ?: now()->toDateString(),
                     'gst_amount' => $request->input('GstAmount'),
-                    'accepted' => $request->input('accepted') ?? 0,
+                    'accepted' => 1,
                     'grand_total' => $request->input('grand_total'),
                     'total_amount' => $request->input('total_amount'),
                     'paid'  => $request->input('paid') ?? 0.00,
@@ -592,12 +556,6 @@ class SaleController extends Controller
         $query = Sale::query()->with(['saleItems.product', 'customer.user']);
         if (Auth::user()->role !== 'admin') {
             $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
-            if (session('private_ledger_unlocked') !== true) {
-                $query->where(function($q) {
-                    $q->where('accepted', 1)
-                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
-                });
-            }
         }
         $sale = $query->find($id);
 
@@ -610,11 +568,9 @@ class SaleController extends Controller
         $allocatedPayment = 0.0;
         if ($sale->customer) {
             $totalPayments = \App\Models\SalePayment::where('customer_id', $sale->customer_id)
-                ->where('accepted', $sale->accepted)
                 ->whereNull('sale_id')
                 ->sum('amount');
             $allSales = Sale::where('customer_id', $sale->customer_id)
-                ->where('accepted', $sale->accepted)
                 ->orderBy('created_at', 'asc')
                 ->get();
 
@@ -664,12 +620,6 @@ class SaleController extends Controller
         $query = Sale::query();
         if (Auth::user()->role !== 'admin') {
             $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
-            if (session('private_ledger_unlocked') !== true) {
-                $query->where(function($q) {
-                    $q->where('accepted', 1)
-                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
-                });
-            }
         }
         $sale = $query->find($id);
 
@@ -739,12 +689,6 @@ class SaleController extends Controller
         $query = Sale::query()->with(['saleItems.product', 'customer.user']);
         if (Auth::user()->role !== 'admin') {
             $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
-            if (session('private_ledger_unlocked') !== true) {
-                $query->where(function($q) {
-                    $q->where('accepted', 1)
-                      ->orWhere(fn($q2) => $q2->whereNotNull('currency')->where('currency', '!=', 'INR'));
-                });
-            }
         }
         $sale = $query->find($id);
 

@@ -19,9 +19,6 @@ class SupplierPaymentController extends Controller
         // Query payments with direct database joins to avoid heavy model instantiation
         $paymentsQuery = PurchasePayment::join('suppliers', 'purchase_payments.supplier_id', '=', 'suppliers.id')
             ->where('suppliers.user_id', $userId);
-        if (session('private_ledger_unlocked') !== true) {
-            $paymentsQuery->where('purchase_payments.accepted', 1);
-        }
 
         $payments = $paymentsQuery->select(
             'suppliers.id as supplier_id',
@@ -51,9 +48,6 @@ class SupplierPaymentController extends Controller
         $returnsQuery = PurchaseReturn::join('purchases', 'purchase_returns.purchase_id', '=', 'purchases.id')
             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
             ->where('purchase_returns.user_id', $userId);
-        if (session('private_ledger_unlocked') !== true) {
-            $returnsQuery->where('purchases.accepted', 1);
-        }
 
         $returns = $returnsQuery->select(
             'suppliers.id as supplier_id',
@@ -99,9 +93,6 @@ class SupplierPaymentController extends Controller
 
         // Fetch payments for this supplier
         $paymentsQuery = PurchasePayment::where('supplier_id', $id);
-        if (session('private_ledger_unlocked') !== true) {
-            $paymentsQuery->where('accepted', 1);
-        }
         $payments = $paymentsQuery->get()->map(function ($item) {
             return [
                 'amount' => (float)$item->amount,
@@ -111,20 +102,12 @@ class SupplierPaymentController extends Controller
             ];
         });
 
-        // Fetch returns for this supplier
         $returnsQuery = PurchaseReturn::where(function ($q) use ($id) {
             $q->where('supplier_id', $id)
               ->orWhereHas('purchase', function ($p) use ($id) {
                   $p->where('supplier_id', $id);
               });
         })->where('user_id', $userId);
-        if (session('private_ledger_unlocked') !== true) {
-            $returnsQuery->where(function ($q) {
-                $q->whereNull('purchase_id')->orWhereHas('purchase', function ($pQ) {
-                    $pQ->where('accepted', 1);
-                });
-            });
-        }
         $returns = $returnsQuery->get()->map(function ($item) {
             $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
             return [
@@ -150,9 +133,6 @@ class SupplierPaymentController extends Controller
 
         // Fetch payments for this supplier
         $paymentsQuery = PurchasePayment::where('supplier_id', $id);
-        if (session('private_ledger_unlocked') !== true) {
-            $paymentsQuery->where('accepted', 1);
-        }
         $payments = $paymentsQuery->get()->map(function ($item) {
             return [
                 'amount' => (float)$item->amount,
@@ -162,20 +142,12 @@ class SupplierPaymentController extends Controller
             ];
         });
 
-        // Fetch returns for this supplier
         $returnsQuery = PurchaseReturn::where(function ($q) use ($id) {
             $q->where('supplier_id', $id)
               ->orWhereHas('purchase', function ($p) use ($id) {
                   $p->where('supplier_id', $id);
               });
         })->where('user_id', $userId);
-        if (session('private_ledger_unlocked') !== true) {
-            $returnsQuery->where(function ($q) {
-                $q->whereNull('purchase_id')->orWhereHas('purchase', function ($pQ) {
-                    $pQ->where('accepted', 1);
-                });
-            });
-        }
         $returns = $returnsQuery->get()->map(function ($item) {
             $totalRefund = (float)$item->refund_amount + (float)$item->gst_refund_amount;
             return [
@@ -245,7 +217,7 @@ class SupplierPaymentController extends Controller
             'payment_date' => $request->input('payment_date') ?? 0,
             'payment_method' => $request->input('payment_method') ?? 0,
             'note' => $request->input('note'),
-            'accepted' => session('private_ledger_unlocked') === true ? 0 : 1,
+            'accepted' => 1,
         ]);
 
         $accountingService = new \App\Services\AccountingService($userId);

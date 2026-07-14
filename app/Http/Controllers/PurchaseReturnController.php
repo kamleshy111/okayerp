@@ -113,9 +113,6 @@ class PurchaseReturnController extends Controller
             $supplierPurchases = Purchase::where('supplier_id', $purchase->supplier->id)->get();
             foreach ($supplierPurchases as $p) {
                 $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $p->id);
-                if (session('private_ledger_unlocked') !== true) {
-                    $paymentsSum->where('accepted', 1);
-                }
                 $actualPaid = $paymentsSum->sum('amount');
 
                 $dueDeductionsSum = (float)\App\Models\PurchaseReturnItem::where('purchase_id', $p->id)->sum('due_deduction');
@@ -137,9 +134,6 @@ class PurchaseReturnController extends Controller
 
             $totalDirectPaid = \App\Models\PurchasePayment::where('supplier_id', $purchase->supplier->id)
                 ->whereNull('purchase_id');
-            if (session('private_ledger_unlocked') !== true) {
-                $totalDirectPaid->where('accepted', 1);
-            }
             $advanceAmount += $totalDirectPaid->sum('amount');
 
             $supplierTotalDue = max(0, $dueAmount - $advanceAmount);
@@ -306,9 +300,6 @@ class PurchaseReturnController extends Controller
                 }
 
                 $paymentsSum = \App\Models\PurchasePayment::where('purchase_id', $sp->id);
-                if (session('private_ledger_unlocked') !== true) {
-                    $paymentsSum->where('accepted', 1);
-                }
                 $actualPaid = $paymentsSum->sum('amount');
 
                 $prevDeductions = \App\Models\PurchaseReturnItem::where('purchase_id', $sp->id)->sum('due_deduction');

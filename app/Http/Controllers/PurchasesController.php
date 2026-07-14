@@ -26,7 +26,6 @@ class PurchasesController extends Controller
         $purchases = Purchase::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
-        ->where('accepted', 1)
         ->with(['supplier', 'purchaseReturns'])
         ->get()
         ->map(function ($item) {
@@ -196,18 +195,12 @@ class PurchasesController extends Controller
     {
 
         $query = Purchase::where('supplier_id', $id);
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
-        }
         $purchases = $query->get();
 
         $totalPurchaseAmount = $purchases->sum('grand_total');
         $totalPurchasePaid = $purchases->sum('paid');
 
         $paymentQuery = PurchasePayment::where('supplier_id', $id)->whereNull('purchase_id');
-        if (session('private_ledger_unlocked') !== true) {
-            $paymentQuery->where('accepted', 1);
-        }
         $totalDirectPaid = $paymentQuery->sum('amount');
 
         $totalReceived = $totalPurchasePaid + $totalDirectPaid;
@@ -227,9 +220,6 @@ class PurchasesController extends Controller
         $userId = Auth::id();
         $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
                         ->with(['items.product', 'supplier']);
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
-        }
         $purchases = $query->find($id);
 
         if (!$purchases) {
@@ -326,9 +316,6 @@ class PurchasesController extends Controller
 
         $userId = Auth::id();
         $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId));
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
-        }
         $purchase = $query->where('id', $id)->first();
 
         if (!$purchase) {
@@ -350,9 +337,6 @@ class PurchasesController extends Controller
             DB::transaction(function () use ($request, $id, $userId) {
 
                 $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId));
-                if (session('private_ledger_unlocked') !== true) {
-                    $query->where('accepted', 1);
-                }
                 $purchases = $query->where('id', $id)->first();
 
                 $supplier = Supplier::find($request->input('supplier_id'));
@@ -365,7 +349,7 @@ class PurchasesController extends Controller
                     'purchase_date' => $request->input('purchase_date'),
                     'transport_amount' => $request->input('transport'),
                     'gst_amount' => $request->input('GstAmount'),
-                    'accepted' => $request->input('accepted') ?? 0,
+                    'accepted' => 1,
                     'grand_total' => $request->input('grand_total'),
                     'total_amount' => $request->input('total_amount'),
                     'paid'  => $request->input('paid') ?? 0.00,
@@ -491,9 +475,6 @@ class PurchasesController extends Controller
     public function destroy($id){
 
         $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', Auth::id()));
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
-        }
         $purchase = $query->find($id);
 
         if (!$purchase) {
@@ -563,9 +544,6 @@ class PurchasesController extends Controller
         $userId = Auth::id();
         $query = Purchase::whereHas('supplier', fn($q) => $q->where('user_id', $userId))
                         ->with(['items.product', 'supplier.user']);
-        if (session('private_ledger_unlocked') !== true) {
-            $query->where('accepted', 1);
-        }
         $purchase = $query->find($id);
 
         if (!$purchase) {
@@ -575,10 +553,8 @@ class PurchasesController extends Controller
         $allocatedPayment = 0.0;
         if ($purchase->supplier) {
             $totalPayments = \App\Models\PurchasePayment::where('supplier_id', $purchase->supplier_id)
-                ->where('accepted', $purchase->accepted)
                 ->sum('amount');
             $allPurchases = Purchase::where('supplier_id', $purchase->supplier_id)
-                ->where('accepted', $purchase->accepted)
                 ->orderBy('purchase_date', 'asc')
                 ->orderBy('created_at', 'asc')
                 ->get();

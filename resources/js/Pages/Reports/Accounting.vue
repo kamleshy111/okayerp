@@ -99,11 +99,6 @@ const closeFinancialYear = async () => {
   }
 };
 
-// PIN screen states
-const pin      = ref('');
-const pinError = ref('');
-const pinLoading = ref(false);
-
 // Format currency in INR
 const formatCurrency = (val) =>
   new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', minimumFractionDigits: 2 }).format(val || 0);
@@ -111,20 +106,9 @@ const formatCurrency = (val) =>
 const formatNum = (val) =>
   new Intl.NumberFormat('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(val || 0);
 
-// Switch ledger type
-const handleLedgerTypeChange = (type) => {
-  selectedLedgerType.value = type;
-  router.get(route('reports.ledger'), {
-    ledger_type: type,
-    start_date: filterStartDate.value,
-    end_date:   filterEndDate.value,
-  });
-};
-
 // Apply / clear date filters
 const applyFilters = () => {
   router.get(route('reports.ledger'), {
-    ledger_type: selectedLedgerType.value,
     start_date:  filterStartDate.value,
     end_date:    filterEndDate.value,
   });
@@ -133,37 +117,7 @@ const applyFilters = () => {
 const clearFilters = () => {
   filterStartDate.value = '';
   filterEndDate.value   = '';
-  router.get(route('reports.ledger'), { ledger_type: selectedLedgerType.value });
-};
-
-// PIN entry logic
-const appendNumber = (num) => {
-  if (pin.value.length < 4) {
-    pin.value += String(num);
-    if (pin.value.length === 4) submitPin();
-  }
-};
-const deleteLast = () => { pin.value = pin.value.slice(0, -1); };
-const clearPin   = () => { pin.value = ''; };
-
-const submitPin = async () => {
-  if (pin.value.length !== 4) return;
-  pinError.value   = '';
-  pinLoading.value = true;
-  try {
-    await axios.post(route('private.unlock'), { pin: pin.value });
-    pin.value = '';
-    router.get(route('reports.ledger'), {
-      ledger_type: 'private',
-      start_date:  filterStartDate.value,
-      end_date:    filterEndDate.value,
-    });
-  } catch (err) {
-    pin.value = '';
-    pinError.value = err?.response?.data?.errors?.pin?.[0] ?? 'Incorrect PIN. Please try again.';
-  } finally {
-    pinLoading.value = false;
-  }
+  router.get(route('reports.ledger'));
 };
 
 // Balance Sheet computed
@@ -208,25 +162,14 @@ const flashSuccess = computed(() => page.props?.flash?.success || null);
           <div>
             <h1 class="header-title">
               Accounting Ledger
-              <span v-if="ledgerType === 'private'" class="private-badge">🔒 Private Mode</span>
             </h1>
             <p class="header-sub">Trial Balance · Profit & Loss · Balance Sheet</p>
           </div>
         </div>
 
-        <!-- Ledger Switcher + Print -->
+        <!-- Ledger Actions -->
         <div class="header-actions">
-          <div class="ledger-switcher">
-            <button
-              @click="handleLedgerTypeChange('standard')"
-              :class="['switcher-btn', ledgerType === 'standard' ? 'switcher-active' : '']"
-            >📊 Public</button>
-            <button
-              @click="handleLedgerTypeChange('private')"
-              :class="['switcher-btn switcher-private', ledgerType === 'private' ? 'switcher-private-active' : '']"
-            >🔒 Private</button>
-          </div>
-          <button v-if="unlocked || ledgerType === 'standard'" @click="printReport" class="btn-print no-print">
+          <button @click="printReport" class="btn-print no-print">
             🖨️ Print
           </button>
           <button @click="resyncLedger" :disabled="resyncing" class="btn-resync no-print">
@@ -241,7 +184,7 @@ const flashSuccess = computed(() => page.props?.flash?.success || null);
       </div>
 
       <!-- ══════════════ FILTERS ══════════════ -->
-      <div v-if="ledgerType === 'standard' || unlocked" class="filter-bar no-print">
+      <div class="filter-bar no-print">
         <div class="filter-group">
           <label class="filter-label">Financial Year</label>
           <select v-model="selectedFY" @change="handleFYChange" class="filter-input" style="background: white;">
@@ -285,51 +228,8 @@ const flashSuccess = computed(() => page.props?.flash?.success || null);
         </div>
       </div>
 
-      <!-- ══════════════ PIN SCREEN ══════════════ -->
-      <div v-if="ledgerType === 'private' && !unlocked" class="pin-screen">
-        <div class="pin-card">
-          <div class="pin-icon-wrap">
-            <span class="pin-lock-icon">🔐</span>
-          </div>
-          <h2 class="pin-title">Private Ledger Locked</h2>
-
-          <div v-if="!hasPin" class="pin-no-setup">
-            <p class="pin-desc">You haven't set a Private Ledger PIN yet.</p>
-            <a :href="route('profile.edit')" class="btn-primary">⚙️ Configure PIN in Profile</a>
-          </div>
-
-          <div v-else class="pin-entry">
-            <p class="pin-desc">Enter your 4-digit security PIN to access private accounting data.</p>
-
-            <!-- PIN Dots -->
-            <div class="pin-dots">
-              <div v-for="i in 4" :key="i"
-                class="pin-dot"
-                :class="pin.length >= i ? 'pin-dot-filled' : ''"
-              ></div>
-            </div>
-
-            <div v-if="pinError" class="pin-error">⚠️ {{ pinError }}</div>
-
-            <!-- Numpad -->
-            <div class="numpad">
-              <button v-for="num in [1,2,3,4,5,6,7,8,9]" :key="num"
-                @click="appendNumber(num)"
-                class="numpad-key"
-                :disabled="pinLoading"
-              >{{ num }}</button>
-              <button @click="clearPin" class="numpad-aux" :disabled="pinLoading">CLR</button>
-              <button @click="appendNumber(0)" class="numpad-key" :disabled="pinLoading">0</button>
-              <button @click="deleteLast" class="numpad-aux" :disabled="pinLoading">⌫</button>
-            </div>
-
-            <div v-if="pinLoading" class="pin-loading">Verifying...</div>
-          </div>
-        </div>
-      </div>
-
       <!-- ══════════════ REPORT CONTENT ══════════════ -->
-      <div v-else class="report-area">
+      <div class="report-area">
 
         <!-- KPI Summary Cards -->
         <div class="kpi-grid no-print">

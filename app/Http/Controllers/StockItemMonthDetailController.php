@@ -45,7 +45,6 @@ class StockItemMonthDetailController extends Controller
             ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
             ->where('suppliers.user_id', $userId)
-            ->where('purchases.accepted', 1)
             ->where('purchase_items.product_id', $productId)
             ->whereBetween('purchases.created_at', [$fyStart, $monthStart->copy()->subSecond()])
             ->sum('purchase_items.quantity');
@@ -54,7 +53,6 @@ class StockItemMonthDetailController extends Controller
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('customers', 'sales.customer_id', '=', 'customers.id')
             ->where('customers.user_id', $userId)
-            ->where('sales.accepted', 1)
             ->where('sale_items.product_id', $productId)
             ->whereBetween('sales.created_at', [$fyStart, $monthStart->copy()->subSecond()])
             ->sum('sale_items.quantity');
@@ -63,7 +61,6 @@ class StockItemMonthDetailController extends Controller
             ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
             ->where('suppliers.user_id', $userId)
-            ->where('purchases.accepted', 1)
             ->where('purchase_items.product_id', $productId)
             ->sum('purchase_items.quantity');
 
@@ -71,7 +68,6 @@ class StockItemMonthDetailController extends Controller
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('customers', 'sales.customer_id', '=', 'customers.id')
             ->where('customers.user_id', $userId)
-            ->where('sales.accepted', 1)
             ->where('sale_items.product_id', $productId)
             ->sum('sale_items.quantity');
 
@@ -87,7 +83,6 @@ class StockItemMonthDetailController extends Controller
             ->join('purchases', 'purchase_items.purchase_id', '=', 'purchases.id')
             ->join('suppliers', 'purchases.supplier_id', '=', 'suppliers.id')
             ->where('suppliers.user_id', $userId)
-            ->where('purchases.accepted', 1)
             ->where('purchase_items.product_id', $productId)
             ->whereBetween('purchases.created_at', [$monthStart, $monthEnd])
             ->select(
@@ -106,7 +101,6 @@ class StockItemMonthDetailController extends Controller
             ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
             ->join('customers', 'sales.customer_id', '=', 'customers.id')
             ->where('customers.user_id', $userId)
-            ->where('sales.accepted', 1)
             ->where('sale_items.product_id', $productId)
             ->whereBetween('sales.created_at', [$monthStart, $monthEnd])
             ->select(

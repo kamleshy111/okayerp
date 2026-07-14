@@ -25,52 +25,12 @@ class LedgerController extends Controller
         $user = Auth::user();
         $hasPin = !empty($user->ledger_pin);
         
-        // Default ledger type to standard (accepted = 1) unless specified
-        $ledgerType = $request->input('ledger_type', 'standard'); 
-        $accepted = ($ledgerType === 'private') ? 0 : 1;
-        
-        // Check if private ledger is unlocked if they requested private ledger
-        $isPrivateUnlocked = session('private_ledger_unlocked') === true;
-        
-        if ($accepted === 0 && !$isPrivateUnlocked) {
-            return Inertia::render('Reports/Accounting', [
-                'unlocked' => false,
-                'hasPin' => $hasPin,
-                'ledgerType' => 'private',
-                'trialBalance' => [
-                    'items' => [],
-                    'total_debit' => 0,
-                    'total_credit' => 0
-                ],
-                'profitAndLoss' => [
-                    'revenue_items' => [],
-                    'expense_items' => [],
-                    'total_revenue' => 0,
-                    'total_expense' => 0,
-                    'net_profit' => 0
-                ],
-                'balanceSheet' => [
-                    'asset_items' => [],
-                    'liability_items' => [],
-                    'equity_items' => [],
-                    'total_assets' => 0,
-                    'total_liabilities' => 0,
-                    'total_equity' => 0,
-                    'total_liabilities_and_equity' => 0
-                ],
-                'startDate' => $request->input('start_date'),
-                'endDate' => $request->input('end_date'),
-                'lastClosedDate' => Auth::user()->last_closed_date,
-            ]);
-        }
-
         // Parse date filters
         $startDate = $request->input('start_date');
         $endDate = $request->input('end_date');
 
-        // Fetch accounts for the user with correct accepted flag
+        // Fetch accounts for the user
         $accounts = Account::where('user_id', $userId)
-            ->where('accepted', $accepted)
             ->get();
 
         // 1. Trial Balance Calculation
@@ -80,8 +40,7 @@ class LedgerController extends Controller
 
         foreach ($accounts as $account) {
             $query = JournalEntry::where('user_id', $userId)
-                ->where('account_id', $account->id)
-                ->where('accepted', $accepted);
+                ->where('account_id', $account->id);
 
             if ($startDate) {
                 $query->where('entry_date', '>=', $startDate);
@@ -133,8 +92,7 @@ class LedgerController extends Controller
             }
 
             $query = JournalEntry::where('user_id', $userId)
-                ->where('account_id', $account->id)
-                ->where('accepted', $accepted);
+                ->where('account_id', $account->id);
 
             if ($startDate) {
                 $query->where('entry_date', '>=', $startDate);
@@ -194,8 +152,7 @@ class LedgerController extends Controller
             }
 
             $query = JournalEntry::where('user_id', $userId)
-                ->where('account_id', $account->id)
-                ->where('accepted', $accepted);
+                ->where('account_id', $account->id);
 
             if ($endDate) {
                 $query->where('entry_date', '<=', $endDate);
@@ -243,8 +200,7 @@ class LedgerController extends Controller
         foreach ($accounts as $account) {
             if ($account->type === 'Revenue' || $account->type === 'Expense') {
                 $query = JournalEntry::where('user_id', $userId)
-                    ->where('account_id', $account->id)
-                    ->where('accepted', $accepted);
+                    ->where('account_id', $account->id);
                 if ($endDate) {
                     $query->where('entry_date', '<=', $endDate);
                 }
@@ -279,7 +235,7 @@ class LedgerController extends Controller
         return Inertia::render('Reports/Accounting', [
             'unlocked' => true,
             'hasPin' => $hasPin,
-            'ledgerType' => $ledgerType,
+            'ledgerType' => 'standard',
             'trialBalance' => [
                 'items' => $trialBalance,
                 'total_debit' => round($totalDebitSum, 2),

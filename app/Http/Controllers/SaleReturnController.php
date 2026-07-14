@@ -51,11 +51,7 @@ class SaleReturnController extends Controller
 
         // Get customers who have sales records
         $customers = Customer::where('user_id', $userId)
-            ->whereHas('sales', function ($q) {
-                if (session('private_ledger_unlocked') !== true) {
-                    $q->where('accepted', 1);
-                }
-            })
+            ->whereHas('sales')
             ->orderBy('name', 'asc')
             ->select('id', 'name', 'phone')
             ->get();
@@ -74,9 +70,6 @@ class SaleReturnController extends Controller
             ->whereHas('customer', function ($q) use ($userId) {
                 $q->where('user_id', $userId);
             });
-        if (session('private_ledger_unlocked') !== true) {
-            $salesQuery->where('accepted', 1);
-        }
 
         $sales = $salesQuery->orderBy('id', 'desc')->get()->map(function ($item) {
             return [
