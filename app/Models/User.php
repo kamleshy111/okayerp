@@ -43,6 +43,22 @@ class User extends Authenticatable
         'pan_number',
         'cin_number',
         'last_closed_date',
+        'auto_whatsapp_reminders_enabled',
+        'auto_whatsapp_30_frequency',
+        'auto_whatsapp_60_frequency',
+        'auto_whatsapp_90_frequency',
+        'whatsapp_api_url',
+        'whatsapp_api_key',
+        'whatsapp_app_name',
+        'whatsapp_message_template',
+        'auto_sms_reminders_enabled',
+        'auto_sms_30_frequency',
+        'auto_sms_60_frequency',
+        'auto_sms_90_frequency',
+        'sms_api_url',
+        'sms_api_key',
+        'sms_sender_name',
+        'sms_message_template',
     ];
 
     /**
@@ -68,6 +84,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'ledger_pin' => 'hashed',
             'hide_bank_details' => 'boolean',
+            'auto_whatsapp_reminders_enabled' => 'boolean',
+            'auto_sms_reminders_enabled' => 'boolean',
         ];
     }
 

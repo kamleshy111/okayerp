@@ -111,7 +111,6 @@ const handleFileUpload = (event) => {
                         class="mt-1 block w-full"
                         v-model="form.name"
                         required
-                        autofocus
                         autocomplete="name"
                     />
                     <InputError class="mt-2" :message="form.errors.name" />
@@ -137,8 +136,7 @@ const handleFileUpload = (event) => {
                         type="number"
                         class="mt-1 block w-full"
                         v-model="form.phone"
-                        autofocus
-                        autocomplete="phone"
+                        autocomplete="tel"
                     />
                     <InputError class="mt-2" :message="form.errors.phone" />
                 </div>
@@ -150,8 +148,7 @@ const handleFileUpload = (event) => {
                         type="text"
                         class="mt-1 block w-full"
                         v-model="form.address"
-                        autofocus
-                        autocomplete="address"
+                        autocomplete="street-address"
                     />
                     <InputError class="mt-2" :message="form.errors.address" />
                 </div>
@@ -180,7 +177,7 @@ const handleFileUpload = (event) => {
                         <InputLabel for="state" value="State" />
                         <v-select
                             v-if="!form.country || form.country === 'India'"
-                            id="state"
+                            input-id="state"
                             :options="$page.props.gst_states"
                             label="display"
                             :reduce="state => state.name"
@@ -202,7 +199,7 @@ const handleFileUpload = (event) => {
                     <div v-if="!form.country || form.country === 'India'">
                         <InputLabel for="district" value="District" />
                         <v-select
-                            id="district"
+                            input-id="district"
                             :options="availableDistricts"
                             v-model="form.district"
                             placeholder="Search & Select District"
@@ -241,7 +238,7 @@ const handleFileUpload = (event) => {
                             type="text"
                             class="mt-1 block w-full"
                             v-model="form.bank_name"
-                            autocomplete="bank_name"
+                            autocomplete="off"
                             placeholder="Enter Bank Name"
                         />
                         <InputError class="mt-2" :message="form.errors.bank_name" />
@@ -254,7 +251,7 @@ const handleFileUpload = (event) => {
                             type="text"
                             class="mt-1 block w-full"
                             v-model="form.account_number"
-                            autocomplete="account_number"
+                            autocomplete="off"
                             placeholder="Enter Account Number"
                         />
                         <InputError class="mt-2" :message="form.errors.account_number" />
@@ -267,7 +264,7 @@ const handleFileUpload = (event) => {
                             type="text"
                             class="mt-1 block w-full"
                             v-model="form.ifsc_code"
-                            autocomplete="ifsc_code"
+                            autocomplete="off"
                             placeholder="Enter IFSC Code"
                         />
                         <InputError class="mt-2" :message="form.errors.ifsc_code" />
@@ -280,7 +277,7 @@ const handleFileUpload = (event) => {
                             type="text"
                             class="mt-1 block w-full"
                             v-model="form.branch_name"
-                            autocomplete="branch_name"
+                            autocomplete="off"
                             placeholder="Enter Branch Name"
                         />
                         <InputError class="mt-2" :message="form.errors.branch_name" />
@@ -293,7 +290,7 @@ const handleFileUpload = (event) => {
                             type="text"
                             class="mt-1 block w-full"
                             v-model="form.gstin"
-                            autocomplete="gstin"
+                            autocomplete="off"
                             placeholder="Enter GSTIN"
                         />
                         <InputError class="mt-2" :message="form.errors.gstin" />

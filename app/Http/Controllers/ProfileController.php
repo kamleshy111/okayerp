@@ -37,6 +37,7 @@ class ProfileController extends Controller
         if (empty($data['ledger_pin'])) {
             unset($data['ledger_pin']);
         }
+
         $user->fill($data);
 
         if ($user->isDirty('email')) {
@@ -60,6 +61,41 @@ class ProfileController extends Controller
         $user->save();
 
         return Redirect::route('profile.edit');
+    }
+
+    /**
+     * Update the user's automatic reminders settings.
+     */
+    public function updateReminders(Request $request): RedirectResponse
+    {
+        $user = $request->user();
+
+        $data = $request->validate([
+            'auto_whatsapp_reminders_enabled' => ['nullable', 'boolean'],
+            'auto_whatsapp_30_frequency' => ['nullable', 'string', 'in:disabled,weekly,twice_a_week,three_times_a_week,daily,once_a_month,twice_a_month'],
+            'auto_whatsapp_60_frequency' => ['nullable', 'string', 'in:disabled,weekly,twice_a_week,three_times_a_week,daily,once_a_month,twice_a_month'],
+            'auto_whatsapp_90_frequency' => ['nullable', 'string', 'in:disabled,weekly,twice_a_week,three_times_a_week,daily,once_a_month,twice_a_month'],
+            'whatsapp_api_url' => ['nullable', 'string', 'max:255'],
+            'whatsapp_api_key' => ['nullable', 'string', 'max:255'],
+            'whatsapp_app_name' => ['nullable', 'string', 'max:255'],
+            'whatsapp_message_template' => ['nullable', 'string'],
+
+            'auto_sms_reminders_enabled' => ['nullable', 'boolean'],
+            'auto_sms_30_frequency' => ['nullable', 'string', 'in:disabled,weekly,twice_a_week,three_times_a_week,daily,once_a_month,twice_a_month'],
+            'auto_sms_60_frequency' => ['nullable', 'string', 'in:disabled,weekly,twice_a_week,three_times_a_week,daily,once_a_month,twice_a_month'],
+            'auto_sms_90_frequency' => ['nullable', 'string', 'in:disabled,weekly,twice_a_week,three_times_a_week,daily,once_a_month,twice_a_month'],
+            'sms_api_url' => ['nullable', 'string', 'max:255'],
+            'sms_api_key' => ['nullable', 'string', 'max:255'],
+            'sms_sender_name' => ['nullable', 'string', 'max:255'],
+            'sms_message_template' => ['nullable', 'string'],
+        ]);
+
+        $data['auto_whatsapp_reminders_enabled'] = isset($data['auto_whatsapp_reminders_enabled']) ? (bool)$data['auto_whatsapp_reminders_enabled'] : false;
+        $data['auto_sms_reminders_enabled'] = isset($data['auto_sms_reminders_enabled']) ? (bool)$data['auto_sms_reminders_enabled'] : false;
+
+        $user->update($data);
+
+        return Redirect::route('profile.edit')->with('status', 'reminders-updated');
     }
 
     /**
