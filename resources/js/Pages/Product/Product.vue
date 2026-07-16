@@ -242,30 +242,12 @@ const columns = [
       }
     },
     {
-    data: null,
-    title: 'S No',
-    render: (data, type, row, meta) => meta.row + 1,
-    },
-    {
-    data: 'image',
-    title: 'Image',
-    orderable: false,
-    searchable: false,
-    render: (data) => {
-        return data
-            ? `<img src="${data}" class="w-10 h-10 object-cover rounded-lg border border-gray-200" alt="Product Image" />`
-            : `<div class="w-10 h-10 bg-gray-100 flex items-center justify-center rounded-lg border border-gray-200 text-gray-400"><i class="fa fa-image text-lg"></i></div>`;
-    }
+      data: null,
+      title: 'S No',
+      render: (data, type, row, meta) => meta.settings._iDisplayStart + meta.row + 1,
     },
     { data: 'name', title: 'Name' },
     { data: 'sku', title: 'Sku' },
-    {
-      data: 'type',
-      title: 'Type',
-      render: (data) => {
-        return data === 'service' ? 'Service' : 'Product';
-      }
-    },
     { data: 'categoryName', title: 'Category Name' },
     { 
       data: 'price', 
@@ -359,10 +341,8 @@ function deleteProduct(productId) {
                   <tr>
                       <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
                       <th scope="col">S No</th>
-                      <th scope="col">Image</th>
                       <th scope="col">Name</th>
                       <th scope="col">Sku</th>
-                      <th scope="col">Type</th>
                       <th scope="col">Category Name</th>
                       <th scope="col">Sale Price</th>
                       <th scope="col">Stock Quantity</th>
