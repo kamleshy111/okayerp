@@ -41,6 +41,7 @@ class ProfileUpdateRequest extends FormRequest
             'gstin' => ['nullable', 'string', 'max:255'],
             'invoice_title_without_gst' => ['nullable', 'string', 'max:255'],
             'invoice_title_with_gst' => ['nullable', 'string', 'max:255'],
+            'invoice_print_size' => ['nullable', 'string', 'in:a4,a5,thermal'],
             'hide_bank_details' => ['nullable', 'boolean'],
         ];
     }

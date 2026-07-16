@@ -321,8 +321,7 @@
           <th class="border-right" style="width: 8%;">S.No.</th>
           <th class="border-right" style="width: 47%;">Description of Goods/Services</th>
           <th class="border-right" style="width: 10%;">Qty</th>
-          <th class="border-right" style="width: 10%;">Unit</th>
-          <th class="border-right" style="width: 10%;">Rate</th>
+          <th class="border-right" style="width: 20%;">Rate</th>
           <th style="width: 15%;" class="text-right">Amount</th>
         </tr>
       </thead>
@@ -344,8 +343,7 @@
             @endif
           </td>
           <td class="text-right border-right">{{ number_format($item->quantity, 2) }}</td>
-          <td class="text-center border-right">{{ $item->unit_type ?? 'Pcs.' }}</td>
-          <td class="text-right border-right">{{ number_format($item->price, 2) }}</td>
+          <td class="text-right border-right">{{ number_format($item->price, 2) }} / {{ $item->unit_type ?? 'Pcs.' }}</td>
           <td class="text-right bold">{{ number_format($item->base_price, 2) }}</td>
         </tr>
         @endforeach
@@ -355,7 +353,6 @@
           <td class="border-right">&nbsp;</td>
           <td class="bold border-right text-right">Total Amount</td>
           <td class="text-right border-right bold">{{ number_format($totalQty, 2) }}</td>
-          <td class="text-center border-right bold">Pcs.</td>
           <td class="border-right">&nbsp;</td>
           <td class="text-right bold">{{ number_format($subtotal, 2) }}</td>
         </tr>
@@ -363,14 +360,14 @@
         @if($sale->discount > 0)
         <tr class="total-row">
           <td class="border-right">&nbsp;</td>
-          <td class="bold border-right text-right" colspan="4">Discount</td>
+          <td class="bold border-right text-right" colspan="3">Discount</td>
           <td class="text-right bold">-{{ number_format($sale->discount, 2) }}</td>
         </tr>
         @endif
 
         <tr class="total-row" style="background-color: #f3f4f6;">
           <td class="border-right">&nbsp;</td>
-          <td class="bold border-right text-right" colspan="4">Grand Total</td>
+          <td class="bold border-right text-right" colspan="3">Grand Total</td>
           <td class="text-right bold">{{ $currencySymbol }}&nbsp;{{ number_format($roundedGrandTotal, 2) }}</td>
         </tr>
       </tbody>

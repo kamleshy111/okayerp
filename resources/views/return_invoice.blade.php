@@ -342,8 +342,7 @@
         <th class="border-right" style="width: 45%;">Description of Goods</th>
         <th class="border-right" style="width: 12%;">HSN/SAC</th>
         <th class="border-right" style="width: 10%;">Qty.</th>
-        <th class="border-right" style="width: 8%;">Unit</th>
-        <th class="border-right" style="width: 10%;">Price</th>
+        <th class="border-right" style="width: 18%;">Price</th>
         <th style="width: 10%;">Amount(₹)</th>
       </tr>
     </thead>
@@ -354,8 +353,7 @@
         <td class="border-right">{{ optional($item->product)->name ?? 'N/A' }}</td>
         <td class="text-center border-right">{{ optional($item->product)->hsn_code ?? 'N/A' }}</td>
         <td class="text-right border-right">{{ number_format($item->quantity, 2) }}</td>
-        <td class="text-center border-right">{{ $item->unit_type ?? 'Pcs.' }}</td>
-        <td class="text-right border-right">{{ number_format($item->price, 2) }}</td>
+        <td class="text-right border-right">{{ number_format($item->price, 2) }} / {{ $item->unit_type ?? 'Pcs.' }}</td>
         <td class="text-right">{{ number_format($item->price * $item->quantity, 2) }}</td>
       </tr>
       @endforeach
@@ -363,7 +361,6 @@
       <!-- Space filler row to push totals down -->
       @for ($i = count($return->items); $i < 6; $i++)
       <tr class="item-row">
-        <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
@@ -379,7 +376,6 @@
         <td class="bold border-right text-right" colspan="2">Subtotal Refund</td>
         <td class="text-right border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
-        <td class="border-right">&nbsp;</td>
         <td class="text-right bold">{{ number_format($return->refund_amount, 2) }}</td>
       </tr>
 
@@ -388,7 +384,6 @@
         <tr class="total-row">
           <td class="border-right">&nbsp;</td>
           <td class="border-right text-right bold" colspan="2">GST Refunded</td>
-          <td class="border-right">&nbsp;</td>
           <td class="border-right">&nbsp;</td>
           <td class="border-right">&nbsp;</td>
           <td class="text-right">{{ number_format($return->gst_refund_amount, 2) }}</td>
@@ -400,7 +395,6 @@
         <td class="border-right">&nbsp;</td>
         <td class="bold border-right text-right" colspan="2">Total Refunded</td>
         <td class="text-right border-right bold">{{ number_format($totalQty, 2) }}</td>
-        <td class="text-center border-right bold">Pcs.</td>
         <td class="border-right">&nbsp;</td>
         <td class="text-right bold">₹ {{ number_format($grandTotal, 2) }}</td>
       </tr>

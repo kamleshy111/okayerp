@@ -40,6 +40,7 @@ const form = useForm({
     gstin: user.gstin || '',
     invoice_title_without_gst: user.invoice_title_without_gst || '',
     invoice_title_with_gst: user.invoice_title_with_gst || '',
+    invoice_print_size: user.invoice_print_size || 'a4',
     hide_bank_details: !!user.hide_bank_details,
 });
 
@@ -323,6 +324,20 @@ const handleFileUpload = (event) => {
                             placeholder="Default: TAX INVOICE"
                         />
                         <InputError class="mt-2" :message="form.errors.invoice_title_with_gst" />
+                    </div>
+
+                    <div>
+                        <InputLabel for="invoice_print_size" value="Invoice Print Size / Type" />
+                        <select
+                            id="invoice_print_size"
+                            class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm bg-white text-black p-2"
+                            v-model="form.invoice_print_size"
+                        >
+                            <option value="a4">Standard A4 Size</option>
+                            <option value="a5">A5 Size (Half-Page)</option>
+                            <option value="thermal">Thermal Receipt (80mm / Small Printer)</option>
+                        </select>
+                        <InputError class="mt-2" :message="form.errors.invoice_print_size" />
                     </div>
 
                     <div class="md:col-span-2 flex items-center mt-2">

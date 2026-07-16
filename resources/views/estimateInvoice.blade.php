@@ -444,8 +444,7 @@
         <th class="border-right" style="width: 45%;">Description of Goods</th>
         <th class="border-right" style="width: 12%;">HSN/SAC</th>
         <th class="border-right" style="width: 10%;">Qty.</th>
-        <th class="border-right" style="width: 8%;">Unit</th>
-        <th class="border-right" style="width: 10%;">Price</th>
+        <th class="border-right" style="width: 18%;">Price</th>
         <th style="width: 10%;">Amount({{ $isExport ? $currencyCode : '₹' }})</th>
       </tr>
     </thead>
@@ -468,13 +467,13 @@
         </td>
         <td class="text-center border-right">{{ optional($item->product)->hsn_code ?? 'N/A' }}</td>
         <td class="text-right border-right">{{ number_format($item->quantity, 2) }}</td>
-        <td class="text-center border-right">{{ $item->unit_type ?? 'Pcs.' }}</td>
         <td class="text-right border-right">
           @if($isExport)
             {{ number_format($item->price / $exchangeRate, 2) }}
           @else
             {{ number_format($item->price, 2) }}
           @endif
+          / {{ $item->unit_type ?? 'Pcs.' }}
         </td>
         <td class="text-right">
           @if($isExport)
@@ -494,7 +493,6 @@
         <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
-        <td class="border-right">&nbsp;</td>
         <td>&nbsp;</td>
       </tr>
       @endfor
@@ -504,7 +502,6 @@
         <td class="border-right">&nbsp;</td>
         <td class="bold border-right text-right" colspan="2">Total Amount</td>
         <td class="text-right border-right">&nbsp;</td>
-        <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="text-right bold">
           @if($isExport)
@@ -522,7 +519,6 @@
         <td class="bold border-right text-right" colspan="2">Total GST</td>
         <td class="text-right border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
-        <td class="border-right">&nbsp;</td>
         <td class="text-right bold">{{ number_format($estimate->gst_amount, 2) }}</td>
       </tr>
       @endif
@@ -533,7 +529,6 @@
         <td class="border-right">&nbsp;</td>
         <td class="bold border-right text-right" colspan="2">Discount</td>
         <td class="text-right border-right">&nbsp;</td>
-        <td class="border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
         <td class="text-right bold">
           @if($isExport)
@@ -552,7 +547,6 @@
           <td class="border-right text-right bold" colspan="2">Add : Rounded Off ({{ $roundOff > 0 ? '+' : '' }})</td>
           <td class="border-right">&nbsp;</td>
           <td class="border-right">&nbsp;</td>
-          <td class="border-right">&nbsp;</td>
           <td class="text-right">
             @if($isExport)
               {{ number_format($roundOff / $exchangeRate, 2) }}
@@ -568,7 +562,6 @@
         <td class="border-right">&nbsp;</td>
         <td class="bold border-right text-right" colspan="2">Grand Total</td>
         <td class="text-right border-right bold">{{ number_format($totalQty, 2) }}</td>
-        <td class="text-center border-right bold">Pcs.</td>
         <td class="border-right">&nbsp;</td>
         <td class="text-right bold">
           {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($roundedGrandTotal / $exchangeRate, 2) }}@else{{ number_format($roundedGrandTotal, 2) }}@endif

@@ -34,6 +34,7 @@ class User extends Authenticatable
         'gstin',
         'invoice_title_without_gst',
         'invoice_title_with_gst',
+        'invoice_print_size',
         'hide_bank_details',
         'city',
         'district',

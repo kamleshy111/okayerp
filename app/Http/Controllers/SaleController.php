@@ -602,12 +602,33 @@ class SaleController extends Controller
         $returnDueDeduction = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
 
         $customer = $sale->customer;
-        $isExport = $customer && !empty($customer->country) && strtolower(trim($customer->country)) !== 'india';
-        $isA5 = !$isExport && ($sale->gst_amount ?? 0) <= 0;
+        $store = $customer && $customer->user ? $customer->user : null;
+        $printPreference = $store ? $store->invoice_print_size : 'a4';
 
-        $viewName = $isA5 ? 'a5_invoice' : 'invoice';
-        $paperSize = $isA5 ? 'a5' : 'a4';
-        $paperOrientation = $isA5 ? 'landscape' : 'portrait';
+        if ($printPreference === 'thermal') {
+            $viewName = 'thermal_invoice';
+            // Calculate dynamic height based on the number of items to prevent truncation on receipt rolls.
+            $itemCount = count($sale->saleItems);
+            $calculatedHeight = 320 + ($itemCount * 32);
+            $paperSize = [0, 0, 226, max(450, $calculatedHeight)]; // 226pt width = 80mm
+            $paperOrientation = 'portrait';
+        } elseif ($printPreference === 'a5') {
+            $viewName = 'a5_invoice';
+            $paperSize = 'a5';
+            $paperOrientation = 'landscape';
+        } elseif ($printPreference === 'a4') {
+            $viewName = 'invoice';
+            $paperSize = 'a4';
+            $paperOrientation = 'portrait';
+        } else {
+            // Legacy/fallback logic
+            $isExport = $customer && !empty($customer->country) && strtolower(trim($customer->country)) !== 'india';
+            $isA5 = !$isExport && ($sale->gst_amount ?? 0) <= 0;
+
+            $viewName = $isA5 ? 'a5_invoice' : 'invoice';
+            $paperSize = $isA5 ? 'a5' : 'a4';
+            $paperOrientation = $isA5 ? 'landscape' : 'portrait';
+        }
 
         $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction'))
             ->setPaper($paperSize, $paperOrientation);
