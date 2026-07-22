@@ -148,6 +148,7 @@ class CustomersController extends Controller
                         'height' => $item->height,
                         'alternate_quantity' => $item->alternate_quantity,
                         'alternate_unit_type' => $item->alternate_unit_type ?: (optional($item->product)->alternate_unit_type ?? 'pcs'),
+                        'description' => $item->description,
                     ];
                 }),
             ];

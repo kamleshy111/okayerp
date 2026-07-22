@@ -18,7 +18,8 @@ class EstimateItem extends Model
         'width',
         'height',
         'alternate_quantity',
-        'alternate_unit_type'
+        'alternate_unit_type',
+        'description'
     ];
 
     public function estimate()

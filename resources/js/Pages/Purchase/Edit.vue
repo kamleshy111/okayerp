@@ -56,23 +56,16 @@ if (props.products) {
 }
 
 const productSearchQuery = ref('');
+const activeSearchIndex = ref(null);
+const searchQuery = ref('');
+const selectedSidebarProductIndex = ref(0);
+
 const onProductSearch = async (search, loading) => {
-  productSearchQuery.value = search;
-  if (!search.trim()) {
-    let initialList = [];
-    form.value.purchase_items.forEach(item => {
-      if (item.product_id && productRegistry.value[item.product_id]) {
-        const alreadyInList = initialList.some(p => p.id === item.product_id);
-        if (!alreadyInList) {
-          initialList.push(productRegistry.value[item.product_id]);
-        }
-      }
-    });
-    products.value = initialList;
-    return;
-  }
+  const searchVal = search || '';
+  productSearchQuery.value = searchVal;
+  if (loading) loading(true);
   try {
-    const response = await axios.get(`/product/search?query=${encodeURIComponent(search)}`);
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}`);
     response.data.forEach(p => {
       productRegistry.value[p.id] = p;
     });
@@ -89,7 +82,72 @@ const onProductSearch = async (search, loading) => {
     products.value = results;
   } catch (error) {
     console.error("Error fetching products:", error);
+  } finally {
+    if (loading) loading(false);
   }
+};
+
+const onProductInputFocus = (index) => {
+    activeSearchIndex.value = index;
+    const item = form.value.purchase_items[index];
+    searchQuery.value = item.temp_product_name || '';
+    selectedSidebarProductIndex.value = 0;
+    onProductSearch(searchQuery.value);
+};
+
+const onProductInputChanged = (index, value) => {
+    searchQuery.value = value;
+    const item = form.value.purchase_items[index];
+    item.temp_product_name = value;
+    selectedSidebarProductIndex.value = 0;
+    if (!value) {
+        item.product_id = "";
+    }
+    onProductSearch(value);
+};
+
+const navigateSidebar = (direction) => {
+    if (products.value.length === 0) return;
+    selectedSidebarProductIndex.value = (selectedSidebarProductIndex.value + direction + products.value.length) % products.value.length;
+    const el = document.getElementById(`sidebar-item-${selectedSidebarProductIndex.value}`);
+    if (el) {
+        el.scrollIntoView({ block: 'nearest' });
+    }
+};
+
+const selectHighlightedProduct = () => {
+    if (products.value.length > 0 && selectedSidebarProductIndex.value >= 0 && selectedSidebarProductIndex.value < products.value.length) {
+        selectProduct(products.value[selectedSidebarProductIndex.value]);
+    }
+};
+
+const selectProduct = (product) => {
+    if (activeSearchIndex.value !== null) {
+        const item = form.value.purchase_items[activeSearchIndex.value];
+        item.product_id = product.id;
+        item.temp_product_name = product.name;
+        
+        if (page.props.auth?.user?.allow_provide_additional_descriptions) {
+            openDescriptionPopup(activeSearchIndex.value);
+        }
+        
+        activeSearchIndex.value = null;
+    }
+};
+
+const closeSidebar = () => {
+    if (activeSearchIndex.value !== null) {
+        const item = form.value.purchase_items[activeSearchIndex.value];
+        if (item.product_id) {
+            const selectedProduct = productRegistry.value[item.product_id] || products.value.find(p => p.id === item.product_id);
+            if (selectedProduct) {
+                item.temp_product_name = selectedProduct.name;
+            }
+        } else {
+            item.temp_product_name = "";
+        }
+    }
+    activeSearchIndex.value = null;
 };
 
 const supplierSearchQuery = ref("");
@@ -158,6 +216,7 @@ const form = ref({
         );
         return {
             product_id: item.product_id,
+            temp_product_name: item.product_name || "",
             quantity: item.quantity,
             price: item.price,
             sale_price: item.sale_price || "",
@@ -174,6 +233,7 @@ const form = ref({
             last_height: item.height || "",
             last_alternate_quantity: item.alternate_quantity || "",
             last_quantity: item.quantity || "",
+            description: item.description || "",
         };
     }),
 });
@@ -254,6 +314,7 @@ watch(() => form.value.purchase_items, (newSaleItems) => {
         item.cgst = 0;
         item.sgst = 0;
         item.sale_price = selectedProduct.price || "";
+        item.description = selectedProduct.description || "";
         
         item.last_width = item.width;
         item.last_height = item.height;
@@ -313,6 +374,7 @@ const addRow = () => {
     // Add a new row to the purchase_items array
     form.value.purchase_items.push({
         product_id: "",
+        temp_product_name: "",
         unit_type: "",
         quantity: "",
         price: "",
@@ -328,7 +390,8 @@ const addRow = () => {
         last_width: "",
         last_height: "",
         last_alternate_quantity: "",
-        last_quantity: ""
+        last_quantity: "",
+        description: ""
     });
 };
 
@@ -535,6 +598,68 @@ const submitForm = async () => {
   }
 };
 
+const showDescriptionPopup = ref(false);
+const activeDescriptionIndex = ref(null);
+const tempDescription = ref("");
+const descriptionTextarea = ref(null);
+
+const openDescriptionPopup = (index) => {
+    activeDescriptionIndex.value = index;
+    const items = form.value.purchase_items;
+    tempDescription.value = items[index]?.description || "";
+    showDescriptionPopup.value = true;
+    nextTick(() => {
+        if (descriptionTextarea.value) {
+            descriptionTextarea.value.focus();
+        }
+    });
+};
+
+const closeDescriptionPopup = () => {
+    const index = activeDescriptionIndex.value;
+    showDescriptionPopup.value = false;
+    activeDescriptionIndex.value = null;
+    if (index !== null) {
+        nextTick(() => {
+            let inputToFocus = null;
+            const items = form.value.purchase_items;
+            if (items[index] && items[index].alternate_unit_type) {
+                inputToFocus = document.getElementById(`alt-qty-input-${index}`);
+            }
+            if (!inputToFocus) {
+                inputToFocus = document.getElementById(`qty-input-${index}`);
+            }
+            if (inputToFocus) {
+                inputToFocus.focus();
+                if (typeof inputToFocus.select === 'function') {
+                    inputToFocus.select();
+                }
+            }
+        });
+    }
+};
+
+const saveDescriptionPopup = () => {
+    const items = form.value.purchase_items;
+    if (activeDescriptionIndex.value !== null && items[activeDescriptionIndex.value]) {
+        items[activeDescriptionIndex.value].description = tempDescription.value;
+    }
+    closeDescriptionPopup();
+};
+
+const activeEditingAltRow = ref(null);
+const startEditingAlt = (index) => {
+    activeEditingAltRow.value = index;
+    nextTick(() => {
+        const input = document.getElementById(`width-input-${index}`);
+        if (input) input.focus();
+    });
+};
+const handleAltFocusOut = (event, index) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+        activeEditingAltRow.value = null;
+    }
+};
 </script>
 <template>
 
@@ -656,17 +781,29 @@ const submitForm = async () => {
                 <tbody>
                     <tr v-for="(item, index) in form.purchase_items" :key="index">
                         <td class="border-t px-4 py-3 min-w-[220px]">
-                            <vSelect
-                                v-model="item.product_id"
-                                :options="products"
-                                label="name"
-                                :reduce="product => product.id"
-                                placeholder="Search or select product"
-                                class="w-full text-black bg-white"
-                                append-to-body
-                                @search="onProductSearch"
-                                @keydown.enter="moveToNextInput"
-                            />
+                            <div class="relative w-full">
+                                <input
+                                    type="text"
+                                    v-model="item.temp_product_name"
+                                    @focus="onProductInputFocus(index)"
+                                    @input="onProductInputChanged(index, $event.target.value)"
+                                    @keydown.down.prevent="navigateSidebar(1)"
+                                    @keydown.up.prevent="navigateSidebar(-1)"
+                                    @keydown.enter.prevent="selectHighlightedProduct"
+                                    @keydown.tab="closeSidebar"
+                                    @keydown.esc="closeSidebar"
+                                    placeholder="Search product..."
+                                    class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] text-black bg-white focus:outline-none"
+                                />
+                            </div>
+                            <div v-if="page.props.auth?.user?.allow_provide_additional_descriptions && item.description" class="mt-1">
+                                <div class="text-xxs text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100 flex items-center justify-between">
+                                    <span class="truncate max-w-[200px]" :title="item.description">{{ item.description }}</span>
+                                    <button type="button" @click="openDescriptionPopup(index)" class="text-indigo-600 hover:text-indigo-800 ml-1 shrink-0">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </td>
 
                         <td class="border-t px-4 py-3 min-w-[140px]">
@@ -682,22 +819,50 @@ const submitForm = async () => {
                                 </option>
                             </select>
                         </td>
-                        <td class="border-t px-4 py-3">
+                        <td class="border-t px-4 py-3 min-w-[150px]">
                             <div v-if="item.alternate_unit_type" class="flex flex-col gap-2">
-                                <div class="flex items-center gap-1">
-                                    <input type="number" step="any" v-model="item.alternate_quantity" class="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="Alt Qty" />
-                                    <span class="text-xs text-gray-500 font-medium">{{ item.alternate_unit_type }}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <input 
+                                        :id="'alt-qty-input-' + index"
+                                        type="number" 
+                                        step="any" 
+                                        v-model="item.alternate_quantity" 
+                                        class="w-20 px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition" 
+                                        placeholder="Alt Qty" 
+                                    />
+                                    <span class="text-xs text-slate-500 font-semibold uppercase">{{ item.alternate_unit_type }}</span>
                                 </div>
-                                <div class="flex items-center gap-1 text-xs text-gray-500">
-                                    <input type="number" step="any" v-model="item.width" class="w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="W" />
-                                    <span>x</span>
-                                    <input type="number" step="any" v-model="item.height" class="w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="H" />
+                                <div v-if="activeEditingAltRow === index" @focusout="handleAltFocusOut($event, index)" class="flex items-center gap-1 text-xs text-slate-400">
+                                    <input 
+                                        :id="`width-input-${index}`"
+                                        type="number" 
+                                        step="any" 
+                                        v-model="item.width" 
+                                        class="w-10 px-1 py-1 border border-slate-200 rounded-lg text-center text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition placeholder:text-slate-300" 
+                                        placeholder="W" 
+                                    />
+                                    <span class="text-xxs font-bold">×</span>
+                                    <input 
+                                        type="number" 
+                                        step="any" 
+                                        v-model="item.height" 
+                                        class="w-10 px-1 py-1 border border-slate-200 rounded-lg text-center text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition placeholder:text-slate-300" 
+                                        placeholder="H" 
+                                    />
+                                </div>
+                                <div 
+                                    v-else 
+                                    @click="startEditingAlt(index)"
+                                    class="cursor-pointer hover:bg-slate-50 px-2 py-1 rounded-lg border border-dashed border-slate-200 hover:border-indigo-300 transition text-xxs text-slate-400 font-medium inline-block align-middle self-start"
+                                    title="Click to edit size"
+                                >
+                                    Size: {{ item.width || 0 }} × {{ item.height || 0 }}
                                 </div>
                             </div>
-                            <div v-else class="text-gray-400 text-xs">-</div>
+                            <div v-else class="text-slate-300 text-xs">-</div>
                         </td>
                         <td class="border-t px-4 py-3">
-                            <input type="number" name="quantity" v-model="item.quantity" required
+                            <input :id="'qty-input-' + index" type="number" name="quantity" v-model="item.quantity" required
                                 @keydown.enter.prevent="moveToNextInput"
                                 class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
                                 placeholder="Qty" />
@@ -749,16 +914,29 @@ const submitForm = async () => {
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Product</label>
-                            <vSelect
-                                v-model="item.product_id"
-                                :options="products"
-                                label="name"
-                                :reduce="product => product.id"
-                                placeholder="Search or select product"
-                                class="w-full text-black bg-white"
-                                @search="onProductSearch"
-                                @keydown.enter="moveToNextInput"
-                            />
+                            <div class="relative w-full">
+                                <input
+                                    type="text"
+                                    v-model="item.temp_product_name"
+                                    @focus="onProductInputFocus(index)"
+                                    @input="onProductInputChanged(index, $event.target.value)"
+                                    @keydown.down.prevent="navigateSidebar(1)"
+                                    @keydown.up.prevent="navigateSidebar(-1)"
+                                    @keydown.enter.prevent="selectHighlightedProduct"
+                                    @keydown.tab="closeSidebar"
+                                    @keydown.esc="closeSidebar"
+                                    placeholder="Search or select product"
+                                    class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] text-black bg-white focus:outline-none"
+                                />
+                            </div>
+                            <div v-if="page.props.auth?.user?.allow_provide_additional_descriptions && item.description" class="mt-1.5">
+                                <div class="text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 flex items-center justify-between">
+                                    <span class="truncate max-w-[250px]" :title="item.description">{{ item.description }}</span>
+                                    <button type="button" @click="openDescriptionPopup(index)" class="text-indigo-600 hover:text-indigo-800 ml-1 shrink-0">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
 
                         <div class="grid grid-cols-3 gap-2">
@@ -941,6 +1119,106 @@ const submitForm = async () => {
                 </div>
             </div>
         </form>
+    </div>
+    <!-- List of Stock Items Sidebar (Tally style) -->
+    <div v-if="activeSearchIndex !== null" @click="closeSidebar" class="fixed inset-0 z-40 bg-black/10 transition-opacity"></div>
+    <div v-if="activeSearchIndex !== null" class="fixed right-0 top-0 bottom-0 w-96 bg-slate-50 border-l border-slate-200 shadow-2xl z-50 flex flex-col transition-all duration-300 transform translate-x-0">
+        <!-- Sidebar Header -->
+        <div class="bg-[#292688] text-white p-4 flex justify-between items-center shadow-md">
+            <div>
+                <h3 class="font-bold text-sm tracking-wide">List of Stock Items</h3>
+                <p class="text-xxs text-slate-300">Use ↑/↓ and Enter to select from keyboard</p>
+            </div>
+            <button @click="closeSidebar" type="button" class="text-white hover:text-red-200">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
+        </div>
+        <!-- Search Status / Help -->
+        <div class="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xxs text-slate-500 flex justify-between">
+            <span>Filtering: "{{ searchQuery }}"</span>
+            <span>{{ products.length }} items found</span>
+        </div>
+        <!-- Products List -->
+        <div class="flex-1 overflow-y-auto p-2 space-y-1">
+            <div 
+                v-for="(product, idx) in products" 
+                :key="product.id"
+                :id="'sidebar-item-' + idx"
+                @click="selectProduct(product)"
+                @mouseenter="selectedSidebarProductIndex = idx"
+                :class="[
+                    idx === selectedSidebarProductIndex 
+                        ? 'bg-[#292688] text-white shadow-md' 
+                        : 'hover:bg-slate-200 text-slate-800'
+                ]"
+                class="flex justify-between items-center p-3 rounded-lg cursor-pointer transition-all duration-150 text-xs"
+            >
+                <div class="flex flex-col text-left pr-4">
+                    <span class="font-semibold">{{ product.name }}</span>
+                    <span class="text-xxs opacity-75 mt-0.5" :class="idx === selectedSidebarProductIndex ? 'text-slate-200' : 'text-slate-500'">
+                        SKU: {{ product.sku || '-' }} | Added: {{ new Date(product.created_at).toLocaleDateString() }}
+                    </span>
+                </div>
+                <div class="text-right flex flex-col items-end shrink-0">
+                    <span class="font-bold text-sm">
+                        {{ product.stock_quantity ?? 0 }} {{ product.unit_type || 'pcs' }}
+                    </span>
+                    <span class="text-xxs opacity-75" :class="idx === selectedSidebarProductIndex ? 'text-slate-200' : 'text-slate-500'">
+                        Stock Qty
+                    </span>
+                </div>
+            </div>
+            <div v-if="products.length === 0" class="text-center py-8 text-slate-400 text-xs">
+                No matching stock items found.
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Description Modal -->
+    <div v-if="showDescriptionPopup" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-slate-100 overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="bi bi-card-text text-indigo-600"></i>
+                    Additional Stock Item Description
+                </h3>
+                <button @click="closeDescriptionPopup" class="text-slate-400 hover:text-slate-600 transition">
+                    <i class="bi bi-x-lg text-lg"></i>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Item Description</label>
+                    <input 
+                        type="text"
+                        v-model="tempDescription" 
+                        placeholder="Enter description, size, or alternate details for this stock item..."
+                        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black bg-white focus:outline-none placeholder-slate-400 transition"
+                        ref="descriptionTextarea"
+                        @keydown.enter.prevent="saveDescriptionPopup"
+                    />
+                </div>
+            </div>
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button 
+                    type="button" 
+                    @click="closeDescriptionPopup" 
+                    class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition"
+                >
+                    Cancel
+                </button>
+                <button 
+                    type="button" 
+                    @click="saveDescriptionPopup" 
+                    class="px-5 py-2 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition"
+                >
+                    Ok
+                </button>
+            </div>
+        </div>
     </div>
     </AuthenticatedLayout>
 </template>

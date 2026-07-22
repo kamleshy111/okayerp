@@ -256,6 +256,11 @@
             <td class="text-center border-right">{{ $itemIndex + 1 }}.</td>
             <td class="border-right">
               {{ $item['product_name'] }}
+              @if(!empty($item['description']))
+                <div style="font-size: 9px; color: #444; margin-top: 2px; font-weight: normal; word-wrap: break-word; white-space: normal;">
+                  {{ $item['description'] }}
+                </div>
+              @endif
               @if((!empty($item['width']) && !empty($item['height'])) || !empty($item['alternate_quantity']))
                 <div style="font-size: 8px; color: #555; margin-top: 1px; font-weight: normal; font-style: italic;">
                   @if(!empty($item['width']) && !empty($item['height']))

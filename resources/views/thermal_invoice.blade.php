@@ -176,6 +176,11 @@
       <tr>
         <td>
           {{ optional($item->product)->name ?? 'N/A' }}
+          @if(!empty($item->description))
+            <div style="font-size: 8px; color: #444; margin-top: 1px; font-weight: normal; word-wrap: break-word; white-space: normal;">
+              {{ $item->description }}
+            </div>
+          @endif
           @if((!empty($item->width) && !empty($item->height)) || !empty($item->alternate_quantity))
             <div style="font-size: 8px; font-style: italic; color: #555;">
               @if(!empty($item->width) && !empty($item->height))

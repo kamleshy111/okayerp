@@ -361,16 +361,17 @@ class ProductController extends Controller
         $query = $request->query('query');
         $userId = Auth::id();
 
-        if (!$query) {
-            return response()->json([]);
-        }
+        $productsQuery = Product::where('user_id', $userId);
 
-        $products = Product::where('user_id', $userId)
-            ->where(function($q) use ($query) {
+        if ($query) {
+            $productsQuery->where(function($q) use ($query) {
                 $q->where('name', 'LIKE', "%{$query}%")
                   ->orWhere('sku', 'LIKE', "%{$query}%");
-            })
-            ->limit(20)
+            });
+        }
+
+        $products = $productsQuery->orderBy('name', 'asc')
+            ->limit(50)
             ->get();
 
         return response()->json($products);

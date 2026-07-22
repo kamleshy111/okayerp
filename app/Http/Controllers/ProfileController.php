@@ -34,6 +34,10 @@ class ProfileController extends Controller
     {
         $user = $request->user();
         $data = $request->validated();
+        $data['allow_provide_additional_descriptions'] = $request->has('allow_provide_additional_descriptions') ? (bool)$request->input('allow_provide_additional_descriptions') : false;
+        $data['allow_gst_invoice'] = $request->has('allow_gst_invoice') ? (bool)$request->input('allow_gst_invoice') : false;
+        $data['allow_alternate_units'] = $request->has('allow_alternate_units') ? (bool)$request->input('allow_alternate_units') : false;
+        $data['hide_bank_details'] = $request->has('hide_bank_details') ? (bool)$request->input('hide_bank_details') : false;
         if (empty($data['ledger_pin'])) {
             unset($data['ledger_pin']);
         }

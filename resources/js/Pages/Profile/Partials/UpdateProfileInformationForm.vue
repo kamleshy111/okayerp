@@ -42,6 +42,9 @@ const form = useForm({
     invoice_title_with_gst: user.invoice_title_with_gst || '',
     invoice_print_size: user.invoice_print_size || 'a4',
     hide_bank_details: !!user.hide_bank_details,
+    allow_provide_additional_descriptions: !!user.allow_provide_additional_descriptions,
+    allow_gst_invoice: !!user.allow_gst_invoice,
+    allow_alternate_units: !!user.allow_alternate_units,
 });
 
 const availableDistricts = computed(() => {
@@ -351,6 +354,45 @@ const handleFileUpload = (event) => {
                             Hide Bank Details in Invoices / Estimates
                         </label>
                         <InputError class="mt-2" :message="form.errors.hide_bank_details" />
+                    </div>
+
+                    <div class="md:col-span-2 flex items-center mt-2">
+                        <input
+                            id="allow_provide_additional_descriptions"
+                            type="checkbox"
+                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 h-4 w-4"
+                            v-model="form.allow_provide_additional_descriptions"
+                        />
+                        <label for="allow_provide_additional_descriptions" class="ml-2 block text-sm font-medium text-gray-700">
+                            Allow Provide Additional Descriptions for Stock Items
+                        </label>
+                        <InputError class="mt-2" :message="form.errors.allow_provide_additional_descriptions" />
+                    </div>
+
+                    <div class="md:col-span-2 flex items-center mt-2">
+                        <input
+                            id="allow_gst_invoice"
+                            type="checkbox"
+                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 h-4 w-4"
+                            v-model="form.allow_gst_invoice"
+                        />
+                        <label for="allow_gst_invoice" class="ml-2 block text-sm font-medium text-gray-700">
+                            Allow GST Invoice
+                        </label>
+                        <InputError class="mt-2" :message="form.errors.allow_gst_invoice" />
+                    </div>
+
+                    <div class="md:col-span-2 flex items-center mt-2">
+                        <input
+                            id="allow_alternate_units"
+                            type="checkbox"
+                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 h-4 w-4"
+                            v-model="form.allow_alternate_units"
+                        />
+                        <label for="allow_alternate_units" class="ml-2 block text-sm font-medium text-gray-700">
+                            Allow Alternate Units
+                        </label>
+                        <InputError class="mt-2" :message="form.errors.allow_alternate_units" />
                     </div>
                 </div>
             </div>

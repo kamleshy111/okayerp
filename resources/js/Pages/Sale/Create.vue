@@ -53,23 +53,16 @@ if (props.products) {
 }
 
 const productSearchQuery = ref('');
+const activeSearchIndex = ref(null);
+const searchQuery = ref('');
+const selectedSidebarProductIndex = ref(0);
+
 const onProductSearch = async (search, loading) => {
-  productSearchQuery.value = search;
-  if (!search.trim()) {
-    let initialList = [];
-    form.value.sale_items.forEach(item => {
-      if (item.product_id && productRegistry.value[item.product_id]) {
-        const alreadyInList = initialList.some(p => p.id === item.product_id);
-        if (!alreadyInList) {
-          initialList.push(productRegistry.value[item.product_id]);
-        }
-      }
-    });
-    products.value = initialList;
-    return;
-  }
+  const searchVal = search || '';
+  productSearchQuery.value = searchVal;
+  if (loading) loading(true);
   try {
-    const response = await axios.get(`/product/search?query=${encodeURIComponent(search)}`);
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}`);
     response.data.forEach(p => {
       productRegistry.value[p.id] = p;
     });
@@ -86,7 +79,72 @@ const onProductSearch = async (search, loading) => {
     products.value = results;
   } catch (error) {
     console.error("Error fetching products:", error);
+  } finally {
+    if (loading) loading(false);
   }
+};
+
+const onProductInputFocus = (index) => {
+    activeSearchIndex.value = index;
+    const item = form.value.sale_items[index];
+    searchQuery.value = item.temp_product_name || '';
+    selectedSidebarProductIndex.value = 0;
+    onProductSearch(searchQuery.value);
+};
+
+const onProductInputChanged = (index, value) => {
+    searchQuery.value = value;
+    const item = form.value.sale_items[index];
+    item.temp_product_name = value;
+    selectedSidebarProductIndex.value = 0;
+    if (!value) {
+        item.product_id = "";
+    }
+    onProductSearch(value);
+};
+
+const navigateSidebar = (direction) => {
+    if (products.value.length === 0) return;
+    selectedSidebarProductIndex.value = (selectedSidebarProductIndex.value + direction + products.value.length) % products.value.length;
+    const el = document.getElementById(`sidebar-item-${selectedSidebarProductIndex.value}`);
+    if (el) {
+        el.scrollIntoView({ block: 'nearest' });
+    }
+};
+
+const selectHighlightedProduct = () => {
+    if (products.value.length > 0 && selectedSidebarProductIndex.value >= 0 && selectedSidebarProductIndex.value < products.value.length) {
+        selectProduct(products.value[selectedSidebarProductIndex.value]);
+    }
+};
+
+const selectProduct = (product) => {
+    if (activeSearchIndex.value !== null) {
+        const item = form.value.sale_items[activeSearchIndex.value];
+        item.product_id = product.id;
+        item.temp_product_name = product.name;
+        
+        if (page.props.auth?.user?.allow_provide_additional_descriptions) {
+            openDescriptionPopup(activeSearchIndex.value);
+        }
+        
+        activeSearchIndex.value = null;
+    }
+};
+
+const closeSidebar = () => {
+    if (activeSearchIndex.value !== null) {
+        const item = form.value.sale_items[activeSearchIndex.value];
+        if (item.product_id) {
+            const selectedProduct = productRegistry.value[item.product_id] || products.value.find(p => p.id === item.product_id);
+            if (selectedProduct) {
+                item.temp_product_name = selectedProduct.name;
+            }
+        } else {
+            item.temp_product_name = "";
+        }
+    }
+    activeSearchIndex.value = null;
 };
 
 const customerSearchQuery = ref("");
@@ -194,6 +252,7 @@ const clearEstimatePrefill = () => {
 };
 
 onMounted(async () => {
+    form.value.accepted = !!page.props.auth?.user?.allow_gst_invoice;
     const urlParams = new URLSearchParams(window.location.search);
     const estimateId = urlParams.get('estimate_id');
     if (estimateId) {
@@ -262,6 +321,7 @@ onMounted(async () => {
 
                     return {
                         product_id: item.product_id,
+                        temp_product_name: item.product ? item.product.name : "",
                         unit_type: item.unit_type || "",
                         sgst: computedSgst,
                         cgst: computedCgst,
@@ -270,6 +330,7 @@ onMounted(async () => {
                         baseAmount: item.base_price,
                         gst_rate_id: matchedRate ? matchedRate.id : (props.gstRates[0]?.id || ""),
                         last_product_id: item.product_id,
+                        description: item.description || "",
                     };
                 });
 
@@ -523,6 +584,17 @@ watch(isInternationalCustomer, (isInternational) => {
 const page = usePage();
 const storeState = computed(() => page.props.auth?.user?.state || '');
 
+const useAlternateUnits = ref(!!page.props.auth?.user?.allow_alternate_units);
+watch(useAlternateUnits, (newVal) => {
+  if (!newVal) {
+    form.value.sale_items.forEach(item => {
+      item.alternate_quantity = "";
+      item.width = "";
+      item.height = "";
+    });
+  }
+});
+
 const isInterstate = computed(() => {
   if (!selectedCustomer.value || !selectedCustomer.value.state) return false;
   return storeState.value.trim().toLowerCase() !== selectedCustomer.value.state.trim().toLowerCase();
@@ -565,7 +637,19 @@ const hasGstSelected = computed(() => {
 });
 
 watch(hasGstSelected, (newVal) => {
-  form.value.accepted = newVal;
+  if (newVal) {
+    form.value.accepted = true;
+  }
+});
+
+watch(() => form.value.accepted, (newVal) => {
+  if (!newVal) {
+    form.value.sale_items.forEach(item => {
+      item.gst_rate_id = null;
+      item.cgst = 0;
+      item.sgst = 0;
+    });
+  }
 });
 
 // Watch sale items
@@ -585,6 +669,7 @@ watch(() => form.value.sale_items, (newSaleItems) => {
         item.cgst = 0;
         item.sgst = 0;
         item.price = selectedProduct.price || "";
+        item.description = selectedProduct.description || "";
         
         item.last_width = item.width;
         item.last_height = item.height;
@@ -666,6 +751,7 @@ const addRow = () => {
     // Add a new row to the sale_items array
     form.value.sale_items.push({
         product_id: "",
+        temp_product_name: "",
         unit_type: "",
         quantity: "",
         price: "",
@@ -680,7 +766,8 @@ const addRow = () => {
         last_width: "",
         last_height: "",
         last_alternate_quantity: "",
-        last_quantity: ""
+        last_quantity: "",
+        description: ""
     });
 };
 
@@ -857,6 +944,7 @@ const submitForm = async () => {
       exchange_rate: 1.0000,
       sale_items: [{
         product_id: "",
+        temp_product_name: "",
         unit_type: "",
         sgst: "",
         cgst: "",
@@ -872,7 +960,8 @@ const submitForm = async () => {
         last_width: "",
         last_height: "",
         last_alternate_quantity: "",
-        last_quantity: ""
+        last_quantity: "",
+        description: ""
       }],
     };
   } catch (error) {
@@ -907,30 +996,108 @@ const handleProductSuccess = (createdProduct) => {
   }
   showProductModal.value = false;
 };
+
+const showDescriptionPopup = ref(false);
+const activeDescriptionIndex = ref(null);
+const tempDescription = ref("");
+const descriptionTextarea = ref(null);
+
+const openDescriptionPopup = (index) => {
+    activeDescriptionIndex.value = index;
+    const items = form.value.sale_items;
+    tempDescription.value = items[index]?.description || "";
+    showDescriptionPopup.value = true;
+    nextTick(() => {
+        if (descriptionTextarea.value) {
+            descriptionTextarea.value.focus();
+        }
+    });
+};
+
+const closeDescriptionPopup = () => {
+    const index = activeDescriptionIndex.value;
+    showDescriptionPopup.value = false;
+    activeDescriptionIndex.value = null;
+    if (index !== null) {
+        nextTick(() => {
+            let inputToFocus = null;
+            const items = form.value.sale_items;
+            if (useAlternateUnits.value && items[index] && items[index].alternate_unit_type) {
+                inputToFocus = document.getElementById(`alt-qty-input-${index}`);
+            }
+            if (!inputToFocus) {
+                inputToFocus = document.getElementById(`qty-input-${index}`);
+            }
+            if (inputToFocus) {
+                inputToFocus.focus();
+                if (typeof inputToFocus.select === 'function') {
+                    inputToFocus.select();
+                }
+            }
+        });
+    }
+};
+
+const saveDescriptionPopup = () => {
+    const items = form.value.sale_items;
+    if (activeDescriptionIndex.value !== null && items[activeDescriptionIndex.value]) {
+        items[activeDescriptionIndex.value].description = tempDescription.value;
+    }
+    closeDescriptionPopup();
+};
+
+
+const activeEditingAltRow = ref(null);
+const startEditingAlt = (index) => {
+    activeEditingAltRow.value = index;
+    nextTick(() => {
+        const input = document.getElementById(`width-input-${index}`);
+        if (input) input.focus();
+    });
+};
+const handleAltFocusOut = (event, index) => {
+    if (!event.currentTarget.contains(event.relatedTarget)) {
+        activeEditingAltRow.value = null;
+    }
+};
 </script>
 <template>
     <Head title="Sale">
         <link href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-icons/1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     </Head>
     <AuthenticatedLayout>
-    <div class="bg-white p-8 rounded-xl shadow-md space-y-6">
-        <div class="main-back-class">
-            <a :href="route('sale')"><i style="font-size: 14px;" class="bi bi-chevron-left"></i><span style="margin-left: 5px;">Sale</span></a>
-        </div>
-            <h2 class="text-2xl font-bold mb-4 text-[#292688]">Add Sale</h2>
-            <div v-if="prefilledFromEstimateNo" class="p-4 mb-6 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg flex items-center justify-between shadow-sm">
-                <div class="flex items-center gap-2">
-                    <span class="text-lg">⚡</span>
-                    <span>Prefilled from <strong>Estimate #{{ prefilledFromEstimateNo }}</strong>. Stock levels will be deducted upon saving this sale.</span>
+    <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm space-y-6">
+        <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-5">
+            <div>
+                <div class="flex items-center gap-2 text-xs text-slate-400 font-medium mb-1">
+                    <a :href="route('sale')" class="hover:text-indigo-600 transition">Sales</a>
+                    <span>/</span>
+                    <span class="text-slate-600">New Sale</span>
                 </div>
-                <button @click="clearEstimatePrefill" class="text-purple-600 hover:text-purple-900 font-semibold text-xs bg-purple-100 px-2.5 py-1 rounded-md transition duration-150">
-                    Clear Prefill
-                </button>
+                <h2 class="text-2xl font-bold text-[#2E2C92] tracking-tight">Create New Sale</h2>
             </div>
+            <div class="flex items-center gap-2">
+                <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">
+                    <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
+                    Draft Sale
+                </span>
+            </div>
+        </div>
+        
+        <div v-if="prefilledFromEstimateNo" class="p-4 mb-6 bg-purple-50 border border-purple-200 text-purple-800 rounded-lg flex items-center justify-between shadow-sm">
+            <div class="flex items-center gap-2">
+                <span class="text-lg">⚡</span>
+                <span>Prefilled from <strong>Estimate #{{ prefilledFromEstimateNo }}</strong>. Stock levels will be deducted upon saving this sale.</span>
+            </div>
+            <button @click="clearEstimatePrefill" class="text-purple-600 hover:text-purple-900 font-semibold text-xs bg-purple-100 px-2.5 py-1 rounded-md transition duration-150">
+                Clear Prefill
+            </button>
+        </div>
+
         <div>
             <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Customer <span class="text-red-500">*</span></label>
+                    <label class="block text-slate-700 text-sm font-semibold mb-2">Customer <span class="text-red-500">*</span></label>
                     <vSelect
                         v-model="form.customer_id"
                         :options="customers"
@@ -960,16 +1127,16 @@ const handleProductSuccess = (createdProduct) => {
                     </vSelect>
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">Sales Date <span class="text-red-500">*</span></label>
+                    <label class="block text-slate-700 text-sm font-semibold mb-2">Sales Date <span class="text-red-500">*</span></label>
                     <input
                         type="date"
                         v-model="form.sale_date"
                         required
-                        class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black"
+                        class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm"
                     />
                 </div>
                 <div>
-                    <label class="block text-black font-medium mb-2">Referral User (Optional)</label>
+                    <label class="block text-slate-700 text-sm font-semibold mb-2">Referral User (Optional)</label>
                     <vSelect
                         v-model="form.referral_user_id"
                         :options="referralUsers"
@@ -988,10 +1155,12 @@ const handleProductSuccess = (createdProduct) => {
                     </vSelect>
                 </div>
             </div>
+            
+
             <div v-if="isInternationalCustomer" class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-4 p-4 bg-purple-50/30 border border-purple-100 rounded-xl">
                 <div>
-                    <label class="block text-black font-semibold mb-2">Currency</label>
-                    <select v-model="form.currency" class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black">
+                    <label class="block text-slate-700 text-sm font-semibold mb-2">Currency</label>
+                    <select v-model="form.currency" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm">
                         <option value="USD">USD ($)</option>
                         <option value="AED">AED (AED)</option>
                         <option value="GBP">GBP (£)</option>
@@ -1004,121 +1173,190 @@ const handleProductSuccess = (createdProduct) => {
                     </select>
                 </div>
                 <div>
-                    <label class="block text-black font-semibold mb-2">Exchange Rate (1 {{ form.currency }} = ? INR)</label>
-                    <input type="number" v-model="form.exchange_rate" step="any" min="0.0001" class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition bg-white text-black" />
+                    <label class="block text-slate-700 text-sm font-semibold mb-2">Exchange Rate (1 {{ form.currency }} = ? INR)</label>
+                    <input type="number" v-model="form.exchange_rate" step="any" min="0.0001" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm" />
                 </div>
             </div>
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div v-if="selectedCustomer" class="mt-4 p-4 border rounded bg-gray-100 text-black">
-                <p><strong>Phone:</strong> {{ selectedCustomer.phone }}</p>
-                <p><strong>Email:</strong> {{ selectedCustomer.email }}</p>
-                <p><strong>Address:</strong> {{ selectedCustomer.address }}</p>
+            
+            <div v-if="selectedCustomer" class="mt-6 p-5 rounded-2xl bg-indigo-50/30 border border-indigo-100/50 shadow-sm transition-all duration-300">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6 text-sm text-slate-700">
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 rounded-xl bg-white border border-indigo-100/80 text-indigo-600 shadow-sm">
+                            <i class="bi bi-telephone text-base leading-none"></i>
+                        </div>
+                        <div>
+                            <span class="block text-xxs font-semibold text-slate-400 uppercase tracking-wider">Phone</span>
+                            <span class="font-medium text-slate-800">{{ selectedCustomer.phone || 'Not Provided' }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 rounded-xl bg-white border border-indigo-100/80 text-indigo-600 shadow-sm">
+                            <i class="bi bi-envelope text-base leading-none"></i>
+                        </div>
+                        <div>
+                            <span class="block text-xxs font-semibold text-slate-400 uppercase tracking-wider">Email</span>
+                            <span class="font-medium text-slate-800 truncate max-w-[200px]" :title="selectedCustomer.email">{{ selectedCustomer.email || 'Not Provided' }}</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="p-2.5 rounded-xl bg-white border border-indigo-100/80 text-indigo-600 shadow-sm">
+                            <i class="bi bi-geo-alt text-base leading-none"></i>
+                        </div>
+                        <div>
+                            <span class="block text-xxs font-semibold text-slate-400 uppercase tracking-wider">Address</span>
+                            <span class="font-medium text-slate-800 truncate max-w-[250px]" :title="selectedCustomer.address">{{ selectedCustomer.address || 'Not Provided' }}</span>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <div class="mt-6"> <h3 class="text-2xl font-bold mb-4 text-[#292688]">Sale Items</h3> </div>
-            <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
-                <thead class="bg-[#292688] text-white">
-                    <tr>
-                        <th class="px-4 py-2 text-left">Product <span class="text-red-500">*</span></th>
-                        <th class="px-4 py-2 text-left">GST</th>
-                        <th class="px-4 py-2 text-left" style="width: 18%;">Alt Qty / Size</th>
-                        <th class="px-4 py-2 text-left">Quantity <span class="text-red-500">*</span></th>
-                        <th class="px-4 py-2 text-left">Unit Type</th>
-                        <th class="px-4 py-2 text-left">Price <span class="text-red-500">*</span></th>
-                        <th class="px-4 py-2 text-left">Net Amount</th>
-                        <th class="px-4 py-2 text-left">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in form.sale_items" :key="index">
-                        <td class="border-t px-4 py-3 min-w-[220px]">
-                            <vSelect
-                                v-model="item.product_id"
-                                :options="products"
-                                label="name"
-                                :reduce="product => product.id"
-                                placeholder="Search or select product"
-                                class="w-full text-black bg-white"
-                                append-to-body
-                                @search="onProductSearch"
-                                @keydown.enter="onProductEnterKey($event, index)"
-                            >
-                                <template #no-options="{ search, searching, loading }">
-                                    <div class="px-3 py-2 text-gray-500">
-                                        <span v-if="!search">Type to search product...</span>
-                                        <span v-else>No products found.</span>
-                                        <button
-                                            :id="'add-product-btn-' + index"
-                                            @click.stop="openProductModal(index, search)"
-                                            :class="search
-                                                ? 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold border border-blue-300 rounded-lg px-3 py-1.5'
-                                                : 'mt-2 inline-flex items-center text-blue-600 text-sm font-semibold'"
-                                        >
-                                            ➕ Add New Product
+            
+            <div class="mt-8 flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+                <h3 class="text-lg font-bold text-[#2E2C92] flex items-center gap-2">
+                    <i class="bi bi-bag-check text-indigo-600"></i>
+                    Sale Items
+                </h3>
+            </div>
+            
+            <div class="hidden md:block overflow-hidden border border-slate-100 rounded-2xl shadow-sm bg-white mt-4">
+                <table class="w-full table-auto border-collapse">
+                    <thead class="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs font-semibold tracking-wider uppercase">
+                        <tr>
+                            <th class="px-4 py-3.5 text-left">Product <span class="text-red-500">*</span></th>
+                            <th v-if="form.accepted" class="px-4 py-3.5 text-left">GST</th>
+                            <th v-if="useAlternateUnits" class="px-4 py-3.5 text-left" style="width: 18%;">Alt Qty / Size</th>
+                            <th class="px-4 py-3.5 text-left">Quantity <span class="text-red-500">*</span></th>
+                            <th class="px-4 py-3.5 text-left">Unit Type</th>
+                            <th class="px-4 py-3.5 text-left">Price <span class="text-red-500">*</span></th>
+                            <th class="px-4 py-3.5 text-left">Net Amount</th>
+                            <th class="px-4 py-3.5 text-right">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in form.sale_items" :key="index" class="hover:bg-slate-50/40 transition">
+                            <td class="border-t border-slate-100 px-4 py-4 min-w-[220px]">
+                                <div class="relative w-full">
+                                    <input
+                                        type="text"
+                                        v-model="item.temp_product_name"
+                                        @focus="onProductInputFocus(index)"
+                                        @input="onProductInputChanged(index, $event.target.value)"
+                                        @keydown.down.prevent="navigateSidebar(1)"
+                                        @keydown.up.prevent="navigateSidebar(-1)"
+                                        @keydown.enter.prevent="selectHighlightedProduct"
+                                        @keydown.tab="closeSidebar"
+                                        @keydown.esc="closeSidebar"
+                                        placeholder="Search product..."
+                                        class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm"
+                                    />
+                                    <button 
+                                        v-if="!item.product_id"
+                                        type="button"
+                                        @click.stop="openProductModal(index, item.temp_product_name)"
+                                        class="absolute right-3 top-2.5 text-[#2E2C92] hover:text-[#1b1959] text-xs font-bold"
+                                        title="Add New Product"
+                                    >
+                                        ➕ Add
+                                    </button>
+                                </div>
+                                <div v-if="page.props.auth?.user?.allow_provide_additional_descriptions && item.description" class="mt-1.5">
+                                    <div class="text-xxs text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 flex items-center justify-between shadow-xxs">
+                                        <span class="truncate max-w-[200px]" :title="item.description">{{ item.description }}</span>
+                                        <button type="button" @click="openDescriptionPopup(index)" class="text-indigo-600 hover:text-indigo-800 ml-2 shrink-0">
+                                            <i class="bi bi-pencil-square"></i>
                                         </button>
                                     </div>
-                                </template>
-                            </vSelect>
-                        </td>
-                        <td class="border-t px-4 py-3 min-w-[140px]">
-                            <select
-                                v-model="item.gst_rate_id"
-                                @change="onGstRateChange(item)"
-                                @keydown.enter.prevent="moveToNextInput"
-                                class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
-                            >
-                                <option value="" disabled>Select GST</option>
-                                <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
-                                    {{ rate.name }}
-                                </option>
-                            </select>
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            <div v-if="item.alternate_unit_type" class="flex flex-col gap-2">
-                                <div class="flex items-center gap-1">
-                                    <input type="number" step="any" v-model="item.alternate_quantity" class="w-20 px-2 py-1 border border-gray-300 rounded text-sm text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="Alt Qty" />
-                                    <span class="text-xs text-gray-500 font-medium">{{ item.alternate_unit_type }}</span>
                                 </div>
-                                <div class="flex items-center gap-1 text-xs text-gray-500">
-                                    <input type="number" step="any" v-model="item.width" class="w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="W" />
-                                    <span>x</span>
-                                    <input type="number" step="any" v-model="item.height" class="w-12 px-1 py-0.5 border border-gray-300 rounded text-center text-black bg-white focus:ring-2 focus:ring-[#292688]" placeholder="H" />
+                            </td>
+                            <td v-if="form.accepted" class="border-t border-slate-100 px-4 py-4 min-w-[140px]">
+                                <select
+                                    v-model="item.gst_rate_id"
+                                    @change="onGstRateChange(item)"
+                                    @keydown.enter.prevent="moveToNextInput"
+                                    class="w-full border border-slate-200 px-2 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm"
+                                >
+                                    <option value="" disabled>Select GST</option>
+                                    <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
+                                        {{ rate.name }}
+                                    </option>
+                                </select>
+                            </td>
+                            <td v-if="useAlternateUnits" class="border-t border-slate-100 px-4 py-4 min-w-[150px]">
+                                <div v-if="item.alternate_unit_type" class="flex flex-col gap-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <input 
+                                            :id="'alt-qty-input-' + index"
+                                            type="number" 
+                                            step="any" 
+                                            v-model="item.alternate_quantity" 
+                                            class="w-20 px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition" 
+                                            placeholder="Alt Qty" 
+                                        />
+                                        <span class="text-xs text-slate-500 font-semibold uppercase">{{ item.alternate_unit_type }}</span>
+                                    </div>
+                                    <div v-if="activeEditingAltRow === index" @focusout="handleAltFocusOut($event, index)" class="flex items-center gap-1 text-xs text-slate-400">
+                                        <input 
+                                            :id="`width-input-${index}`"
+                                            type="number" 
+                                            step="any" 
+                                            v-model="item.width" 
+                                            class="w-10 px-1 py-1 border border-slate-200 rounded-lg text-center text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition placeholder:text-slate-300" 
+                                            placeholder="W" 
+                                        />
+                                        <span class="text-xxs font-bold">×</span>
+                                        <input 
+                                            type="number" 
+                                            step="any" 
+                                            v-model="item.height" 
+                                            class="w-10 px-1 py-1 border border-slate-200 rounded-lg text-center text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition placeholder:text-slate-300" 
+                                            placeholder="H" 
+                                        />
+                                    </div>
+                                    <div 
+                                        v-else 
+                                        @click="startEditingAlt(index)"
+                                        class="cursor-pointer hover:bg-slate-50 px-2 py-1 rounded-lg border border-dashed border-slate-200 hover:border-indigo-300 transition text-xxs text-slate-400 font-medium inline-block align-middle self-start"
+                                        title="Click to edit size"
+                                    >
+                                        Size: {{ item.width || 0 }} × {{ item.height || 0 }}
+                                    </div>
                                 </div>
-                            </div>
-                            <div v-else class="text-gray-400 text-xs">-</div>
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            <input type="number" name="quantity" v-model="item.quantity" required
-                                @keydown.enter.prevent="moveToNextInput"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                                placeholder="Qty" />
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            {{ item.unit_type }}
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            <input type="number" name="price" v-model="item.price" required
-                                @keydown.enter.prevent="moveToNextInput"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                                placeholder="Price" />
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            {{ currencySymbol }} {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2) }}
-                        </td>
-                        <td class="border-t px-4 py-2 flex items-center gap-2">
-                            <button @click="removeRow(index)" type="button"
-                                class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition flex items-center justify-center">
-                                <i class="bi bi-trash"></i>
-                            </button>
-                            <button v-if="index === form.sale_items.length - 1" @click="addRow" type="button"
-                                class="bg-green-600 text-white px-3 py-1 rounded-md shadow hover:bg-green-700 transition flex items-center gap-2"
-                            >
-                                <i class="bi bi-plus-lg"></i>
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                                <div v-else class="text-slate-300 text-xs">-</div>
+                            </td>
+                            <td class="border-t border-slate-100 px-4 py-4">
+                                <input :id="'qty-input-' + index" type="number" name="quantity" v-model="item.quantity" required
+                                    @keydown.enter.prevent="moveToNextInput"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none text-sm transition text-black bg-white shadow-sm"
+                                    placeholder="Qty" />
+                            </td>
+                            <td class="border-t border-slate-100 px-4 py-4">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/50 uppercase">{{ item.unit_type || 'pcs' }}</span>
+                            </td>
+                            <td class="border-t border-slate-100 px-4 py-4">
+                                <input type="number" name="price" v-model="item.price" required
+                                    @keydown.enter.prevent="moveToNextInput"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none text-sm transition text-black bg-white shadow-sm"
+                                    placeholder="Price" />
+                            </td>
+                            <td class="border-t border-slate-100 px-4 py-4 font-bold text-slate-800 text-sm">
+                                {{ currencySymbol }} {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2) }}
+                            </td>
+                            <td class="border-t border-slate-100 px-4 py-4 text-right">
+                                <div class="flex items-center justify-end gap-2">
+                                    <button @click="removeRow(index)" type="button"
+                                        class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition flex items-center justify-center cursor-pointer">
+                                        <i class="bi bi-trash text-lg leading-none"></i>
+                                    </button>
+                                    <button v-if="index === form.sale_items.length - 1" @click="addRow" type="button"
+                                        class="p-2 rounded-xl text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 border border-indigo-100 hover:border-indigo-600 transition flex items-center justify-center cursor-pointer"
+                                    >
+                                        <i class="bi bi-plus-lg text-lg leading-none"></i>
+                                    </button>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
             <div class="md:hidden space-y-4">
                 <div v-for="(item, index) in form.sale_items" :key="'mobile-' + index" class="bg-gray-50 p-4 rounded-xl border border-gray-200 space-y-4">
                     <div class="flex justify-between items-center pb-2 border-b border-gray-100">
@@ -1130,32 +1368,40 @@ const handleProductSuccess = (createdProduct) => {
                     <div class="space-y-3">
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-1">Product <span class="text-red-500">*</span></label>
-                            <vSelect
-                                v-model="item.product_id"
-                                :options="products"
-                                label="name"
-                                :reduce="product => product.id"
-                                placeholder="Search or select product"
-                                class="w-full text-black bg-white"
-                                @search="onProductSearch"
-                                @keydown.enter="onProductEnterKey($event, index)"
-                            >
-                                <template #no-options="{ search, searching, loading }">
-                                    <div class="px-3 py-2 text-gray-500">
-                                        <span v-if="!search">Type to search product...</span>
-                                        <span v-else>No products found.</span>
-                                        <button
-                                            :id="'add-product-btn-' + index"
-                                            @click.stop="openProductModal(index, search)"
-                                            class="mt-2 inline-flex items-center text-blue-600 text-sm font-semibold hover:underline focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-blue-50 focus:px-3 focus:py-1.5 focus:rounded-lg focus:border focus:border-blue-300"
-                                        >
-                                            ➕ Add New Product
-                                        </button>
-                                    </div>
-                                </template>
-                            </vSelect>
+                            <div class="relative w-full">
+                                <input
+                                    type="text"
+                                    v-model="item.temp_product_name"
+                                    @focus="onProductInputFocus(index)"
+                                    @input="onProductInputChanged(index, $event.target.value)"
+                                    @keydown.down.prevent="navigateSidebar(1)"
+                                    @keydown.up.prevent="navigateSidebar(-1)"
+                                    @keydown.enter.prevent="selectHighlightedProduct"
+                                    @keydown.tab="closeSidebar"
+                                    @keydown.esc="closeSidebar"
+                                    placeholder="Search or select product"
+                                    class="w-full border border-gray-300 px-3 py-2 rounded-xl focus:ring-2 focus:ring-[#292688] text-black bg-white focus:outline-none"
+                                />
+                                <button 
+                                    v-if="!item.product_id"
+                                    type="button"
+                                    @click.stop="openProductModal(index, item.temp_product_name)"
+                                    class="absolute right-3 top-2.5 text-[#2E2C92] hover:text-[#1b1959] text-xs font-semibold"
+                                    title="Add New Product"
+                                >
+                                    ➕ Add
+                                </button>
+                            </div>
+                            <div v-if="page.props.auth?.user?.allow_provide_additional_descriptions && item.description" class="mt-1.5">
+                                <div class="text-xs text-gray-500 bg-gray-50 px-3 py-1.5 rounded-xl border border-gray-100 flex items-center justify-between">
+                                    <span class="truncate max-w-[250px]" :title="item.description">{{ item.description }}</span>
+                                    <button type="button" @click="openDescriptionPopup(index)" class="text-indigo-600 hover:text-indigo-800 ml-1 shrink-0">
+                                        <i class="bi bi-pencil-square"></i>
+                                    </button>
+                                </div>
+                            </div>
                         </div>
-                        <div class="grid grid-cols-3 gap-2">
+                        <div v-if="form.accepted" class="grid grid-cols-3 gap-2">
                             <div class="col-span-2">
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">GST Rate</label>
                                 <select
@@ -1170,7 +1416,7 @@ const handleProductSuccess = (createdProduct) => {
                                 </select>
                             </div>
                         </div>
-                        <div v-if="item.alternate_unit_type" class="grid grid-cols-3 gap-2 bg-gray-100 p-2 rounded-lg border border-gray-200">
+                        <div v-if="useAlternateUnits && item.alternate_unit_type" class="grid grid-cols-3 gap-2 bg-gray-100 p-2 rounded-lg border border-gray-200">
                             <div>
                                 <label class="block text-xxs font-semibold text-gray-500 mb-1">Alt Qty ({{ item.alternate_unit_type }})</label>
                                 <input type="number" step="any" v-model="item.alternate_quantity" class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-black" placeholder="Alt Qty" />
@@ -1199,7 +1445,7 @@ const handleProductSuccess = (createdProduct) => {
                             </div>
                         </div>
                         <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500">
-                            <div>
+                            <div v-if="form.accepted">
                                 <span class="block text-gray-400">GST</span>
                                 <span class="text-gray-800 font-semibold">
                                     <template v-if="item.gst_rate_id">
@@ -1220,13 +1466,14 @@ const handleProductSuccess = (createdProduct) => {
                     </div>
                 </div>
                 <button @click="addRow" type="button"
-                    class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-sm">
-                    <i class="fa fa-plus-circle"></i> Add Items
+                    class="w-full flex items-center justify-center gap-2 bg-indigo-50/50 hover:bg-indigo-600 text-indigo-600 hover:text-white py-3 rounded-xl font-semibold transition border border-indigo-100/80 hover:border-indigo-600 shadow-sm cursor-pointer">
+                    <i class="bi bi-plus-circle-dotted text-lg leading-none"></i> Add New Row
                 </button>
             </div>
-            <div class="flex justify-end mt-6">
-                <button @click="openPaymentModal" class="w-full md:w-auto bg-[#2E2C92] hover:bg-[#1d1b6a] text-white px-6 py-3 rounded-xl font-semibold transition shadow-md hover:shadow-lg">
+            <div class="flex justify-end mt-8 border-t border-slate-100 pt-6">
+                <button @click="openPaymentModal" class="w-full md:w-auto bg-gradient-to-r from-[#2E2C92] to-[#1c1a6e] hover:from-[#1c1a6e] hover:to-[#2E2C92] text-white px-8 py-3.5 rounded-2xl font-bold transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2 hover:scale-[1.02] cursor-pointer">
                     Submit & Proceed to Payment
+                    <i class="bi bi-arrow-right-short text-lg leading-none"></i>
                 </button>
             </div>
         </div>
@@ -1424,5 +1671,105 @@ const handleProductSuccess = (createdProduct) => {
         @close="showProductModal = false"
         @success="handleProductSuccess"
     />
+    <!-- List of Stock Items Sidebar (Tally style) -->
+    <div v-if="activeSearchIndex !== null" @click="closeSidebar" class="fixed inset-0 z-40 bg-black/10 transition-opacity"></div>
+    <div v-if="activeSearchIndex !== null" class="fixed right-0 top-0 bottom-0 w-96 bg-slate-50 border-l border-slate-200 shadow-2xl z-50 flex flex-col transition-all duration-300 transform translate-x-0">
+        <!-- Sidebar Header -->
+        <div class="bg-[#292688] text-white p-4 flex justify-between items-center shadow-md">
+            <div>
+                <h3 class="font-bold text-sm tracking-wide">List of Stock Items</h3>
+                <p class="text-xxs text-slate-300">Use ↑/↓ and Enter to select from keyboard</p>
+            </div>
+            <button @click="closeSidebar" type="button" class="text-white hover:text-red-200">
+                <i class="bi bi-x-lg text-lg"></i>
+            </button>
+        </div>
+        <!-- Search Status / Help -->
+        <div class="px-4 py-2 bg-slate-100 border-b border-slate-200 text-xxs text-slate-500 flex justify-between">
+            <span>Filtering: "{{ searchQuery }}"</span>
+            <span>{{ products.length }} items found</span>
+        </div>
+        <!-- Products List -->
+        <div class="flex-1 overflow-y-auto p-2 space-y-1">
+            <div 
+                v-for="(product, idx) in products" 
+                :key="product.id"
+                :id="'sidebar-item-' + idx"
+                @click="selectProduct(product)"
+                @mouseenter="selectedSidebarProductIndex = idx"
+                :class="[
+                    idx === selectedSidebarProductIndex 
+                        ? 'bg-[#292688] text-white shadow-md' 
+                        : 'hover:bg-slate-200 text-slate-800'
+                ]"
+                class="flex justify-between items-center p-3 rounded-lg cursor-pointer transition-all duration-150 text-xs"
+            >
+                <div class="flex flex-col text-left pr-4">
+                    <span class="font-semibold">{{ product.name }}</span>
+                    <span class="text-xxs opacity-75 mt-0.5" :class="idx === selectedSidebarProductIndex ? 'text-slate-200' : 'text-slate-500'">
+                        SKU: {{ product.sku || '-' }} | Added: {{ new Date(product.created_at).toLocaleDateString() }}
+                    </span>
+                </div>
+                <div class="text-right flex flex-col items-end shrink-0">
+                    <span class="font-bold text-sm">
+                        {{ product.stock_quantity ?? 0 }} {{ product.unit_type || 'pcs' }}
+                    </span>
+                    <span class="text-xxs opacity-75" :class="idx === selectedSidebarProductIndex ? 'text-slate-200' : 'text-slate-500'">
+                        Stock Qty
+                    </span>
+                </div>
+            </div>
+            <div v-if="products.length === 0" class="text-center py-8 text-slate-400 text-xs">
+                No matching stock items found.
+            </div>
+        </div>
+    </div>
+
+    <!-- Item Description Modal -->
+    <div v-if="showDescriptionPopup" class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg border border-slate-100 overflow-hidden transform transition-all">
+            <!-- Modal Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-slate-50 to-white">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="bi bi-card-text text-indigo-600"></i>
+                    Additional Stock Item Description
+                </h3>
+                <button @click="closeDescriptionPopup" class="text-slate-400 hover:text-slate-600 transition">
+                    <i class="bi bi-x-lg text-lg"></i>
+                </button>
+            </div>
+            <!-- Modal Body -->
+            <div class="p-6 space-y-4">
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Item Description</label>
+                    <input 
+                        type="text"
+                        v-model="tempDescription" 
+                        placeholder="Enter description, size, or alternate details for this stock item..."
+                        class="w-full border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 text-black bg-white focus:outline-none placeholder-slate-400 transition"
+                        ref="descriptionTextarea"
+                        @keydown.enter.prevent="saveDescriptionPopup"
+                    />
+                </div>
+            </div>
+            <!-- Modal Footer -->
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button 
+                    type="button" 
+                    @click="closeDescriptionPopup" 
+                    class="px-4 py-2 text-sm font-medium text-slate-600 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 transition"
+                >
+                    Cancel
+                </button>
+                <button 
+                    type="button" 
+                    @click="saveDescriptionPopup" 
+                    class="px-5 py-2 text-sm font-medium text-white bg-indigo-600 rounded-xl hover:bg-indigo-700 transition"
+                >
+                    Ok
+                </button>
+            </div>
+        </div>
+    </div>
     </AuthenticatedLayout>
 </template>

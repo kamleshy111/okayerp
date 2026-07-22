@@ -136,7 +136,14 @@
       @endphp
       <tr class="item-row" style="background:{{ $index % 2 === 0 ? '#fff' : '#f9fafb' }}">
         <td class="text-center">{{ $index + 1 }}</td>
-        <td>{{ $item->product?->name ?? $item->name ?? 'Item' }}</td>
+        <td>
+          {{ $item->product?->name ?? $item->name ?? 'Item' }}
+          @if(!empty($item->description))
+            <div style="font-size: 8px; color: #444; margin-top: 1px; font-weight: normal; word-wrap: break-word; white-space: normal;">
+              {{ $item->description }}
+            </div>
+          @endif
+        </td>
         <td>{{ $item->product?->sku ?? '-' }}</td>
         <td class="text-center">{{ $item->quantity }}</td>
         <td class="text-right">₹ {{ number_format($item->unit_price, 2) }}</td>

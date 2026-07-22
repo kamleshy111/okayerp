@@ -132,6 +132,7 @@ class EstimateController extends Controller
                     'height' => $item['height'] ?? null,
                     'alternate_quantity' => $item['alternate_quantity'] ?? null,
                     'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
+                    'description' => $item['description'] ?? null,
                 ]);
             }
 
@@ -237,6 +238,7 @@ class EstimateController extends Controller
                     'height' => $item['height'] ?? null,
                     'alternate_quantity' => $item['alternate_quantity'] ?? null,
                     'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
+                    'description' => $item['description'] ?? null,
                 ]);
             }
 

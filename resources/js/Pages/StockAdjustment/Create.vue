@@ -215,7 +215,22 @@ const submitForm = async () => {
                     class="w-full text-black bg-white"
                     @search="onProductSearch"
                     @keydown.enter="moveToNextInput"
-                />
+                >
+                    <template #option="option">
+                        <div class="flex justify-between items-center w-full py-0.5">
+                            <div class="flex flex-col text-left">
+                                <span class="font-semibold text-sm">{{ option.name }}</span>
+                                <span v-if="option.created_at" class="text-xxs opacity-75">Added: {{ new Date(option.created_at).toLocaleDateString() }}</span>
+                            </div>
+                            <div class="text-right flex flex-col items-end">
+                                <span class="font-bold text-sm">
+                                    {{ option.stock_quantity ?? 0 }} {{ option.unit_type || 'pcs' }}
+                                </span>
+                                <span class="text-xxs opacity-75">Stock Qty</span>
+                            </div>
+                        </div>
+                    </template>
+                </vSelect>
             </div>
 
             <!-- Current & Projected Stock Summary -->

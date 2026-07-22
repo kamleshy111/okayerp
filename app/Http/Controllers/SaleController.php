@@ -165,6 +165,7 @@ class SaleController extends Controller
                     'height' => $item['height'] ?? null,
                     'alternate_quantity' => $item['alternate_quantity'] ?? null,
                     'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
+                    'description' => $item['description'] ?? null,
                 ]);
 
                 // Update Stock Quantity of product
@@ -299,6 +300,7 @@ class SaleController extends Controller
                 'price' => $item->price,
                 'base_price' => $item->base_price,
                 'total' => $item->quantity * $item->price,
+                'description' => $item->description,
             ];
         });
 
@@ -473,6 +475,7 @@ class SaleController extends Controller
                         'height' => $item['height'] ?? null,
                         'alternate_quantity' => $item['alternate_quantity'] ?? null,
                         'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
+                        'description' => $item['description'] ?? null,
                     ];
 
                     // Update Stock Quantity of product

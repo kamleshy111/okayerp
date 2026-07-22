@@ -139,6 +139,7 @@ class PurchasesController extends Controller
                     'height' => $item['height'] ?? null,
                     'alternate_quantity' => $item['alternate_quantity'] ?? null,
                     'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
+                    'description' => $item['description'] ?? null,
                 ]);
 
                 // Update Stock Quantity of product
@@ -242,6 +243,7 @@ class PurchasesController extends Controller
                 'price' => $item->price,
                 'sale_price' => $item->product->price ?? 0.00,
                 'total' => $item->quantity * $item->price,
+                'description' => $item->description,
             ];
         });
 
@@ -403,6 +405,7 @@ class PurchasesController extends Controller
                         'height' => $item['height'] ?? null,
                         'alternate_quantity' => $item['alternate_quantity'] ?? null,
                         'alternate_unit_type' => $item['alternate_unit_type'] ?? null,
+                        'description' => $item['description'] ?? null,
                     ];
 
                     // Update Stock Quantity of product
