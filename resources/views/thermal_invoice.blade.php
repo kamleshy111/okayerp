@@ -176,9 +176,14 @@
       <tr>
         <td>
           {{ optional($item->product)->name ?? 'N/A' }}
-          @if(!empty($item->width) && !empty($item->height))
+          @if((!empty($item->width) && !empty($item->height)) || !empty($item->alternate_quantity))
             <div style="font-size: 8px; font-style: italic; color: #555;">
-              Size: {{ (float)$item->width }} x {{ (float)$item->height }}
+              @if(!empty($item->width) && !empty($item->height))
+                Size: {{ (float)$item->width }} x {{ (float)$item->height }}
+              @endif
+              @if(!empty($item->alternate_quantity))
+                {{ (!empty($item->width) && !empty($item->height)) ? ' | ' : '' }}Alt Qty: {{ (float)$item->alternate_quantity }} {{ $item->alternate_unit_type ?: (optional($item->product)->alternate_unit_type ?? 'pcs') }}
+              @endif
             </div>
           @endif
         </td>
