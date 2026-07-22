@@ -219,8 +219,7 @@ const form = ref({
             last_width: "",
             last_height: "",
             last_alternate_quantity: "",
-            description: ""
-    }],
+            description: "",
             last_quantity: ""
     }],
 });
