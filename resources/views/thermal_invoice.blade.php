@@ -5,7 +5,7 @@
   <title>Receipt</title>
   <style>
     @page {
-      margin: 8px;
+      margin: 6px;
     }
     body {
       margin: 0;
@@ -165,9 +165,9 @@
 <table class="items-table">
   <thead>
     <tr>
-      <th style="width: 40%;">Item</th>
-      <th class="text-center" style="width: 12%;">Qty</th>
-      <th class="text-right" style="width: 28%;">Rate</th>
+      <th style="width: 38%;">Item</th>
+      <th class="text-center" style="width: 10%;">Qty</th>
+      <th class="text-right" style="width: 32%;">Rate</th>
       <th class="text-right" style="width: 20%;">Amt</th>
     </tr>
   </thead>

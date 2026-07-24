@@ -610,10 +610,11 @@ class SaleController extends Controller
 
         if ($printPreference === 'thermal') {
             $viewName = 'thermal_invoice';
-            // Calculate dynamic height based on the number of items to prevent truncation on receipt rolls.
+            // Calculate dynamic height based on the number of items and store bank details to prevent truncation on receipt rolls.
             $itemCount = count($sale->saleItems);
-            $calculatedHeight = 320 + ($itemCount * 32);
-            $paperSize = [0, 0, 226, max(450, $calculatedHeight)]; // 226pt width = 80mm
+            $bankDetailsHeight = ($store && $store->bank_name && !($store->hide_bank_details ?? false)) ? 60 : 0;
+            $calculatedHeight = 280 + ($itemCount * 40) + $bankDetailsHeight;
+            $paperSize = [0, 0, 200, max(350, $calculatedHeight)]; // 200pt width matches printable area for 72mm/80mm printers
             $paperOrientation = 'portrait';
         } elseif ($printPreference === 'a5') {
             $viewName = 'a5_invoice';
