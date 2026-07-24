@@ -5,10 +5,11 @@
   <title>Receipt</title>
   <style>
     @page {
-      margin: 6px;
+      margin: 0px 6px 6px 6px;
     }
-    body {
+    html, body {
       margin: 0;
+      padding: 0;
       font-family: 'DejaVu Sans', sans-serif;
       font-size: 9px;
       color: #000;
@@ -63,9 +64,7 @@
     }
   </style>
 </head>
-<body>
-
-@php
+<body>@php
   $customer = $sale->customer;
   $isExport = $customer && !empty($customer->country) && strtolower(trim($customer->country)) !== 'india';
   $currencySymbol = '₹';
@@ -97,9 +96,7 @@
   
   $calculatedGrandTotal = $subtotal + $sale->gst_amount - $sale->discount;
   $roundedGrandTotal = $calculatedGrandTotal;
-@endphp
-
-<div class="text-center">
+@endphp<div class="text-center">
   <div class="company-title">{{ $store ? $store->name : 'Your Store Name' }}</div>
   @if($store && $store->address)
     <div>{{ $store->address }}</div>
