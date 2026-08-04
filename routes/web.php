@@ -67,6 +67,7 @@ Route::middleware(['auth'])->group(function () {
 
     // Audit Logs
     Route::get('/audit-logs', [\App\Http\Controllers\AuditLogController::class, 'index'])->name('audit-logs.index');
+    Route::post('/audit-logs/toggle', [\App\Http\Controllers\AuditLogController::class, 'toggleLogging'])->name('audit-logs.toggle');
 
 });
 

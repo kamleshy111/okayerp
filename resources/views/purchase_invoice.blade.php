@@ -60,8 +60,8 @@
 @php
   $store = $purchase->supplier->user ?? null;
   $supplier = $purchase->supplier;
-  $subtotal = $purchase->items->sum(fn($i) => $i->quantity * $i->unit_price);
-  $taxTotal  = $purchase->items->sum(fn($i) => $i->quantity * $i->unit_price * ($i->tax_rate ?? 0) / 100);
+  $subtotal = $purchase->total_amount ?? $purchase->items->sum(fn($i) => $i->quantity * ($i->price ?? $i->unit_price ?? 0));
+  $taxTotal  = $purchase->gst_amount ?? $purchase->items->sum(fn($i) => $i->quantity * ($i->price ?? $i->unit_price ?? 0) * (($i->sgst + $i->cgst) ?: ($i->tax_rate ?? 0)) / 100);
   $grandTotal = $purchase->grand_total;
   $paid       = $purchase->paid ?? 0;
   $balance    = $grandTotal - $paid;
@@ -117,26 +117,28 @@
   <table class="items-table">
     <thead>
       <tr>
-        <th style="width:5%;">#</th>
-        <th style="width:35%;text-align:left;">Product / Description</th>
-        <th style="width:10%;">SKU</th>
-        <th style="width:8%;">Qty</th>
-        <th style="width:12%;">Unit Price</th>
-        <th style="width:8%;">Tax%</th>
-        <th style="width:10%;">Tax Amt</th>
-        <th style="width:12%;text-align:right;">Total</th>
+        <th style="width:4%;">#</th>
+        <th style="width:30%;text-align:left;">Product / Description</th>
+        <th style="width:8%;">SKU</th>
+        <th style="width:6%;">Qty</th>
+        <th style="width:14%;text-align:right;white-space:nowrap;">Unit Price</th>
+        <th style="width:7%;">Tax%</th>
+        <th style="width:15%;text-align:right;white-space:nowrap;">Tax Amt</th>
+        <th style="width:16%;text-align:right;white-space:nowrap;">Total</th>
       </tr>
     </thead>
     <tbody>
       @foreach($purchase->items as $index => $item)
       @php
-        $lineSubtotal = $item->quantity * $item->unit_price;
-        $lineTax = $lineSubtotal * ($item->tax_rate ?? 0) / 100;
+        $unitPrice = $item->price ?? $item->unit_price ?? 0;
+        $taxRate = ($item->sgst + $item->cgst) ?: ($item->tax_rate ?? 0);
+        $lineSubtotal = $item->quantity * $unitPrice;
+        $lineTax = $lineSubtotal * $taxRate / 100;
         $lineTotal = $lineSubtotal + $lineTax;
       @endphp
       <tr class="item-row" style="background:{{ $index % 2 === 0 ? '#fff' : '#f9fafb' }}">
         <td class="text-center">{{ $index + 1 }}</td>
-        <td>
+        <td style="word-wrap:break-word;">
           {{ $item->product?->name ?? $item->name ?? 'Item' }}
           @if(!empty($item->description))
             <div style="font-size: 8px; color: #444; margin-top: 1px; font-weight: normal; word-wrap: break-word; white-space: normal;">
@@ -144,12 +146,12 @@
             </div>
           @endif
         </td>
-        <td>{{ $item->product?->sku ?? '-' }}</td>
-        <td class="text-center">{{ $item->quantity }}</td>
-        <td class="text-right">₹ {{ number_format($item->unit_price, 2) }}</td>
-        <td class="text-center">{{ $item->tax_rate ?? 0 }}%</td>
-        <td class="text-right">₹ {{ number_format($lineTax, 2) }}</td>
-        <td class="text-right">₹ {{ number_format($lineTotal, 2) }}</td>
+        <td class="text-center" style="white-space:nowrap;">{{ $item->product?->sku ?? '-' }}</td>
+        <td class="text-center" style="white-space:nowrap;">{{ $item->quantity }}</td>
+        <td class="text-right" style="white-space:nowrap;">₹ {{ number_format($unitPrice, 2) }}</td>
+        <td class="text-center" style="white-space:nowrap;">{{ $taxRate }}%</td>
+        <td class="text-right" style="white-space:nowrap;">₹ {{ number_format($lineTax, 2) }}</td>
+        <td class="text-right" style="white-space:nowrap;">₹ {{ number_format($lineTotal, 2) }}</td>
       </tr>
       @endforeach
     </tbody>
@@ -165,7 +167,7 @@
             <td>Subtotal:</td>
             <td class="text-right">₹ {{ number_format($subtotal, 2) }}</td>
           </tr>
-          @if($purchase->discount_amount > 0)
+          @if(isset($purchase->discount_amount) && $purchase->discount_amount > 0)
           <tr>
             <td>Discount:</td>
             <td class="text-right" style="color:#dc2626;">- ₹ {{ number_format($purchase->discount_amount, 2) }}</td>
@@ -175,10 +177,13 @@
             <td>Total Tax:</td>
             <td class="text-right">₹ {{ number_format($taxTotal, 2) }}</td>
           </tr>
-          @if($purchase->extra_charges > 0)
+          @php
+            $transportOrExtra = $purchase->transport_amount ?? $purchase->extra_charges ?? 0;
+          @endphp
+          @if($transportOrExtra > 0)
           <tr>
-            <td>Extra Charges:</td>
-            <td class="text-right">₹ {{ number_format($purchase->extra_charges, 2) }}</td>
+            <td>Transport Charges:</td>
+            <td class="text-right">₹ {{ number_format($transportOrExtra, 2) }}</td>
           </tr>
           @endif
           <tr style="font-weight:bold;font-size:13px;border-top:1px solid #2e2c92;">

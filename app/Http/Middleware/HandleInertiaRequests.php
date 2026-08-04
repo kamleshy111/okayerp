@@ -56,6 +56,7 @@ class HandleInertiaRequests extends Middleware
                     'allow_provide_additional_descriptions' => (bool)$request->user()->allow_provide_additional_descriptions,
                     'allow_gst_invoice' => (bool)$request->user()->allow_gst_invoice,
                     'allow_alternate_units' => (bool)$request->user()->allow_alternate_units,
+                    'audit_logs_enabled' => (bool)($request->user()->audit_logs_enabled ?? true),
                     'role' => $request->user()->role,
                     'roles' => $request->user()->roles->pluck('name'),
                     'permissions' => $request->user()->getAllPermissions()->pluck('name'),

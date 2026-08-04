@@ -60,4 +60,19 @@ class AuditLogController extends Controller
             'filters' => $request->only(['search', 'action_filter']),
         ]);
     }
+
+    public function toggleLogging(Request $request)
+    {
+        $user = Auth::user();
+        if ($user->role !== 'admin') {
+            abort(403, 'Only administrators can toggle audit logging.');
+        }
+
+        $newValue = $request->boolean('audit_logs_enabled');
+
+        // Update globally across all accounts in the system
+        \App\Models\User::query()->update(['audit_logs_enabled' => $newValue]);
+
+        return back()->with('success', $newValue ? 'Global audit logging enabled.' : 'Global audit logging disabled.');
+    }
 }

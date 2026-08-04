@@ -63,6 +63,7 @@ class User extends Authenticatable
         'sms_api_key',
         'sms_sender_name',
         'sms_message_template',
+        'audit_logs_enabled',
     ];
 
     /**
@@ -93,6 +94,7 @@ class User extends Authenticatable
             'allow_alternate_units' => 'boolean',
             'auto_whatsapp_reminders_enabled' => 'boolean',
             'auto_sms_reminders_enabled' => 'boolean',
+            'audit_logs_enabled' => 'boolean',
         ];
     }
 
