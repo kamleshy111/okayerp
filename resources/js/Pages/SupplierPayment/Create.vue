@@ -164,7 +164,11 @@ const openSupplierModalWithName = (search) => {
     showSupplierModal.value = true;
 };
 
+const isSubmittingSupplier = ref(false);
+
 const submitSupplier = async () => {
+    if (isSubmittingSupplier.value) return;
+    isSubmittingSupplier.value = true;
     try {
         if (!newSupplier.value.name) {
             toast.error("Supplier name is required!");
@@ -187,6 +191,8 @@ const submitSupplier = async () => {
         } else {
             toast.error(errorMessage);
         }
+    } finally {
+        isSubmittingSupplier.value = false;
     }
 };
 
@@ -219,8 +225,12 @@ const onSupplierSearch = async (search, loading) => {
   }
 };
 
+const isSubmitting = ref(false);
+
 // Submit the form data
 const submitForm = async () => {
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
   try {
     const response = await axios.post(`/paymentSupplier/store`, form.value);
     toast.success(response.data.message);
@@ -244,6 +254,8 @@ const submitForm = async () => {
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
     toast.error(errorMessage);
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
@@ -346,7 +358,9 @@ watch(() => form.value.supplier_id, (newVal) => {
             </div>
 
             <div class="pt-4">
-            <button type="submit" class="bg-[#2e2c92] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#2e2c92e6] transition">Save</button>
+            <button type="submit" :disabled="isSubmitting" class="bg-[#2e2c92] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#2e2c92e6] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
+                {{ isSubmitting ? 'Saving...' : 'Save' }}
+            </button>
             </div>
         </form>
     </div>
@@ -464,9 +478,10 @@ watch(() => form.value.supplier_id, (newVal) => {
                 </button>
                 <button
                     type="submit"
-                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer"
+                    :disabled="isSubmittingSupplier"
+                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                    Save Supplier
+                    {{ isSubmittingSupplier ? 'Saving...' : 'Save Supplier' }}
                 </button>
             </div>
         </form>

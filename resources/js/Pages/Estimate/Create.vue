@@ -661,7 +661,11 @@ const grandTotal = computed(() => {
     return Math.max(0, total);
 });
 
+const isSubmitting = ref(false);
+
 const submitForm = async () => {
+  if (isSubmitting.value) return;
+
   const { customer_id, estimate_items } = form.value;
 
   if (!customer_id) {
@@ -684,6 +688,8 @@ const submitForm = async () => {
           return;
       }
   }
+
+  isSubmitting.value = true;
 
   try {
     const rate = parseFloat(form.value.exchange_rate) || 1.0;
@@ -709,6 +715,8 @@ const submitForm = async () => {
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred while saving the quotation.";
     toast.error(errorMessage);
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
@@ -1185,8 +1193,8 @@ const handleAltFocusOut = (event, index) => {
                     </div>
 
                     <div class="pt-4 flex gap-3">
-                        <button @click="submitForm" class="flex-1 bg-[#2E2C92] hover:bg-[#201e6a] text-white py-2.5 rounded-lg font-semibold shadow-md transition duration-200 text-center cursor-pointer">
-                            Save Quotation
+                        <button @click="submitForm" :disabled="isSubmitting" class="flex-1 bg-[#2E2C92] hover:bg-[#201e6a] text-white py-2.5 rounded-lg font-semibold shadow-md transition duration-200 text-center cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2">
+                            {{ isSubmitting ? 'Saving...' : 'Save Quotation' }}
                         </button>
                         <a :href="route('estimate.index')" class="px-4 py-2.5 border border-gray-300 rounded-lg hover:bg-gray-100 font-semibold text-gray-700 transition duration-200 text-center text-sm">
                             Cancel

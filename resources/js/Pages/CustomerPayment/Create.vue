@@ -150,8 +150,12 @@ watch(() => form.value.advance_amount_used, (newVal) => {
     }
 });
 
+const isSubmitting = ref(false);
+
 // Submit the form data
 const submitForm = async () => {
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
   try {
     const response = await axios.post(`/paymentsCustomer/store`, form.value);
     toast.success(response.data.message);
@@ -192,6 +196,8 @@ const submitForm = async () => {
     } else {
         toast.error(errorMessage);
     }
+  } finally {
+    isSubmitting.value = false;
   }
 };
 
@@ -252,7 +258,11 @@ const openCustomerModalWithName = (name) => {
   showCustomerModal.value = true;
 };
 
+const isSubmittingCustomer = ref(false);
+
 const submitCustomer = async () => {
+  if (isSubmittingCustomer.value) return;
+  isSubmittingCustomer.value = true;
   try {
     if (!newCustomer.value.name) {
       toast.error("Customer name is required!");
@@ -283,6 +293,8 @@ const submitCustomer = async () => {
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
     toast.error(errorMessage);
+  } finally {
+    isSubmittingCustomer.value = false;
   }
 };
 
@@ -421,7 +433,9 @@ onUnmounted(() => {
             </div>
 
             <div class="pt-4">
-            <button type="submit" class="bg-[#2e2c92] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#2e2c92e6] transition">Save</button>
+            <button type="submit" :disabled="isSubmitting" class="bg-[#2e2c92] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#2e2c92e6] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
+                {{ isSubmitting ? 'Saving...' : 'Save' }}
+            </button>
             </div>
         </form>
     </div>
@@ -527,9 +541,10 @@ onUnmounted(() => {
                 </button>
                 <button
                     type="submit"
-                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer"
+                    :disabled="isSubmittingCustomer"
+                    class="px-5 py-2.5 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl shadow-md transition cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 >
-                    Save Customer
+                    {{ isSubmittingCustomer ? 'Saving...' : 'Save Customer' }}
                 </button>
             </div>
         </form>

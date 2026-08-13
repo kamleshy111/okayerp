@@ -263,7 +263,11 @@ const netRefundCashToPay = computed(() => {
   return Math.max(0, grandRefundTotal.value - totalDueDeductions.value);
 });
 
+const isSubmitting = ref(false);
+
 const submitReturn = async () => {
+  if (isSubmitting.value) return;
+
   const payloadItems = form.value.items.filter(item => item.quantity > 0);
 
   if (payloadItems.length === 0) {
@@ -278,6 +282,8 @@ const submitReturn = async () => {
       return;
     }
   }
+
+  isSubmitting.value = true;
 
   const payload = {
     customer_id: selectedCustomerId.value,
@@ -304,6 +310,8 @@ const submitReturn = async () => {
   } catch (error) {
     const msg = error.response?.data?.message || "An error occurred while saving the return.";
     toast.error(msg);
+  } finally {
+    isSubmitting.value = false;
   }
 };
 </script>
@@ -562,9 +570,10 @@ const submitReturn = async () => {
               <div class="mt-6 flex justify-end">
                 <button
                   @click="submitReturn"
-                  class="w-full md:w-auto bg-[#2E2C92] hover:bg-[#1e1c6e] text-white px-6 py-3 rounded-xl font-bold shadow-md transition-colors"
+                  :disabled="isSubmitting"
+                  class="w-full md:w-auto bg-[#2E2C92] hover:bg-[#1e1c6e] text-white px-6 py-3 rounded-xl font-bold shadow-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 cursor-pointer"
                 >
-                  Process Return
+                  {{ isSubmitting ? 'Processing...' : 'Process Return' }}
                 </button>
               </div>
             </div>

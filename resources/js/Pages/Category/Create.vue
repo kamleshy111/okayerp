@@ -45,8 +45,12 @@ onMounted(() => {
     });
 });
 
+const isSubmitting = ref(false);
+
 // Submit the form data
 const submitForm = async () => {
+  if (isSubmitting.value) return;
+  isSubmitting.value = true;
   try {
     const response = await axios.post(`/category/store`, form.value);
     toast.success(response.data.message);
@@ -66,6 +70,8 @@ const submitForm = async () => {
   } catch (error) {
     const errorMessage = error.response?.data?.message || "An error occurred. Please try again.";
     toast.error(errorMessage);
+  } finally {
+    isSubmitting.value = false;
   }
 };
 </script>
@@ -102,7 +108,9 @@ const submitForm = async () => {
             </div>
 
             <div class="pt-4">
-            <button type="submit" class="bg-[#2e2c92] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#2e2c92e6] transition">Save</button>
+            <button type="submit" :disabled="isSubmitting" class="bg-[#2e2c92] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#2e2c92e6] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
+                {{ isSubmitting ? 'Saving...' : 'Save' }}
+            </button>
             </div>
 
   </form>

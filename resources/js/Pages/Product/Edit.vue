@@ -149,8 +149,12 @@ const removeImage = () => {
   imagePreview.value = null;
 };
 
+const isSubmitting = ref(false);
+
 // Form submit handler
 const submitForm = async () => {
+    if (isSubmitting.value) return;
+
     if (!form.value.name) {
         toast.error("Product name is required!");
         return;
@@ -163,6 +167,9 @@ const submitForm = async () => {
         toast.error("Unit Type is required!");
         return;
     }
+
+    isSubmitting.value = true;
+
     try {
         const formData = new FormData();
         for (const [key, value] of Object.entries(form.value)) {
@@ -180,6 +187,8 @@ const submitForm = async () => {
     } catch (error) {
         const errorMessage = error.response?.data?.message || 'An error occurred. Please try again.';
         toast.error(errorMessage);
+    } finally {
+        isSubmitting.value = false;
     }
 };
 
@@ -378,7 +387,9 @@ const getImageName = () => {
                 </div>
 
                 <div class="pt-4">
-                    <button type="submit" class="bg-[#2e2c92] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#2e2c92e6] transition">Update</button>
+                    <button type="submit" :disabled="isSubmitting" class="bg-[#2e2c92] text-white font-semibold px-6 py-3 rounded-xl hover:bg-[#2e2c92e6] transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2 cursor-pointer">
+                        {{ isSubmitting ? 'Updating...' : 'Update' }}
+                    </button>
                 </div>
             </form>
         </div>
