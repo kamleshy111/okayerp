@@ -100,6 +100,7 @@ const dtOptions = {
   lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
   pageLength: 10,
   order: [[6, 'desc']], // Order by Sale Date by default
+  responsive: true,
   drawCallback: function() {
     const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => {
@@ -122,6 +123,7 @@ const columns = [
       orderable: false,
       searchable: false,
       width: '40px',
+      className: 'whitespace-nowrap',
       render: (data, type, row) => {
         if (!row.is_deletable) {
           return `<i class="fa fa-lock text-gray-400" title="Cannot delete: created more than 10 mins ago or has sales returns"></i>`;
@@ -131,23 +133,26 @@ const columns = [
       }
     },
     {
-    data: null,
-    title: 'S No',
-    render: (data, type, row, meta) => meta.row + 1,
+      data: null,
+      title: 'S No',
+      className: 'whitespace-nowrap',
+      render: (data, type, row, meta) => meta.row + 1,
     },
-    { data: 'customerName', title: 'Customer Name' },
-    { data: 'phone', title: 'Phone' },
-    { data: 'email', title: 'Email' },
+    { data: 'customerName', title: 'Customer Name', className: 'whitespace-nowrap' },
+    { data: 'phone', title: 'Phone', className: 'whitespace-nowrap' },
+    { data: 'email', title: 'Email', className: 'whitespace-nowrap' },
     { data: 'grand_total',
         title: 'Amount',
+        className: 'whitespace-nowrap',
         render: function (data) {
-            return data ? '₹' + parseFloat(data).toFixed(2) : '₹0.00';
+            return `<span class="whitespace-nowrap font-medium">${data ? '₹' + parseFloat(data).toFixed(2) : '₹0.00'}</span>`;
         }
     },
-    { data: 'sale_date', title: 'Sale Date' },
+    { data: 'sale_date', title: 'Sale Date', className: 'whitespace-nowrap' },
     {
         title: 'Actions',
         data: null,
+        className: 'whitespace-nowrap',
         orderable: false,
         searchable: false,
         render: (data, type, row) => {
@@ -160,7 +165,7 @@ const columns = [
               ? `<button class="text-white bg-green-600 hover:bg-green-700 rounded action-btn whatsapp-btn px-3 py-1" data-id="${data.id}" data-phone="${phone}" title="Send Invoice on WhatsApp"><i class="fa fa-whatsapp"></i></button>`
               : `<span class="text-gray-300 px-3 py-1" title="No phone number"><i class="fa fa-whatsapp"></i></span>`;
             return `
-            <div class="flex gap-2">
+            <div class="flex gap-2 whitespace-nowrap">
               <a href="sale/${data.id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Sale"><i class="fa fa-eye"></i></a>
               <a href="sale/${data.id}/download-pdf" class="btn btn-primary text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-file-pdf-o"></i></a>
               <a  href="sale/${data.id}/edit" class="btn btn-light text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
@@ -257,32 +262,39 @@ function setupWhatsAppButton() {
     </Head>
 
     <AuthenticatedLayout>
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h1 class="text-3xl font-bold">Sales</h1>
-          <div class="flex items-center gap-4">
-            <a :href="route('sale.create')" class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
-                <span>+ Add Sale</span>
+      <div class="p-4 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Sales</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage and view sales invoices</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <a :href="route('sale.create')"
+                class="bg-[#2e2c92] hover:bg-[#201d70] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm transition flex items-center gap-2 text-sm">
+                 <i class="fa fa-plus"></i>
+                 <span>Add Sale</span>
             </a>
           </div>
         </div>
-        <div class="overflow-x-auto mt-10">
-          <!-- DataTable Component -->
-          <DataTable :data="sales" :columns="columns" :options="dtOptions" id="sale">
-              <thead class="bg-[#2e2c92] text-white main-head-table">
-                  <tr>
-                      <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
-                      <th scope="col">S No</th>
-                      <th scope="col">Name</th>
-                      <th scope="col">Phone</th>
-                      <th scope="col">Email</th>
-                      <th scope="col">Amount</th>
-                      <th scope="col">Sale Date</th>
-                      <th scope="col">Action</th>
-                  </tr>
-              </thead>
-              <!-- The table rows would be dynamically inserted here -->
-            </DataTable>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <div class="overflow-x-auto">
+            <!-- DataTable Component -->
+            <DataTable :data="sales" :columns="columns" :options="dtOptions" id="sale" class="w-full min-w-[850px]">
+                <thead class="bg-[#2e2c92] text-white main-head-table">
+                    <tr>
+                        <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
+                        <th scope="col">S No</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Phone</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Sale Date</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+              </DataTable>
+          </div>
         </div>
       </div>
 

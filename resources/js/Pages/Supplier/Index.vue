@@ -116,6 +116,7 @@ const dtOptions = {
   lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
   pageLength: 10,
   order: [[2, 'asc']], // Order by name by default
+  responsive: true,
   drawCallback: function() {
     const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => {
@@ -138,42 +139,46 @@ const columns = [
       orderable: false,
       searchable: false,
       width: '40px',
+      className: 'whitespace-nowrap',
       render: (data) => {
         const isChecked = selectedIds.value.includes(data.id) ? 'checked' : '';
         return `<input type="checkbox" class="row-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" data-id="${data.id}" ${isChecked}>`;
       }
     },
     {
-    data: null,
-    title: 'S No',
-    render: (data, type, row, meta) => meta.row + 1,
+      data: null,
+      title: 'S No',
+      className: 'whitespace-nowrap',
+      render: (data, type, row, meta) => meta.row + 1,
     },
-    { data: 'name', title: 'Name' },
-    { data: 'email', title: 'Email' },
-    { data: 'phone', title: 'Phone' },
+    { data: 'name', title: 'Name', className: 'whitespace-nowrap' },
+    { data: 'email', title: 'Email', className: 'whitespace-nowrap' },
+    { data: 'phone', title: 'Phone', className: 'whitespace-nowrap' },
     {
       data: null,
       title: 'Net Balance',
+      className: 'whitespace-nowrap',
       render: function (data) {
         const advance = parseFloat(data.advance_amount) || 0;
         const due = parseFloat(data.due_amount) || 0;
         const net = advance - due;
         const formattedAmount = (Math.abs(net) % 1 !== 0) ? Math.abs(net).toFixed(2) : Math.abs(net).toString();
         if (net < 0) {
-          return `<span style="color:red">- ₹${formattedAmount}</span>`;
+          return `<span style="color:red" class="whitespace-nowrap">- ₹${formattedAmount}</span>`;
         } else if (net > 0) {
-          return `<span style="color:green">+ ₹${formattedAmount}</span>`;
+          return `<span style="color:green" class="whitespace-nowrap">+ ₹${formattedAmount}</span>`;
         } else {
-          return `<span style="color:green">₹0</span>`;
+          return `<span style="color:green" class="whitespace-nowrap">₹0</span>`;
         }
       }
     },
     {
         title: 'Actions',
         data: null,
+        className: 'whitespace-nowrap',
         render: (data, type, row) => {
             return `
-            <div class="flex gap-2">
+            <div class="flex gap-2 whitespace-nowrap">
               <button class="view-btn text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;" title="View Details" data-id="${data.id}"><i class="fa fa-eye"></i></button>
               <a href="/paymentSupplier/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="Payment History"><i class="fa fa-history"></i></a>
               <a  href="supplier/${data.id}/edit" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
@@ -244,34 +249,40 @@ function deleteSupplier(supplierId) {
     </Head>
 
     <AuthenticatedLayout>
-        <div class="p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-bold">Supplier</h1>
-      <div class="flex items-center gap-4">
-        <a :href="route('supplier.Create')"
-            class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
-             <span>+ Add Supplier</span>
-        </a>
+      <div class="p-4 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Supplier</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage and view supplier records</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <a :href="route('supplier.Create')"
+                class="bg-[#2e2c92] hover:bg-[#201d70] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm transition flex items-center gap-2 text-sm">
+                 <i class="fa fa-plus"></i>
+                 <span>Add Supplier</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <div class="overflow-x-auto">
+            <!-- DataTable Component -->
+            <DataTable :data="suppliers" :columns="columns" :options="dtOptions" id="supplier" class="w-full min-w-[850px]">
+                <thead class="bg-[#2e2c92] text-white main-head-table">
+                    <tr>
+                        <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
+                        <th scope="col">S No</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Phone</th>
+                        <th scope="col">Net Balance</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+            </DataTable>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="overflow-x-auto mt-10">
-      <!-- DataTable Component -->
-      <DataTable :data="suppliers" :columns="columns" :options="dtOptions" id="supplier">
-          <thead class="bg-[#2e2c92] text-white main-head-table">
-              <tr>
-                  <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
-                  <th scope="col">S No</th>
-                  <th scope="col">Name</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Phone</th>
-                  <th scope="col">Net Balance</th>
-                  <th scope="col">Action</th>
-              </tr>
-          </thead>
-          <!-- The table rows would be dynamically inserted here -->
-      </DataTable>
-    </div>
-  </div>
 
   <!-- Floating Bulk Action Bar -->
   <div v-if="selectedIds.length > 0" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white border border-gray-200 rounded-2xl shadow-xl px-6 py-4 flex items-center gap-6">

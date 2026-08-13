@@ -26,49 +26,54 @@ const columns = [
     { 
       data: null,
       title: 'S No',
+      className: 'whitespace-nowrap',
       render: (data, type, row, meta) => meta.row + 1,
     },
-    { data: 'name', title: 'Name' },
-    { data: 'email', title: 'Email' },
-    { data: 'phone', title: 'Phone' },
+    { data: 'name', title: 'Name', className: 'whitespace-nowrap' },
+    { data: 'email', title: 'Email', className: 'whitespace-nowrap' },
+    { data: 'phone', title: 'Phone', className: 'whitespace-nowrap' },
     { 
       data: 'source',
       title: 'Source',
+      className: 'whitespace-nowrap',
       render: function(data) {
         if (data === 'Purchase') {
-          return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200">Purchase</span>`;
-        } else if (data === 'Supplier Payment') {
-          return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200">Direct Payment</span>`;
+          return `<span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-full bg-emerald-100 text-emerald-800 border border-emerald-200 whitespace-nowrap">Purchase</span>`;
+        } else if (data === 'Supplier Payment' || data === 'Direct Payment') {
+          return `<span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-full bg-indigo-100 text-indigo-800 border border-indigo-200 whitespace-nowrap">Direct Payment</span>`;
         } else if (data === 'Return') {
-          return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200">Return</span>`;
+          return `<span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-full bg-rose-100 text-rose-800 border border-rose-200 whitespace-nowrap">Return</span>`;
         } else {
-          return `<span class="px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200">${data}</span>`;
+          return `<span class="inline-block px-2.5 py-1 text-xs font-semibold rounded-full bg-gray-100 text-gray-800 border border-gray-200 whitespace-nowrap">${data}</span>`;
         }
       }
     },
     { 
       data: 'amount',
       title: 'Amount',
+      className: 'whitespace-nowrap',
       render: function(data) {
         const val = parseFloat(data);
         if (val < 0) {
-          return `<span style="color:#dc2626; font-weight:600;">- ₹${Math.abs(val).toFixed(2)}</span>`;
+          return `<span style="color:#dc2626; font-weight:600;" class="whitespace-nowrap">- ₹${Math.abs(val).toFixed(2)}</span>`;
         } else {
-          return `<span style="color:#16a34a; font-weight:600;">+ ₹${val.toFixed(2)}</span>`;
+          return `<span style="color:#16a34a; font-weight:600;" class="whitespace-nowrap">+ ₹${val.toFixed(2)}</span>`;
         }
       }
     },
     {  
       data: 'payment_date',
       title: 'Payment Date',
+      className: 'whitespace-nowrap',
       render: function(data) {
-          return formatDate(data);
+          return `<span class="whitespace-nowrap">${formatDate(data)}</span>`;
       }
     },
-    { data: 'payment_method', title: 'Payment Method' },
+    { data: 'payment_method', title: 'Payment Method', className: 'whitespace-nowrap' },
     {
         title: 'Action',
         data: null,
+        className: 'whitespace-nowrap',
         orderable: false,
         searchable: false,
         render: (data, type, row) => {
@@ -77,7 +82,7 @@ const columns = [
               ? `<button class="text-white bg-green-600 hover:bg-green-700 rounded whatsapp-statement-btn px-2 py-1" data-supplier-id="${data.id}" data-phone="${phone}" title="Send Statement on WhatsApp" style="font-size:13px;"><i class="fa fa-whatsapp"></i></button>`
               : `<span class="text-gray-300 px-2" title="No phone number"><i class="fa fa-whatsapp"></i></span>`;
             return `
-            <div class="flex gap-2">
+            <div class="flex gap-2 whitespace-nowrap">
               <a href="/paymentSupplier/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Statement"><i class="fa fa-list"></i></a>
               ${whatsappBtn}
             </div>
@@ -85,6 +90,14 @@ const columns = [
         }
     }
 ];
+
+// DataTables configuration options
+const dtOptions = {
+  lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
+  pageLength: 10,
+  order: [[6, 'desc']], // Sort by payment date descending
+  responsive: true,
+};
 
 onMounted(() => {
   document.addEventListener('click', function (event) {
@@ -125,34 +138,41 @@ onMounted(() => {
     </Head>
 
     <AuthenticatedLayout>
-        <div class="p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-bold">Supplier Payment</h1>
-      <div class="flex items-center gap-4">
-        <a :href="route('paymentSupplier.create')"
-            class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
-             <span>+ Add Payment</span>
-        </a>
+      <div class="p-4 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Supplier Payment</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage and track payments made to suppliers</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <a :href="route('paymentSupplier.create')"
+                class="bg-[#2e2c92] hover:bg-[#201d70] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm transition flex items-center gap-2 text-sm">
+                 <i class="fa fa-plus"></i>
+                 <span>Add Payment</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <div class="overflow-x-auto">
+            <!-- DataTable Component -->
+            <DataTable :data="suppliers" :columns="columns" :options="dtOptions" id="supplier-payment-table" class="w-full min-w-[850px]">
+                <thead class="bg-[#2e2c92] text-white main-head-table">
+                    <tr>
+                        <th scope="col">S No</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Phone</th>
+                        <th scope="col">Source</th>
+                        <th scope="col">Amount</th>
+                        <th scope="col">Payment Date</th>
+                        <th scope="col">Payment Method</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+            </DataTable>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="overflow-x-auto mt-10">
-      <!-- DataTable Component -->
-      <DataTable :data="suppliers" :columns="columns" id="customer">
-          <thead class="bg-[#2e2c92] text-white main-head-table">
-              <tr>
-                  <th scope="col">S No</th>
-                  <th scope="col">Name</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Phone</th>
-                  <th scope="col">Source</th>
-                  <th scope="col">Amount</th>
-                  <th scope="col">Payment Date</th>
-                  <th scope="col">Payment Method</th>
-              </tr>
-          </thead>
-          <!-- The table rows would be dynamically inserted here -->
-      </DataTable>
-    </div>
-  </div>
-  </AuthenticatedLayout>
+    </AuthenticatedLayout>
 </template>

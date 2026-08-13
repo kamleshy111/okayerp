@@ -101,6 +101,7 @@ const dtOptions = {
   lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
   pageLength: 10,
   order: [[6, 'desc']], // Order by Estimate date by default
+  responsive: true,
   drawCallback: function() {
     const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => {
@@ -122,6 +123,7 @@ const columns = [
       orderable: false,
       searchable: false,
       width: '40px',
+      className: 'whitespace-nowrap',
       render: (data) => {
         const isChecked = selectedIds.value.includes(data.id) ? 'checked' : '';
         return `<input type="checkbox" class="row-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" data-id="${data.id}" ${isChecked}>`;
@@ -130,29 +132,34 @@ const columns = [
     {
         data: null,
         title: 'S No',
+        className: 'whitespace-nowrap',
         render: (data, type, row, meta) => meta.row + 1,
     },
-    { data: 'estimate_no', title: 'Estimate No' },
-    { data: 'customer_name', title: 'Customer' },
-    { data: 'customer_phone', title: 'Phone' },
+    { data: 'estimate_no', title: 'Estimate No', className: 'whitespace-nowrap' },
+    { data: 'customer_name', title: 'Customer', className: 'whitespace-nowrap' },
+    { data: 'customer_phone', title: 'Phone', className: 'whitespace-nowrap' },
     {
         data: 'grand_total',
         title: 'Grand Total',
-        render: (data) => `₹ ${parseFloat(data || 0).toFixed(2)}`
+        className: 'whitespace-nowrap',
+        render: (data) => `<span class="whitespace-nowrap font-medium">₹ ${parseFloat(data || 0).toFixed(2)}</span>`
     },
     {
         data: 'estimate_date',
         title: 'Estimate Date',
-        render: (data) => data ? new Date(data).toLocaleDateString('en-GB').replace(/\//g, '-') : '-'
+        className: 'whitespace-nowrap',
+        render: (data) => `<span class="whitespace-nowrap">${data ? new Date(data).toLocaleDateString('en-GB').replace(/\//g, '-') : '-'}</span>`
     },
     {
         data: 'expiry_date',
         title: 'Expiry Date',
-        render: (data) => data ? new Date(data).toLocaleDateString('en-GB').replace(/\//g, '-') : '-'
+        className: 'whitespace-nowrap',
+        render: (data) => `<span class="whitespace-nowrap">${data ? new Date(data).toLocaleDateString('en-GB').replace(/\//g, '-') : '-'}</span>`
     },
     {
         data: 'status',
         title: 'Status',
+        className: 'whitespace-nowrap',
         render: (data) => {
             let badgeClass = 'bg-gray-100 text-gray-800';
             if (data === 'Draft') badgeClass = 'bg-yellow-100 text-yellow-800';
@@ -161,26 +168,27 @@ const columns = [
             else if (data === 'Invoiced') badgeClass = 'bg-purple-100 text-purple-800';
             else if (data === 'Declined') badgeClass = 'bg-red-100 text-red-800';
             else if (data === 'Expired') badgeClass = 'bg-orange-100 text-orange-800';
-            return `<span class="px-2.5 py-1 rounded-full text-xs font-semibold ${badgeClass}">${data}</span>`;
+            return `<span class="inline-block px-2.5 py-1 rounded-full text-xs font-semibold whitespace-nowrap ${badgeClass}">${data}</span>`;
         }
     },
     {
         title: 'Actions',
         data: null,
+        className: 'whitespace-nowrap',
         orderable: false,
         searchable: false,
         render: (data, type, row) => {
             let convertBtn = '';
             if (data.status !== 'Invoiced') {
                 convertBtn = `
-                <a href="/sale/create?estimate_id=${data.id}" class="text-white bg-green-600 hover:bg-green-700 rounded action-btn text-xs font-medium inline-flex items-center gap-1" title="Convert to Sale" style="padding: 8px 10px;">
+                <a href="/sale/create?estimate_id=${data.id}" class="text-white bg-green-600 hover:bg-green-700 rounded action-btn text-xs font-medium inline-flex items-center gap-1 whitespace-nowrap" title="Convert to Sale" style="padding: 8px 10px;">
                     <i class="fa fa-exchange"></i> Convert
                 </a>`;
             } else {
-                convertBtn = `<span class="bg-purple-50 text-purple-700 border border-purple-200 rounded text-xs font-medium" style="padding: 8px 10px;">Invoiced</span>`;
+                convertBtn = `<span class="bg-purple-50 text-purple-700 border border-purple-200 rounded text-xs font-medium whitespace-nowrap" style="padding: 8px 10px;">Invoiced</span>`;
             }
             return `
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-2 whitespace-nowrap">
               <a href="/estimate/${data.id}/edit" class="btn btn-primary action-btn px-2.5 py-1 rounded bg-[#2e2c92] hover:bg-[#201e6a] text-white"><i class="fa fa-edit"></i></a>
               <a href="/estimate/${data.id}/download-pdf" target="_blank" class="btn btn-primary action-btn px-2.5 py-1 rounded bg-[#2e2c92] hover:bg-[#201e6a] text-white"><i class="fa fa-file-pdf-o"></i></a>
               <button class="text-white bg-red-600 hover:bg-red-800 px-2.5 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
@@ -231,40 +239,45 @@ function deleteEstimate(estimateId) {
 </script>
 
 <template>
-    <Head title="Estimates & Quotations">
+    <Head title="Quotation">
       <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
     </Head>
 
     <AuthenticatedLayout>
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-6">
-          <span class="flex items-center gap-2">
-            <h1 class="text-3xl font-bold text-[#2e2c92] sm:block hidden">Quotations /</h1>
-            <h1 class="text-3xl font-bold text-[#2e2c92]"> Estimates</h1>
-          </span>
-          <div class="flex items-center gap-4">
-            <a :href="route('estimate.create')" class="hover:bg-[#2e2c92] hover:text-white border border-[#2e2c92] text-[#2e2c92] px-4 py-2 rounded-lg font-medium transition duration-200">
-                <span>+ Add</span>
+      <div class="p-4 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Quotations & Estimates</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage price estimates and client quotations</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <a :href="route('estimate.create')"
+                class="bg-[#2e2c92] hover:bg-[#201d70] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm transition flex items-center gap-2 text-sm">
+                 <i class="fa fa-plus"></i>
+                 <span>Add Quotation</span>
             </a>
           </div>
         </div>
-        <div class="overflow-x-auto mt-10">
-          <DataTable :data="estimates" :columns="columns" :options="dtOptions" id="estimate">
-              <thead class="bg-[#2e2c92] text-white main-head-table">
-                  <tr>
-                      <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
-                      <th scope="col">S No</th>
-                      <th scope="col">Estimate No</th>
-                      <th scope="col">Customer</th>
-                      <th scope="col">Phone</th>
-                      <th scope="col">Grand Total</th>
-                      <th scope="col">Estimate Date</th>
-                      <th scope="col">Expiry Date</th>
-                      <th scope="col">Status</th>
-                      <th scope="col">Action</th>
-                  </tr>
-              </thead>
-            </DataTable>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <div class="overflow-x-auto">
+            <DataTable :data="estimates" :columns="columns" :options="dtOptions" id="estimate" class="w-full min-w-[850px]">
+                <thead class="bg-[#2e2c92] text-white main-head-table">
+                    <tr>
+                        <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
+                        <th scope="col">S No</th>
+                        <th scope="col">Estimate No</th>
+                        <th scope="col">Customer</th>
+                        <th scope="col">Phone</th>
+                        <th scope="col">Grand Total</th>
+                        <th scope="col">Estimate Date</th>
+                        <th scope="col">Expiry Date</th>
+                        <th scope="col">Status</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+              </DataTable>
+          </div>
         </div>
       </div>
 

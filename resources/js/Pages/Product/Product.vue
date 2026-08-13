@@ -213,7 +213,8 @@ const bulkDelete = () => {
 const dtOptions = {
   lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
   pageLength: 10,
-  order: [[3, 'asc']], // Order by Name by default
+  order: [[2, 'asc']], // Order by Name by default
+  responsive: true,
   drawCallback: function() {
     const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => {
@@ -236,6 +237,7 @@ const columns = [
       orderable: false,
       searchable: false,
       width: '40px',
+      className: 'whitespace-nowrap',
       render: (data) => {
         const isChecked = selectedIds.value.includes(data.id) ? 'checked' : '';
         return `<input type="checkbox" class="row-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" data-id="${data.id}" ${isChecked}>`;
@@ -244,27 +246,30 @@ const columns = [
     {
       data: null,
       title: 'S No',
+      className: 'whitespace-nowrap',
       render: (data, type, row, meta) => meta.settings._iDisplayStart + meta.row + 1,
     },
-    { data: 'name', title: 'Name' },
-    { data: 'sku', title: 'Sku' },
-    { data: 'categoryName', title: 'Category Name' },
+    { data: 'name', title: 'Name', className: 'whitespace-nowrap' },
+    { data: 'sku', title: 'Sku', className: 'whitespace-nowrap' },
+    { data: 'categoryName', title: 'Category Name', className: 'whitespace-nowrap' },
     { 
       data: 'price', 
       title: 'Sale Price',
-      render: (data) => data ? `₹${parseFloat(data).toFixed(2)}` : '₹0.00'
+      className: 'whitespace-nowrap',
+      render: (data) => `<span class="whitespace-nowrap font-medium">${data ? '₹' + parseFloat(data).toFixed(2) : '₹0.00'}</span>`
     },
-    { data: 'stockQuantity', title: 'Stock Quantity' },
-    { data: 'unit_type', title: 'Unit Type' },
+    { data: 'stockQuantity', title: 'Stock Quantity', className: 'whitespace-nowrap' },
+    { data: 'unit_type', title: 'Unit Type', className: 'whitespace-nowrap' },
     {
         title: 'Actions',
         data: null,
+        className: 'whitespace-nowrap',
         orderable: false,
         searchable: false,
         sortable: false,
         render: (data, type, row) => {
             return `
-            <div class="flex gap-2 justify-center items-center">
+            <div class="flex gap-2 justify-center items-center whitespace-nowrap">
               <a  href="product/${data.id}/edit" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 4px 8px;"><i class="fa fa-edit"></i></a>
               <button class="text-white bg-red-600 hover:bg-red-800 rounded action-btn delete-btn px-3 py-1" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
@@ -303,10 +308,10 @@ function deleteProduct(productId) {
       axios.delete(`/product/destroy/${productId}`)
         .then(() => {
           Swal.fire('Deleted!', 'Your product has been deleted.', 'success');
-          location.reload(); // Reload or re-fetch the data if needed
+          location.reload();
         })
         .catch((error) => {
-          const errMsg = error.response?.data?.message || 'Failed to delete the product. Please try again.';
+          const errMsg = error.response?.data?.message || 'Failed to delete product.';
           Swal.fire('Error!', errMsg, 'error');
         });
     }
@@ -321,37 +326,44 @@ function deleteProduct(productId) {
     </Head>
 
     <AuthenticatedLayout>
-      <div class="p-6">
-        <div class="flex items-center justify-between mb-6">
-          <h1 class="text-3xl font-bold">Products</h1>
-          <div class="flex items-center gap-4">
-            <button @click="openImportModal" class="bg-[#2e2c92] border border-[#2e2c92] hover:bg-[#201e6e] text-white px-4 py-2 rounded-lg font-medium flex items-center gap-2 cursor-pointer transition-colors shadow-sm">
+      <div class="p-4 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Products</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage inventory items and pricing</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button @click="openImportModal" class="bg-[#2e2c92] border border-[#2e2c92] hover:bg-[#201e6e] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm flex items-center gap-2 cursor-pointer transition-colors text-sm">
                 <i class="fa fa-file-excel-o"></i>
                 <span>Import Products</span>
             </button>
-            <a :href="route('product.Create')" class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-sm">
-                <span>+ Add Product</span>
+            <a :href="route('product.Create')"
+                class="bg-[#2e2c92] hover:bg-[#201d70] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm transition flex items-center gap-2 text-sm">
+                 <i class="fa fa-plus"></i>
+                 <span>Add Product</span>
             </a>
           </div>
         </div>
-        <div class="overflow-x-auto mt-10">
-          <!-- DataTable Component -->
-          <DataTable :data="products" :columns="columns" :options="dtOptions" id="product">
-              <thead class="bg-[#2e2c92] text-white main-head-table">
-                  <tr>
-                      <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
-                      <th scope="col">S No</th>
-                      <th scope="col">Name</th>
-                      <th scope="col">Sku</th>
-                      <th scope="col">Category Name</th>
-                      <th scope="col">Sale Price</th>
-                      <th scope="col">Stock Quantity</th>
-                      <th scope="col">Unit Type</th>
-                      <th scope="col">Action</th>
-                  </tr>
-              </thead>
-              <!-- The table rows would be dynamically inserted here -->
-          </DataTable>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <div class="overflow-x-auto">
+            <!-- DataTable Component -->
+            <DataTable :data="products" :columns="columns" :options="dtOptions" id="product" class="w-full min-w-[850px]">
+                <thead class="bg-[#2e2c92] text-white main-head-table">
+                    <tr>
+                        <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
+                        <th scope="col">S No</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Sku</th>
+                        <th scope="col">Category Name</th>
+                        <th scope="col">Sale Price</th>
+                        <th scope="col">Stock Quantity</th>
+                        <th scope="col">Unit Type</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+            </DataTable>
+          </div>
         </div>
       </div>
 

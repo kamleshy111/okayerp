@@ -100,6 +100,7 @@ const dtOptions = {
   lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
   pageLength: 10,
   order: [[2, 'asc']], // Order by name by default
+  responsive: true,
   drawCallback: function() {
     const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => {
@@ -122,24 +123,27 @@ const columns = [
       orderable: false,
       searchable: false,
       width: '40px',
+      className: 'whitespace-nowrap',
       render: (data) => {
         const isChecked = selectedIds.value.includes(data.id) ? 'checked' : '';
         return `<input type="checkbox" class="row-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" data-id="${data.id}" ${isChecked}>`;
       }
     },
     {
-    data: null,
-    title: 'S No',
-    render: (data, type, row, meta) => meta.row + 1,
+      data: null,
+      title: 'S No',
+      className: 'whitespace-nowrap',
+      render: (data, type, row, meta) => meta.row + 1,
     },
-    { data: 'name', title: 'Name' },
-    { data: 'description', title: 'Description' },
+    { data: 'name', title: 'Name', className: 'whitespace-nowrap' },
+    { data: 'description', title: 'Description', className: 'whitespace-nowrap' },
     {
         title: 'Actions',
         data: null,
+        className: 'whitespace-nowrap',
         render: (data, type, row) => {
             return `
-            <div class="icon-all-dflex">
+            <div class="icon-all-dflex flex gap-2 whitespace-nowrap">
               <a  href="category/${data.id}/edit" class="btn btn-primary text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
               <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
             </div>
@@ -178,10 +182,10 @@ function deleteCategory(categoryId) {
       axios.delete(`/category/destroy/${categoryId}`)
         .then(() => {
           Swal.fire('Deleted!', 'Your category has been deleted.', 'success');
-          location.reload(); // Reload or re-fetch the data if needed
+          location.reload();
         })
         .catch((error) => {
-          const errMsg = error.response?.data?.message || 'Failed to delete the category. Please try again.';
+          const errMsg = error.response?.data?.message || 'Failed to delete category.';
           Swal.fire('Error!', errMsg, 'error');
         });
     }
@@ -196,30 +200,36 @@ function deleteCategory(categoryId) {
   </Head>
 
   <AuthenticatedLayout>
-    <div class="p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold">Categories</h1>
-        <div class="flex items-center gap-4">
+    <div class="p-4 sm:p-6 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Categories</h1>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage product categories</p>
+        </div>
+        <div class="flex items-center gap-3">
           <a :href="route('category.Create')"
-              class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
-              <span>+ Add Category</span>
+              class="bg-[#2e2c92] hover:bg-[#201d70] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm transition flex items-center gap-2 text-sm">
+               <i class="fa fa-plus"></i>
+               <span>Add Category</span>
           </a>
         </div>
       </div>
-      <div class="overflow-x-auto mt-10">
-        <!-- DataTable Component -->
-        <DataTable :data="categories" :columns="columns" :options="dtOptions" id="category">
-            <thead class="bg-[#2e2c92] text-white main-head-table">
-                <tr>
-                    <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
-                    <th scope="col">S No</th>
-                    <th scope="col">Name</th>
-                    <th scope="col">Description</th>
-                    <th scope="col">Action</th>
-                </tr>
-            </thead>
-            <!-- The table rows would be dynamically inserted here -->
-        </DataTable>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <div class="overflow-x-auto">
+          <!-- DataTable Component -->
+          <DataTable :data="categories" :columns="columns" :options="dtOptions" id="category" class="w-full min-w-[850px]">
+              <thead class="bg-[#2e2c92] text-white main-head-table">
+                  <tr>
+                      <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
+                      <th scope="col">S No</th>
+                      <th scope="col">Name</th>
+                      <th scope="col">Description</th>
+                      <th scope="col">Action</th>
+                  </tr>
+              </thead>
+          </DataTable>
+        </div>
       </div>
     </div>
 

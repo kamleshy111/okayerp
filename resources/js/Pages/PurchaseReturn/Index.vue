@@ -101,6 +101,7 @@ const dtOptions = {
   lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
   pageLength: 10,
   order: [[7, 'desc']], // Order by Return Date by default
+  responsive: true,
   drawCallback: function() {
     const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => {
@@ -123,6 +124,7 @@ const columns = [
     orderable: false,
     searchable: false,
     width: '40px',
+    className: 'whitespace-nowrap',
     render: (data) => {
       const isChecked = selectedIds.value.includes(data.id) ? 'checked' : '';
       return `<input type="checkbox" class="row-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" data-id="${data.id}" ${isChecked}>`;
@@ -131,30 +133,34 @@ const columns = [
   {
     data: null,
     title: 'S No',
+    className: 'whitespace-nowrap',
     render: (data, type, row, meta) => meta.row + 1,
   },
-  { data: 'return_no', title: 'Return No' },
+  { data: 'return_no', title: 'Return No', className: 'whitespace-nowrap' },
   {
     data: 'purchase_id',
     title: 'Original Bill',
-    render: (data) => `Bill #${data}`
+    className: 'whitespace-nowrap',
+    render: (data) => `<span class="whitespace-nowrap">Bill #${data}</span>`
   },
-  { data: 'supplierName', title: 'Supplier' },
+  { data: 'supplierName', title: 'Supplier', className: 'whitespace-nowrap' },
   {
     data: 'refund_amount',
     title: 'Refund Amount',
-    render: (data) => `₹ ${parseFloat(data).toFixed(2)}`
+    className: 'whitespace-nowrap',
+    render: (data) => `<span class="whitespace-nowrap font-medium">₹ ${parseFloat(data).toFixed(2)}</span>`
   },
-  { data: 'refund_method', title: 'Refund Method' },
-  { data: 'return_date', title: 'Return Date' },
-  { data: 'reason', title: 'Reason' },
+  { data: 'refund_method', title: 'Refund Method', className: 'whitespace-nowrap' },
+  { data: 'return_date', title: 'Return Date', className: 'whitespace-nowrap' },
+  { data: 'reason', title: 'Reason', className: 'whitespace-nowrap' },
   {
     title: 'Action',
     data: null,
+    className: 'whitespace-nowrap',
     orderable: false,
     searchable: false,
     render: (data) => `
-      <div class="icon-all-dflex flex gap-2">
+      <div class="icon-all-dflex flex gap-2 whitespace-nowrap">
         <a href="purchase-return/${data.id}/download-pdf" class="btn btn-primary text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" target="_blank"><i class="fa fa-file-pdf-o"></i></a>
         <button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>
       </div>
@@ -190,11 +196,11 @@ function deletePurchaseReturn(returnId) {
     if (result.isConfirmed) {
       axios.delete(`/purchase-return/destroy/${returnId}`)
         .then(() => {
-          Swal.fire('Deleted!', 'Purchase return has been deleted.', 'success');
+          Swal.fire('Deleted!', 'Your purchase return has been deleted.', 'success');
           location.reload();
         })
         .catch((error) => {
-          const errMsg = error.response?.data?.message || 'Failed to delete the purchase return.';
+          const errMsg = error.response?.data?.message || 'Failed to delete purchase return.';
           Swal.fire('Error!', errMsg, 'error');
         });
     }
@@ -203,38 +209,46 @@ function deletePurchaseReturn(returnId) {
 </script>
 
 <template>
-  <Head title="Purchase Returns">
+  <Head title="Purchase Return">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   </Head>
 
   <AuthenticatedLayout>
-    <div class="p-6">
-      <div class="flex items-center justify-between mb-6">
-        <h1 class="text-3xl font-bold">Purchase Returns</h1>
-        <div class="flex items-center gap-4">
-          <a :href="route('purchase-return.create')" class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
-            <span>+ Add</span>
+    <div class="p-4 sm:p-6 space-y-6">
+      <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Purchase Returns</h1>
+          <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage supplier purchase returns and debit notes</p>
+        </div>
+        <div class="flex items-center gap-3">
+          <a :href="route('purchase-return.create')"
+              class="bg-[#2e2c92] hover:bg-[#201d70] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm transition flex items-center gap-2 text-sm">
+                <i class="fa fa-plus"></i>
+                <span>Add Return</span>
           </a>
         </div>
       </div>
-      <div class="overflow-x-auto mt-10">
-        <!-- DataTable Component -->
-        <DataTable :data="returns" :columns="columns" :options="dtOptions" id="purchase_return">
-          <thead class="bg-[#2e2c92] text-white main-head-table">
-            <tr>
-              <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
-              <th scope="col">S No</th>
-              <th scope="col">Return No</th>
-              <th scope="col">Original Bill</th>
-              <th scope="col">Supplier</th>
-              <th scope="col">Refund Amount</th>
-              <th scope="col">Refund Method</th>
-              <th scope="col">Return Date</th>
-              <th scope="col">Reason</th>
-              <th scope="col">Action</th>
-            </tr>
-          </thead>
-        </DataTable>
+
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+        <div class="overflow-x-auto">
+          <!-- DataTable Component -->
+          <DataTable :data="returns" :columns="columns" :options="dtOptions" id="purchase_return" class="w-full min-w-[850px]">
+            <thead class="bg-[#2e2c92] text-white main-head-table">
+              <tr>
+                <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
+                <th scope="col">S No</th>
+                <th scope="col">Return No</th>
+                <th scope="col">Original Bill</th>
+                <th scope="col">Supplier</th>
+                <th scope="col">Refund Amount</th>
+                <th scope="col">Refund Method</th>
+                <th scope="col">Return Date</th>
+                <th scope="col">Reason</th>
+                <th scope="col">Action</th>
+              </tr>
+            </thead>
+          </DataTable>
+        </div>
       </div>
     </div>
 

@@ -350,13 +350,12 @@ const bulkDelete = () => {
       });
     }
   });
-};
-
-// DataTables configuration options
+};// DataTables configuration options
 const dtOptions = {
   lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
   pageLength: 10,
-  order: [[6, 'desc']], // Order by purchase date by default
+  order: [[6, 'desc']], // Order by Purchase Date by default
+  responsive: true,
   drawCallback: function() {
     const checkboxes = document.querySelectorAll('.row-checkbox');
     checkboxes.forEach(cb => {
@@ -379,6 +378,7 @@ const columns = [
       orderable: false,
       searchable: false,
       width: '40px',
+      className: 'whitespace-nowrap',
       render: (data, type, row) => {
         if (!row.is_deletable) {
           return `<i class="fa fa-lock text-gray-400" title="Cannot delete: created more than 10 mins ago or from closed financial year"></i>`;
@@ -388,26 +388,35 @@ const columns = [
       }
     },
     {
-    data: null,
-    title: 'S No',
-    render: (data, type, row, meta) => meta.row + 1,
+      data: null,
+      title: 'S No',
+      className: 'whitespace-nowrap',
+      render: (data, type, row, meta) => meta.row + 1,
     },
-    { data: 'supplier_name', title: 'Supplier Name' },
-    { data: 'supplier_phone', title: 'Supplier Phone' },
-    { data: 'supplier_email', title: 'Supplier Email' },
-    { data: 'grand_total', title: 'Total Amount' },
-    { data: 'purchase_Date', title: 'Purchases Date' },
-    { data: 'payment_status', title: 'Payment Status' },
+    { data: 'supplier_name', title: 'Supplier Name', className: 'whitespace-nowrap' },
+    { data: 'supplier_phone', title: 'Supplier Phone', className: 'whitespace-nowrap' },
+    { data: 'supplier_email', title: 'Supplier Email', className: 'whitespace-nowrap' },
+    { 
+      data: 'grand_total', 
+      title: 'Total Amount', 
+      className: 'whitespace-nowrap',
+      render: (data) => `<span class="whitespace-nowrap font-medium">${data ? '₹' + parseFloat(data).toFixed(2) : '₹0.00'}</span>`
+    },
+    { data: 'purchase_Date', title: 'Purchases Date', className: 'whitespace-nowrap' },
+    { data: 'payment_status', title: 'Payment Status', className: 'whitespace-nowrap' },
     {
         title: 'Actions',
         data: null,
+        className: 'whitespace-nowrap',
+        orderable: false,
+        searchable: false,
         render: (data, type, row) => {
             let deleteBtn = '';
             if (row.is_deletable) {
                 deleteBtn = `<button class="text-white bg-red-600 hover:bg-red-800 px-3 py-1 rounded action-btn delete-btn" data-id="${data.id}"><i class="fa fa-trash"></i></button>`;
             }
             return `
-            <div class="flex gap-2">
+            <div class="flex gap-2 whitespace-nowrap">
               <a href="purchase/${data.id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Purchase"><i class="fa fa-eye"></i></a>
               <a href="purchase/${data.id}/download-pdf" class="btn btn-primary text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-file-pdf-o"></i></a>
               <a  href="purchase/${data.id}/edit" class="btn btn-light text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;"><i class="fa fa-edit"></i></a>
@@ -464,7 +473,7 @@ function deletePurchase(purchaseId) {
       axios.delete(`/purchase/destroy/${purchaseId}`)
         .then(() => {
           Swal.fire('Deleted!', 'Your purchase has been deleted.', 'success');
-          location.reload(); // Reload or re-fetch the data if needed
+          location.reload(); 
         })
         .catch((error) => {
           const errMsg = error.response?.data?.message || 'Failed to delete the purchase. Please try again.';
@@ -482,42 +491,48 @@ function deletePurchase(purchaseId) {
     </Head>
 
     <AuthenticatedLayout>
-        <div class="p-6">
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-3xl font-bold">Purchase</h1>
-      <div class="flex items-center gap-4">
-        <button @click="triggerOcrUpload"
-            class="hover:bg-[#201d70] bg-[#2e2c92] text-white px-4 py-2 rounded-lg font-medium shadow flex items-center">
-             <i class="fa fa-camera mr-2"></i> Upload Invoice
-        </button>
-        <input type="file" ref="ocrFileInput" @change="handleOcrUpload" accept="image/*,application/pdf" class="hidden" />
+      <div class="p-4 sm:p-6 space-y-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+          <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-slate-900">Purchases</h1>
+            <p class="text-xs sm:text-sm text-slate-500 mt-1">Manage purchase orders and supplier invoices</p>
+          </div>
+          <div class="flex items-center gap-3">
+            <button @click="triggerOcrUpload"
+                class="hover:bg-[#201d70] bg-[#2e2c92] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm flex items-center gap-2 text-sm transition">
+                 <i class="fa fa-camera"></i> Upload Invoice
+            </button>
+            <input type="file" ref="ocrFileInput" @change="handleOcrUpload" accept="image/*,application/pdf" class="hidden" />
 
-        <a :href="route('purchase.create')"
-            class="hover:bg-[#2e2c92] border border-[#2e2c92] text-black hover:text-white px-4 py-2 rounded-lg font-medium">
-             <span>+ Add Purchase</span>
-        </a>
+            <a :href="route('purchase.create')"
+                class="bg-[#2e2c92] hover:bg-[#201d70] text-white px-4 py-2.5 rounded-xl font-semibold shadow-sm transition flex items-center gap-2 text-sm">
+                 <i class="fa fa-plus"></i>
+                 <span>Add Purchase</span>
+            </a>
+          </div>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-6">
+          <div class="overflow-x-auto">
+            <!-- DataTable Component -->
+            <DataTable :data="purchases" :columns="columns" :options="dtOptions" id="purchase" class="w-full min-w-[850px]">
+                <thead class="bg-[#2e2c92] text-white main-head-table">
+                    <tr>
+                        <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
+                        <th scope="col">S No</th>
+                        <th scope="col">Name</th>
+                        <th scope="col">Phone</th>
+                        <th scope="col">Email</th>
+                        <th scope="col">Total Amount</th>
+                        <th scope="col">Purchases Date</th>
+                        <th scope="col">Payment Status</th>
+                        <th scope="col">Action</th>
+                    </tr>
+                </thead>
+            </DataTable>
+          </div>
+        </div>
       </div>
-    </div>
-    <div class="overflow-x-auto mt-10">
-      <!-- DataTable Component -->
-      <DataTable :data="purchases" :columns="columns" :options="dtOptions" id="purchase">
-          <thead class="bg-[#2e2c92] text-white main-head-table">
-              <tr>
-                  <th scope="col" style="width: 40px;"><input type="checkbox" id="select-all-rows" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"></th>
-                  <th scope="col">S No</th>
-                  <th scope="col">Name</th>
-                  <th scope="col">Phone</th>
-                  <th scope="col">Email</th>
-                  <th scope="col">Total Amount</th>
-                  <th scope="col">Purchases Date</th>
-                  <th scope="col">Payment Status</th>
-                  <th scope="col">Action</th>
-              </tr>
-          </thead>
-          <!-- The table rows would be dynamically inserted here -->
-      </DataTable>
-    </div>
-  </div>
 
   <!-- Floating Bulk Action Bar -->
   <div v-if="selectedIds.length > 0" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40 bg-white border border-gray-200 rounded-2xl shadow-xl px-6 py-4 flex items-center gap-6">

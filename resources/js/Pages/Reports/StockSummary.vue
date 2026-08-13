@@ -141,26 +141,52 @@ onUnmounted(() => {
       </div>
 
       <!-- ── KPI Cards ── -->
-      <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        <div class="col-span-2 lg:col-span-2 bg-gradient-to-br from-[#2e2c92] to-[#4c49d8] text-white p-5 rounded-2xl shadow-xl flex flex-col justify-between">
-          <span class="text-xs font-medium opacity-75 uppercase tracking-wider">Total Products</span>
-          <span class="text-4xl font-black mt-2">{{ totalProducts }}</span>
+      <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
+        <!-- Total Products -->
+        <div class="bg-gradient-to-br from-[#2e2c92] to-[#4c49d8] text-white p-4 sm:p-5 rounded-2xl shadow-sm flex flex-col justify-between transition-transform hover:-translate-y-0.5">
+          <span class="text-xs font-semibold opacity-80 uppercase tracking-wider">Total Products</span>
+          <div class="mt-3 flex items-baseline justify-between">
+            <span class="text-2xl sm:text-3xl font-extrabold tracking-tight">{{ totalProducts }}</span>
+            <i class="bi bi-box-seam text-white/30 text-2xl"></i>
+          </div>
         </div>
-        <div class="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm border-l-4 border-l-indigo-400 flex flex-col justify-between">
-          <span class="text-xs text-gray-400 uppercase tracking-wider">Total Qty</span>
-          <span class="text-2xl font-extrabold text-gray-800 mt-2">{{ totalQtyInStock.toLocaleString('en-IN') }}</span>
+
+        <!-- Total Qty -->
+        <div class="bg-white border border-gray-200/80 p-4 sm:p-5 rounded-2xl shadow-sm border-l-4 border-l-indigo-500 flex flex-col justify-between hover:shadow-md transition-all">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Qty</span>
+          <div class="mt-3 flex items-baseline justify-between">
+            <span class="text-xl sm:text-2xl font-extrabold text-gray-800 tracking-tight">{{ totalQtyInStock.toLocaleString('en-IN') }}</span>
+            <i class="bi bi-stack text-indigo-300 text-xl"></i>
+          </div>
         </div>
-        <div class="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm border-l-4 border-l-blue-400 flex flex-col justify-between">
-          <span class="text-xs text-gray-400 uppercase tracking-wider">Cost Value</span>
-          <span class="text-base font-extrabold text-gray-800 mt-2">{{ formatCurrency(totalCostValue) }}</span>
+
+        <!-- Cost Value -->
+        <div class="bg-white border border-gray-200/80 p-4 sm:p-5 rounded-2xl shadow-sm border-l-4 border-l-blue-500 flex flex-col justify-between hover:shadow-md transition-all">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Cost Value</span>
+          <div class="mt-3 overflow-hidden">
+            <span class="text-sm sm:text-base lg:text-lg font-extrabold text-gray-800 tracking-tight block truncate" :title="formatCurrency(totalCostValue)">
+              {{ formatCurrency(totalCostValue) }}
+            </span>
+          </div>
         </div>
-        <div class="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm border-l-4 border-l-emerald-400 flex flex-col justify-between">
-          <span class="text-xs text-gray-400 uppercase tracking-wider">Retail Value</span>
-          <span class="text-base font-extrabold text-gray-800 mt-2">{{ formatCurrency(totalRetailValue) }}</span>
+
+        <!-- Retail Value -->
+        <div class="bg-white border border-gray-200/80 p-4 sm:p-5 rounded-2xl shadow-sm border-l-4 border-l-emerald-500 flex flex-col justify-between hover:shadow-md transition-all">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Retail Value</span>
+          <div class="mt-3 overflow-hidden">
+            <span class="text-sm sm:text-base lg:text-lg font-extrabold text-gray-800 tracking-tight block truncate" :title="formatCurrency(totalRetailValue)">
+              {{ formatCurrency(totalRetailValue) }}
+            </span>
+          </div>
         </div>
-        <div class="bg-white border border-gray-100 p-5 rounded-2xl shadow-sm border-l-4 border-l-red-400 flex flex-col justify-between">
-          <span class="text-xs text-gray-400 uppercase tracking-wider">Out of Stock</span>
-          <span class="text-2xl font-extrabold text-red-600 mt-2">{{ outOfStockCount }}</span>
+
+        <!-- Out of Stock -->
+        <div class="col-span-2 sm:col-span-1 bg-white border border-gray-200/80 p-4 sm:p-5 rounded-2xl shadow-sm border-l-4 border-l-red-500 flex flex-col justify-between hover:shadow-md transition-all">
+          <span class="text-xs font-semibold text-gray-500 uppercase tracking-wider">Out of Stock</span>
+          <div class="mt-3 flex items-baseline justify-between">
+            <span class="text-2xl sm:text-3xl font-extrabold text-red-600 tracking-tight">{{ outOfStockCount }}</span>
+            <i class="bi bi-exclamation-triangle text-red-300 text-xl"></i>
+          </div>
         </div>
       </div>
 
