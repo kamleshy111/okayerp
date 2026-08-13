@@ -426,9 +426,17 @@ const totalAmount = computed(() => {
     }, 0);
 });
 
-const grandTotal = computed(() => {
+const rawGrandTotal = computed(() => {
     const transport = parseFloat(form.value.transport) || 0;
     return totalAmount.value + transport + totalGST.value;
+});
+
+const grandTotal = computed(() => {
+    return Math.round(rawGrandTotal.value);
+});
+
+const roundOff = computed(() => {
+    return grandTotal.value - rawGrandTotal.value;
 });
 
 const dueAmount = computed(() => {
@@ -668,28 +676,34 @@ const handleAltFocusOut = (event, index) => {
     </Head>
 
     <AuthenticatedLayout>
-    <div class="bg-white p-8 rounded-xl shadow-md space-y-6">
+    <div class="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm space-y-6">
         <div class="main-back-class">
-            <a :href="route('purchase')"><i style="font-size: 14px;" class="bi bi-chevron-left"></i><span style="margin-left: 5px;">Purchase</span></a>
+            <a :href="route('purchase')" class="inline-flex items-center text-slate-500 hover:text-[#292688] font-medium text-sm transition">
+                <i class="bi bi-chevron-left text-xs mr-1"></i>
+                <span>Purchase</span>
+            </a>
         </div>
-            <h2 class="text-2xl font-bold mb-4 text-[#292688]">Update Purchase</h2>
-        <div>
+        
+        <div class="flex items-center justify-between">
+            <h2 class="text-2xl font-bold text-[#292688] tracking-tight">Update Purchase</h2>
+        </div>
 
+        <div>
             <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
                 <div>
-                    <label class="block text-black font-medium mb-2">Supplier</label>
+                    <label class="block text-slate-700 font-semibold text-sm mb-2">Supplier</label>
                     <vSelect
                         v-model="form.supplier_id"
                         :options="suppliers"
                         label="name"
                         :reduce="supplier => supplier.id"
                         placeholder="Search or select supplier"
-                        class="w-full"
+                        class="w-full bg-white rounded-xl"
                         @search="onSupplierSearch"
                         @keydown.enter="moveToNextInput"
                     >
                         <template #no-options>
-                            <div class="px-3 py-2 text-gray-500">
+                            <div class="px-3 py-2 text-slate-400 text-sm">
                                 <span v-if="!supplierSearchQuery">Type to search supplier...</span>
                                 <span v-else>No suppliers found.</span>
                             </div>
@@ -698,208 +712,224 @@ const handleAltFocusOut = (event, index) => {
                 </div>
 
                 <div>
-                    <label class="block text-black font-medium mb-2">Invoice / Bill Number</label>
+                    <label class="block text-slate-700 font-semibold text-sm mb-2">Invoice / Bill Number</label>
                     <input type="text" name="invoice_no" v-model="form.invoice_no"
                         @keydown.enter.prevent="moveToNextInput"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
+                        class="w-full border border-slate-200 px-3.5 py-2.5 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm"
                         placeholder="Enter invoice/bill number" />
                 </div>
 
                 <div>
-                    <label class="block text-black font-medium mb-2">Invoice Date</label>
+                    <label class="block text-slate-700 font-semibold text-sm mb-2">Invoice Date</label>
                     <input type="date" name="purchase_date" v-model="form.purchase_date"
                         @keydown.enter.prevent="moveToNextInput"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
+                        class="w-full border border-slate-200 px-3.5 py-2.5 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm" />
                 </div>
 
                 <div>
-                    <label class="block text-black font-medium mb-2">Received Date</label>
+                    <label class="block text-slate-700 font-semibold text-sm mb-2">Received Date</label>
                     <input type="date" name="received_date" v-model="form.received_date"
                         @keydown.enter.prevent="moveToNextInput"
-                        class="w-full px-4 py-3 bg-white text-black placeholder-gray-500 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
+                        class="w-full border border-slate-200 px-3.5 py-2.5 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm" />
                 </div>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div v-if="selectedSupplier" class="mt-4 p-4 border rounded bg-gray-100 text-black">
-                <p><strong>Name:</strong> {{ selectedSupplier.name }}</p>
-                <p><strong>Phone:</strong> {{ selectedSupplier.phone }}</p>
-                <p><strong>Address:</strong> {{ selectedSupplier.address }}</p>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-2">
+                <div v-if="selectedSupplier" class="mt-4 p-5 rounded-2xl bg-indigo-50/40 border border-indigo-100/60 shadow-sm space-y-1.5 transition-all">
+                    <p class="text-sm text-slate-800"><strong>Name:</strong> {{ selectedSupplier.name }}</p>
+                    <p class="text-sm text-slate-800"><strong>Phone:</strong> {{ selectedSupplier.phone }}</p>
+                    <p class="text-sm text-slate-800"><strong>Address:</strong> {{ selectedSupplier.address }}</p>
                 </div>
                 <div v-else></div>
 
-                <div class="mt-4 p-4 border rounded bg-gray-50">
-                    <label class="block text-black font-medium mb-2">Delivery Mode</label>
-                    <select v-model="form.delivery_mode" class="w-full px-4 py-3 mb-4 bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#292688] outline-none transition">
-                        <option value="By Hand">By Hand</option>
-                        <option value="Vehicle">Vehicle</option>
-                    </select>
+                <div class="mt-4 p-5 rounded-2xl bg-slate-50/50 border border-slate-100 shadow-sm space-y-4">
+                    <div>
+                        <label class="block text-slate-700 font-semibold text-sm mb-2">Delivery Mode</label>
+                        <select v-model="form.delivery_mode" class="w-full border border-slate-200 px-3.5 py-2.5 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition bg-white text-sm shadow-sm">
+                            <option value="By Hand">By Hand</option>
+                            <option value="Vehicle">Vehicle</option>
+                        </select>
+                    </div>
 
-                    <div v-if="form.delivery_mode === 'Vehicle'" class="grid grid-cols-2 gap-4 mb-4">
+                    <div v-if="form.delivery_mode === 'Vehicle'" class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Transpoter Name</label>
-                            <input type="text" v-model="form.vehicle_type" placeholder="e.g. Transpoter Name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Transporter Name</label>
+                            <input type="text" v-model="form.vehicle_type" placeholder="e.g. Transporter Name" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-sm shadow-sm" />
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Vehicle Number</label>
-                            <input type="text" v-model="form.vehicle_number" placeholder="e.g. MH 01 AB 1234" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Vehicle Number</label>
+                            <input type="text" v-model="form.vehicle_number" placeholder="e.g. MH 01 AB 1234" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-sm shadow-sm" />
                         </div>
                     </div>
 
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Delivery Person Name</label>
-                            <input type="text" v-model="form.delivery_person_name" placeholder="Name" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Delivery Person Name</label>
+                            <input type="text" v-model="form.delivery_person_name" placeholder="Name" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-sm shadow-sm" />
                         </div>
                         <div>
-                            <label class="block text-xs text-gray-500 mb-1">Delivery Person Phone</label>
-                            <input type="text" v-model="form.delivery_person_phone" placeholder="Phone" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688]" />
+                            <label class="block text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Delivery Person Phone</label>
+                            <input type="text" v-model="form.delivery_person_phone" placeholder="Phone" class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 text-sm shadow-sm" />
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div>
-                <h3 class="text-2xl font-bold mb-4 text-[#292688]">Purchase Items</h3>
+            <div class="mt-8">
+                <h3 class="text-xl font-bold text-[#292688]">Purchase Items</h3>
             </div>
 
             <!-- Desktop view: Table layout -->
-            <table class="hidden md:table w-full table-auto border border-gray-300 rounded-xl overflow-hidden">
-                <thead class="bg-[#292688] text-white">
-                    <tr>
-                        <th class="px-4 py-2 text-left">Product</th>
-                        <th class="px-4 py-2 text-left">GST</th>
-                        <th class="px-4 py-2 text-left" style="width: 18%;">Alt Qty / Size</th>
-                        <th class="px-4 py-2 text-left">Quantity</th>
-                        <th class="px-4 py-2 text-left">Unit Type</th>
-                        <th class="px-4 py-2 text-left">Price</th>
-                        <th class="px-4 py-2 text-left">Sale Price</th>
-                        <th class="px-4 py-2 text-left">Net Amount</th>
-                        <th class="px-4 py-2 text-left">Action</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    <tr v-for="(item, index) in form.purchase_items" :key="index">
-                        <td class="border-t px-4 py-3 min-w-[220px]">
-                            <div class="relative w-full">
-                                <input
-                                    type="text"
-                                    v-model="item.temp_product_name"
-                                    @focus="onProductInputFocus(index)"
-                                    @input="onProductInputChanged(index, $event.target.value)"
-                                    @keydown.down.prevent="navigateSidebar(1)"
-                                    @keydown.up.prevent="navigateSidebar(-1)"
-                                    @keydown.enter.prevent="selectHighlightedProduct"
-                                    @keydown.tab="closeSidebar"
-                                    @keydown.esc="closeSidebar"
-                                    placeholder="Search product..."
-                                    class="w-full border border-gray-300 px-3 py-2 rounded-md focus:ring-2 focus:ring-[#292688] text-black bg-white focus:outline-none"
-                                />
-                            </div>
-                            <div v-if="page.props.auth?.user?.allow_provide_additional_descriptions && item.description" class="mt-1">
-                                <div class="text-xxs text-gray-500 bg-gray-50 px-2 py-1 rounded border border-gray-100 flex items-center justify-between">
-                                    <span class="truncate max-w-[200px]" :title="item.description">{{ item.description }}</span>
-                                    <button type="button" @click="openDescriptionPopup(index)" class="text-indigo-600 hover:text-indigo-800 ml-1 shrink-0">
-                                        <i class="bi bi-pencil-square"></i>
+            <div class="hidden md:block overflow-x-auto border border-slate-100 rounded-2xl shadow-sm bg-white mt-4">
+                <table class="w-full table-auto border-collapse min-w-[950px]">
+                    <thead class="bg-gradient-to-r from-indigo-50/90 via-blue-50/90 to-indigo-50/90 border-b border-indigo-100 text-[#292688] text-xs font-bold tracking-wider uppercase">
+                        <tr>
+                            <th class="px-4 py-3.5 text-left min-w-[220px]">Product <span class="text-red-500">*</span></th>
+                            <th class="px-4 py-3.5 text-left min-w-[170px]">GST</th>
+                            <th class="px-4 py-3.5 text-left min-w-[150px]" style="width: 18%;">Alt Qty / Size</th>
+                            <th class="px-4 py-3.5 text-left min-w-[125px]">Quantity <span class="text-red-500">*</span></th>
+                            <th class="px-4 py-3.5 text-left min-w-[80px]">Unit Type</th>
+                            <th class="px-4 py-3.5 text-left min-w-[130px]">Price <span class="text-red-500">*</span></th>
+                            <th class="px-4 py-3.5 text-left min-w-[140px]">Sale Price</th>
+                            <th class="px-4 py-3.5 text-left min-w-[120px]">Net Amount</th>
+                            <th class="px-4 py-3.5 text-right min-w-[90px]">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr v-for="(item, index) in form.purchase_items" :key="index" class="hover:bg-slate-50/40 transition">
+                            <td class="border-t border-slate-100 px-4 py-4 min-w-[220px]">
+                                <div class="relative w-full">
+                                    <input
+                                        type="text"
+                                        v-model="item.temp_product_name"
+                                        @focus="onProductInputFocus(index)"
+                                        @input="onProductInputChanged(index, $event.target.value)"
+                                        @keydown.down.prevent="navigateSidebar(1)"
+                                        @keydown.up.prevent="navigateSidebar(-1)"
+                                        @keydown.enter.prevent="selectHighlightedProduct"
+                                        @keydown.tab="closeSidebar"
+                                        @keydown.esc="closeSidebar"
+                                        placeholder="Search product..."
+                                        class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm"
+                                    />
+                                </div>
+                                <div v-if="page.props.auth?.user?.allow_provide_additional_descriptions && item.description" class="mt-1.5">
+                                    <div class="text-xxs text-slate-500 bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-100 flex items-center justify-between shadow-xxs">
+                                        <span class="truncate max-w-[200px]" :title="item.description">{{ item.description }}</span>
+                                        <button type="button" @click="openDescriptionPopup(index)" class="text-indigo-600 hover:text-indigo-800 ml-2 shrink-0">
+                                            <i class="bi bi-pencil-square"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </td>
+
+                            <td class="border-t border-slate-100 px-4 py-4 min-w-[170px]">
+                                <select
+                                    v-model="item.gst_rate_id"
+                                    @change="onGstRateChange(item)"
+                                    @keydown.enter.prevent="moveToNextInput"
+                                    class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm"
+                                >
+                                    <option value="" disabled>Select GST</option>
+                                    <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
+                                        {{ rate.name }}
+                                    </option>
+                                </select>
+                            </td>
+
+                            <td class="border-t border-slate-100 px-4 py-4 min-w-[150px]">
+                                <div v-if="item.alternate_unit_type" class="flex flex-col gap-2">
+                                    <div class="flex items-center gap-1.5">
+                                        <input 
+                                            :id="'alt-qty-input-' + index"
+                                            type="number" 
+                                            step="any" 
+                                            v-model="item.alternate_quantity" 
+                                            class="w-20 px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition" 
+                                            placeholder="Alt Qty" 
+                                        />
+                                        <span class="text-xs text-slate-500 font-semibold uppercase">{{ item.alternate_unit_type }}</span>
+                                    </div>
+                                    <div v-if="activeEditingAltRow === index" @focusout="handleAltFocusOut($event, index)" class="flex items-center gap-1 text-xs text-slate-400">
+                                        <input 
+                                            :id="`width-input-${index}`"
+                                            type="number" 
+                                            step="any" 
+                                            v-model="item.width" 
+                                            class="w-10 px-1 py-1 border border-slate-200 rounded-lg text-center text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition placeholder:text-slate-300" 
+                                            placeholder="W" 
+                                        />
+                                        <span class="text-xxs font-bold">×</span>
+                                        <input 
+                                            type="number" 
+                                            step="any" 
+                                            v-model="item.height" 
+                                            class="w-10 px-1 py-1 border border-slate-200 rounded-lg text-center text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition placeholder:text-slate-300" 
+                                            placeholder="H" 
+                                        />
+                                    </div>
+                                    <div 
+                                        v-else 
+                                        @click="startEditingAlt(index)"
+                                        class="cursor-pointer hover:bg-slate-50 px-2 py-1 rounded-lg border border-dashed border-slate-200 hover:border-indigo-300 transition text-xxs text-slate-400 font-medium inline-block align-middle self-start"
+                                        title="Click to edit size"
+                                    >
+                                        Size: {{ item.width || 0 }} × {{ item.height || 0 }}
+                                    </div>
+                                </div>
+                                <div v-else class="text-slate-300 text-xs">-</div>
+                            </td>
+
+                            <td class="border-t border-slate-100 px-4 py-4 min-w-[125px]">
+                                <input :id="'qty-input-' + index" type="number" step="any" name="quantity" v-model="item.quantity" required
+                                    @keydown.enter.prevent="moveToNextInput"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none text-sm transition text-black bg-white shadow-sm"
+                                    placeholder="Qty" />
+                            </td>
+
+                            <td class="border-t border-slate-100 px-4 py-4 min-w-[80px]">
+                                <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-semibold bg-slate-100 text-slate-600 border border-slate-200/50 uppercase">
+                                    {{ item.unit_type || 'pcs' }}
+                                </span>
+                            </td>
+
+                            <td class="border-t border-slate-100 px-4 py-4 min-w-[130px]">
+                                <input type="number" step="any" name="price" v-model="item.price" required
+                                    @keydown.enter.prevent="moveToNextInput"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none text-sm transition text-black bg-white shadow-sm"
+                                    placeholder="Price" />
+                            </td>
+
+                            <td class="border-t border-slate-100 px-4 py-4 min-w-[140px]">
+                                <input type="number" step="0.01" name="sale_price" v-model="item.sale_price"
+                                    @keydown.enter.prevent="moveToNextInput"
+                                    class="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none text-sm transition text-black bg-white shadow-sm"
+                                    placeholder="Sale Price" />
+                            </td>
+
+                            <td class="border-t border-slate-100 px-4 py-4 font-bold text-slate-800 text-sm whitespace-nowrap min-w-[120px]">
+                                ₹ {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2) }}
+                            </td>
+
+                            <td class="border-t border-slate-100 px-4 py-4 text-right min-w-[90px]">
+                                <div class="flex items-center justify-end gap-2">
+                                    <button @click="removeRow(index)" type="button"
+                                        class="p-2 rounded-xl text-slate-400 hover:text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 transition flex items-center justify-center cursor-pointer"
+                                        title="Remove row">
+                                        <i class="bi bi-trash text-lg leading-none"></i>
+                                    </button>
+
+                                    <button v-if="index === form.purchase_items.length - 1" @click="addRow" type="button"
+                                        class="p-2 rounded-xl text-indigo-600 hover:text-white bg-indigo-50 hover:bg-indigo-600 border border-indigo-100 hover:border-indigo-600 transition flex items-center justify-center cursor-pointer"
+                                        title="Add new row">
+                                        <i class="bi bi-plus-lg text-lg leading-none"></i>
                                     </button>
                                 </div>
-                            </div>
-                        </td>
-
-                        <td class="border-t px-4 py-3 min-w-[140px]">
-                            <select
-                                v-model="item.gst_rate_id"
-                                @change="onGstRateChange(item)"
-                                @keydown.enter.prevent="moveToNextInput"
-                                class="w-full border border-gray-300 px-2 py-1.5 rounded-md focus:ring-2 focus:ring-[#292688]"
-                            >
-                                <option value="" disabled>Select GST</option>
-                                <option v-for="rate in filteredGstRates" :key="rate.id" :value="rate.id">
-                                    {{ rate.name }}
-                                </option>
-                            </select>
-                        </td>
-                        <td class="border-t px-4 py-3 min-w-[150px]">
-                            <div v-if="item.alternate_unit_type" class="flex flex-col gap-2">
-                                <div class="flex items-center gap-1.5">
-                                    <input 
-                                        :id="'alt-qty-input-' + index"
-                                        type="number" 
-                                        step="any" 
-                                        v-model="item.alternate_quantity" 
-                                        class="w-20 px-2.5 py-1.5 border border-slate-200 rounded-xl text-xs text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition" 
-                                        placeholder="Alt Qty" 
-                                    />
-                                    <span class="text-xs text-slate-500 font-semibold uppercase">{{ item.alternate_unit_type }}</span>
-                                </div>
-                                <div v-if="activeEditingAltRow === index" @focusout="handleAltFocusOut($event, index)" class="flex items-center gap-1 text-xs text-slate-400">
-                                    <input 
-                                        :id="`width-input-${index}`"
-                                        type="number" 
-                                        step="any" 
-                                        v-model="item.width" 
-                                        class="w-10 px-1 py-1 border border-slate-200 rounded-lg text-center text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition placeholder:text-slate-300" 
-                                        placeholder="W" 
-                                    />
-                                    <span class="text-xxs font-bold">×</span>
-                                    <input 
-                                        type="number" 
-                                        step="any" 
-                                        v-model="item.height" 
-                                        class="w-10 px-1 py-1 border border-slate-200 rounded-lg text-center text-black bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none shadow-sm transition placeholder:text-slate-300" 
-                                        placeholder="H" 
-                                    />
-                                </div>
-                                <div 
-                                    v-else 
-                                    @click="startEditingAlt(index)"
-                                    class="cursor-pointer hover:bg-slate-50 px-2 py-1 rounded-lg border border-dashed border-slate-200 hover:border-indigo-300 transition text-xxs text-slate-400 font-medium inline-block align-middle self-start"
-                                    title="Click to edit size"
-                                >
-                                    Size: {{ item.width || 0 }} × {{ item.height || 0 }}
-                                </div>
-                            </div>
-                            <div v-else class="text-slate-300 text-xs">-</div>
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            <input :id="'qty-input-' + index" type="number" name="quantity" v-model="item.quantity" required
-                                @keydown.enter.prevent="moveToNextInput"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                                placeholder="Qty" />
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            {{ item.unit_type }}
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            <input type="number" name="price" v-model="item.price" required
-                                @keydown.enter.prevent="moveToNextInput"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                                placeholder="Price" />
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            <input type="number" step="0.01" name="sale_price" v-model="item.sale_price"
-                                @keydown.enter.prevent="moveToNextInput"
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition"
-                                placeholder="Sale Price" />
-                        </td>
-                        <td class="border-t px-4 py-3">
-                            ₹  {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}
-                        </td>
-
-                        <td class="border-t px-4 py-2 flex items-center justify-start">
-                            <button @click="removeRow(index)" type="button"
-                                class="bg-red-600 text-white px-3 py-1 rounded-md shadow hover:bg-red-700 transition mr-2 mt-2">
-                                <i class="bi bi-trash"></i>
-                            </button>
-
-                            <button v-if="index === form.purchase_items.length - 1" @click="addRow" type="button"
-                                class="bg-green-600 text-white px-3 py-1 rounded-md shadow hover:bg-green-700 transition mt-2">
-                                <i class="bi bi-plus-lg"></i>
-                            </button>
-                        </td>
-                    </tr>
-                </tbody>
-            </table>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
 
             <!-- Mobile view: Card list of items -->
             <div class="md:hidden space-y-4">
@@ -954,7 +984,8 @@ const handleAltFocusOut = (event, index) => {
                                     </option>
                                 </select>
                             </div>
-                        </div>                        <div v-if="item.alternate_unit_type" class="grid grid-cols-3 gap-2 bg-gray-100 p-2 rounded-lg border border-gray-200">
+                        </div>
+                        <div v-if="item.alternate_unit_type" class="grid grid-cols-3 gap-2 bg-gray-100 p-2 rounded-lg border border-gray-200">
                             <div>
                                 <label class="block text-xxs font-semibold text-gray-500 mb-1">Alt Qty ({{ item.alternate_unit_type }})</label>
                                 <input type="number" step="any" v-model="item.alternate_quantity" class="w-full px-2 py-1 border border-gray-300 rounded text-sm bg-white text-black" placeholder="Alt Qty" />
@@ -1008,20 +1039,20 @@ const handleAltFocusOut = (event, index) => {
                             </div>
                             <div>
                                 <span class="block text-gray-400">Net Amount</span>
-                                <span class="text-gray-800 font-bold">₹ {{ (parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0) }}</span>
+                                <span class="text-gray-800 font-bold">₹ {{ ((parseFloat(item.quantity) || 0) * (parseFloat(item.price) || 0)).toFixed(2) }}</span>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <button @click="addRow" type="button"
-                    class="w-full flex items-center justify-center gap-2 bg-green-600 hover:bg-green-700 text-white py-3 rounded-xl font-semibold transition shadow-sm">
-                    <i class="fa fa-plus-circle"></i> Add Items
+                    class="w-full flex items-center justify-center gap-2 bg-indigo-50/50 hover:bg-indigo-600 text-indigo-600 hover:text-white py-3 rounded-xl font-semibold transition border border-indigo-100/80 hover:border-indigo-600 shadow-sm cursor-pointer mt-4">
+                    <i class="bi bi-plus-circle"></i> Add Items
                 </button>
             </div>
 
-            <div class="flex justify-end mt-6">
-                <button @click="openPaymentModal" class="w-full md:w-auto bg-[#2E2C92] hover:bg-[#1d1b6a] text-white px-6 py-3 rounded-xl font-semibold transition shadow-md hover:shadow-lg">
+            <div class="flex justify-end mt-8">
+                <button @click="openPaymentModal" class="w-full md:w-auto bg-gradient-to-r from-[#2E2C92] to-[#1c1a6e] hover:from-[#1c1a6e] hover:to-[#2E2C92] text-white px-8 py-3.5 rounded-2xl font-bold transition-all duration-300 shadow-md hover:shadow-lg flex items-center justify-center gap-2 hover:scale-[1.01] cursor-pointer">
                     Submit & Proceed to Payment
                 </button>
             </div>
@@ -1063,6 +1094,11 @@ const handleAltFocusOut = (event, index) => {
                 <div class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">Total Net Amount</span>
                     <span class="text-gray-800 font-bold">₹ {{ totalAmount.toFixed(2) }}</span>
+                </div>
+
+                <div v-if="Math.abs(roundOff) >= 0.001" class="flex justify-between items-center">
+                    <span class="text-gray-700 font-semibold">Round Off</span>
+                    <span class="text-gray-800 font-bold">{{ roundOff > 0 ? '+' : '' }}₹ {{ roundOff.toFixed(2) }}</span>
                 </div>
 
                 <div class="flex justify-between items-center">
@@ -1224,11 +1260,11 @@ const handleAltFocusOut = (event, index) => {
 </template>
 <style>
 .v-select .vs__dropdown-toggle {
-    min-height: 50px;
+    min-height: 42px;
     border-radius: 0.75rem !important;
-    border-color: #d1d5db;
-    padding-top: 0.25rem;
-    padding-bottom: 0.25rem;
+    border-color: #e2e8f0;
+    padding-top: 0.15rem;
+    padding-bottom: 0.15rem;
 }
 .v-select .vs__selected, .v-select .vs__search {
     margin-top: 0;

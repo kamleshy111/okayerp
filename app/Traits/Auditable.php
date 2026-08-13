@@ -29,16 +29,9 @@ trait Auditable
         }
 
         // Global check: if audit logging is turned off globally, skip recording audit logs
-        $user = Auth::check() ? Auth::user() : null;
-        if ($user && isset($user->audit_logs_enabled)) {
-            if (!$user->audit_logs_enabled) {
-                return;
-            }
-        } else {
-            $systemUser = \App\Models\User::where('role', 'admin')->first() ?? \App\Models\User::first();
-            if ($systemUser && isset($systemUser->audit_logs_enabled) && !$systemUser->audit_logs_enabled) {
-                return;
-            }
+        $systemUser = \App\Models\User::where('role', 'admin')->first() ?? \App\Models\User::first();
+        if ($systemUser && isset($systemUser->audit_logs_enabled) && !$systemUser->audit_logs_enabled) {
+            return;
         }
 
         $oldValues = null;

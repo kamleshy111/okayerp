@@ -1,7 +1,7 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted } from 'vue';
 
 
 const props = defineProps({
@@ -17,6 +17,18 @@ const props = defineProps({
     type: [Number, String],
     default: 0
   }
+});
+
+const computedRawTotal = computed(() => {
+  const total = parseFloat(props.purchase.total_amount) || 0;
+  const gst = parseFloat(props.purchase.gst_amount) || 0;
+  const transport = parseFloat(props.purchase.transport_amount) || 0;
+  return total + gst + transport;
+});
+
+const roundOff = computed(() => {
+  const grand = parseFloat(props.purchase.grand_total) || 0;
+  return grand - computedRawTotal.value;
 });
 
 
@@ -176,6 +188,10 @@ onUnmounted(() => {
               <div v-if="purchase.transport_amount && parseFloat(purchase.transport_amount) > 0" class="flex justify-between py-3">
                 <span class="text-gray-500 font-medium">Transport Amount</span>
                 <span class="text-gray-900 font-semibold">₹{{ parseFloat(purchase.transport_amount).toFixed(2) }}</span>
+              </div>
+              <div v-if="Math.abs(roundOff) >= 0.001" class="flex justify-between py-3">
+                <span class="text-gray-500 font-medium">Round Off</span>
+                <span class="text-gray-900 font-semibold">{{ roundOff > 0 ? '+' : '' }}₹{{ roundOff.toFixed(2) }}</span>
               </div>
               <div class="flex justify-between py-3 text-base font-bold border-t border-gray-200">
                 <span class="text-gray-900">Grand Total</span>

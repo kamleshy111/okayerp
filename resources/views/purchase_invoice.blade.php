@@ -62,7 +62,10 @@
   $supplier = $purchase->supplier;
   $subtotal = $purchase->total_amount ?? $purchase->items->sum(fn($i) => $i->quantity * ($i->price ?? $i->unit_price ?? 0));
   $taxTotal  = $purchase->gst_amount ?? $purchase->items->sum(fn($i) => $i->quantity * ($i->price ?? $i->unit_price ?? 0) * (($i->sgst + $i->cgst) ?: ($i->tax_rate ?? 0)) / 100);
-  $grandTotal = $purchase->grand_total;
+  $transportOrExtra = $purchase->transport_amount ?? $purchase->extra_charges ?? 0;
+  $rawGrandTotal = $subtotal + $taxTotal + $transportOrExtra - ($purchase->discount_amount ?? 0);
+  $grandTotal = $purchase->grand_total ?? round($rawGrandTotal);
+  $roundOff   = $grandTotal - $rawGrandTotal;
   $paid       = $purchase->paid ?? 0;
   $balance    = $grandTotal - $paid;
 @endphp
@@ -184,6 +187,12 @@
           <tr>
             <td>Transport Charges:</td>
             <td class="text-right">₹ {{ number_format($transportOrExtra, 2) }}</td>
+          </tr>
+          @endif
+          @if(abs($roundOff) >= 0.001)
+          <tr>
+            <td>Round Off:</td>
+            <td class="text-right">{{ $roundOff > 0 ? '+' : '' }}₹ {{ number_format($roundOff, 2) }}</td>
           </tr>
           @endif
           <tr style="font-weight:bold;font-size:13px;border-top:1px solid #2e2c92;">
