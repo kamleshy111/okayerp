@@ -579,13 +579,16 @@ class SaleController extends Controller
     public function downloadInvoice(Request $request,$id){
 
         $query = Sale::query()->with(['saleItems.product', 'customer.user']);
-        if (Auth::user()->role !== 'admin') {
+        
+        // Scope to store user if authenticated as store staff; if public customer link, allow finding by ID
+        if (Auth::check() && Auth::user()->role !== 'admin') {
             $query->whereHas('customer', fn($q) => $q->where('user_id', Auth::id()));
         }
+        
         $sale = $query->find($id);
 
         if (!$sale) {
-            abort(403, 'Sale not found or unauthorized access');
+            abort(404, 'Invoice not found');
         }
 
 
