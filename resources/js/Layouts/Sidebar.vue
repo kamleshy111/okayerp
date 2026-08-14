@@ -301,6 +301,15 @@ onMounted(() => {
           Settings
         </li>
 
+        <li v-if="role === 'store'" :class="{ 'active': route().current('notification-settings*') }">
+          <a
+            :href="route('notification-settings.sender-info')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-bell-fill text-xl"></i> <span>Notification Settings</span>
+          </a>
+        </li>
+
         <li v-if="role === 'admin'" :class="{ 'active': route().current('store*') }">
           <a
             :href="route('store')"

@@ -3,7 +3,6 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import DeleteUserForm from './Partials/DeleteUserForm.vue';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm.vue';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm.vue';
-import UpdateNotificationSettingsForm from './Partials/UpdateNotificationSettingsForm.vue';
 import UpdateAuditLogSettingsForm from './Partials/UpdateAuditLogSettingsForm.vue';
 import { Head } from '@inertiajs/vue3';
 
@@ -42,10 +41,6 @@ defineProps({
                         :status="status"
                         class="w-full"
                     />
-                </div>
-
-                <div v-if="$page.props.auth.user.role === 'store'" class="bg-white p-6 shadow-md border border-gray-100 rounded-xl sm:p-8">
-                    <UpdateNotificationSettingsForm class="w-full" />
                 </div>
 
                 <div v-if="$page.props.auth.user.role === 'admin'" class="bg-white p-6 shadow-md border border-gray-100 rounded-xl sm:p-8">

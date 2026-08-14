@@ -82,6 +82,19 @@ const arColumns = [
     render: (data) => `<span class="${data > 0 ? 'text-red-600 font-bold' : 'text-gray-600'}">${formatCurrency(data)}</span>`,
     className: 'border-b border-gray-200'
   },
+  {
+    data: null,
+    title: 'Actions',
+    render: (data, type, row) => {
+      const phone = row.phone && row.phone !== 'N/A' ? row.phone.replace(/\D/g, '') : '';
+      const text = encodeURIComponent(`Dear ${row.name}, you have an outstanding balance of ₹${row.total_due}. Please clear your account. Statement: ${window.location.origin}/paymentsCustomer/${row.id}/history/download-pdf`);
+      const href = phone ? `https://api.whatsapp.com/send?phone=${phone}&text=${text}` : '#';
+      return `<a href="${href}" target="_blank" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition ${!phone ? 'opacity-50 pointer-events-none' : ''}">
+        <i class="bi bi-whatsapp"></i> Send Reminder
+      </a>`;
+    },
+    className: 'text-center border-b border-gray-200 whitespace-nowrap'
+  }
 ];
 
 // Column definitions for AP DataTable

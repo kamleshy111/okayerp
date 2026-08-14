@@ -369,6 +369,29 @@ class CustomerPaymentsController extends Controller
             $receiptUrl = route('paymentsCustomer.receipt.show', ['source' => 'payment', 'id' => $salePayment->id]);
         }
 
+        // Dispatch automatic Customer Payment Received notification
+        try {
+            $customer = Customer::find($request->input('customer_id'));
+            $paidAmt = (float)$cashAmount + (float)$advanceAmountUsed;
+            (new \App\Services\NotificationService())->dispatch(
+                Auth::user(),
+                'customer_payment',
+                [
+                    'customer_name' => $customer ? $customer->name : 'Customer',
+                    'amount' => number_format($paidAmt, 2),
+                    'payment_method' => $request->input('payment_method') ?: 'Payment',
+                    'date' => $request->input('payment_date') ?: now()->toDateString(),
+                    'remaining_due' => '0.00',
+                    'pdf_url' => $receiptUrl ?: '#',
+                ],
+                $customer ? $customer->phone : null,
+                $customer ? $customer->email : null,
+                "/paymentsCustomer"
+            );
+        } catch (\Exception $ne) {
+            \Illuminate\Support\Facades\Log::error('Customer payment notification dispatch failed: ' . $ne->getMessage());
+        }
+
         return response()->json([
             'message' => 'Customer Payments added successfully!',
             'receipt_url' => $receiptUrl

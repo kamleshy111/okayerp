@@ -37,6 +37,8 @@ use App\Http\Controllers\StockItemMonthDetailController;
 use App\Http\Controllers\ReferralUserController;
 use App\Http\Controllers\OfferController;
 use App\Http\Controllers\WhatsAppController;
+use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\NotificationSettingsController;
 
 
 
@@ -311,6 +313,31 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::post('/whatsapp/send-statement/{customerId}', [WhatsAppController::class, 'sendCustomerStatement'])->name('whatsapp.customer-statement');
     Route::post('/whatsapp/send-supplier-statement/{supplierId}', [WhatsAppController::class, 'sendSupplierStatement'])->name('whatsapp.supplier-statement');
     Route::post('/whatsapp/send-custom', [WhatsAppController::class, 'sendCustom'])->name('whatsapp.send-custom');
+
+    // In-App Header Notifications API & FCM Push
+    Route::get('/notifications/header-list', [NotificationController::class, 'headerList'])->name('notifications.header-list');
+    Route::post('/notifications/mark-read/{id}', [NotificationController::class, 'markRead'])->name('notifications.mark-read');
+    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllRead'])->name('notifications.mark-all-read');
+    Route::delete('/notifications/{id}', [NotificationController::class, 'destroy'])->name('notifications.destroy');
+    Route::post('/notifications/fcm-token', [NotificationController::class, 'updateFcmToken'])->name('notifications.fcm-token');
+
+    // Notification Settings Pages (Separate Pages as requested)
+    Route::prefix('notification-settings')->group(function () {
+        Route::get('/sender-info', [NotificationSettingsController::class, 'senderInfo'])->name('notification-settings.sender-info');
+        Route::post('/sender-info', [NotificationSettingsController::class, 'updateSenderInfo'])->name('notification-settings.sender-info.update');
+        
+        Route::get('/templates', [NotificationSettingsController::class, 'templates'])->name('notification-settings.templates');
+        Route::post('/templates/{id}', [NotificationSettingsController::class, 'updateTemplate'])->name('notification-settings.templates.update');
+        
+        Route::get('/matrix', [NotificationSettingsController::class, 'matrix'])->name('notification-settings.matrix');
+        Route::post('/matrix', [NotificationSettingsController::class, 'updateMatrix'])->name('notification-settings.matrix.update');
+        
+        Route::get('/logs', [NotificationSettingsController::class, 'logs'])->name('notification-settings.logs');
+        Route::post('/logs/clear', [NotificationSettingsController::class, 'clearLogs'])->name('notification-settings.logs.clear');
+        
+        Route::get('/whatsapp-qr', [NotificationSettingsController::class, 'getWhatsAppQrCode'])->name('notification-settings.whatsapp-qr');
+        Route::post('/test-whatsapp', [NotificationSettingsController::class, 'testWhatsApp'])->name('notification-settings.test-whatsapp');
+    });
 });
    
 require __DIR__.'/auth.php';

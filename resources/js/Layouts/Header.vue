@@ -3,6 +3,7 @@ import { ref, computed } from 'vue';
 import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import NotificationBell from '@/Components/NotificationBell.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 
 const page = usePage();
@@ -41,11 +42,11 @@ const session = computed(() => props.session || {});
                     </svg>
                 </button>
 
-                <div class="flex items-center justify-end flex-1">
-                    <div class="sm:ms-6 sm:flex sm:items-center">
+                <div class="flex items-center justify-end flex-1 gap-3">
+                    <NotificationBell />
 
-                    <!-- Settings Dropdown -->
-                    <div class="relative ms-3 w-full sm:w-auto">
+                    <div class="sm:flex sm:items-center">
+                        <div class="relative ms-1 w-full sm:w-auto">
 
                         <Dropdown align="right" width="48">
                             <template #trigger>

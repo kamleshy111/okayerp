@@ -239,7 +239,27 @@ class SupplierPaymentController extends Controller
         ]);
 
         $accountingService = new \App\Services\AccountingService($userId);
-        $accountingService->postSupplierPayment($purchasePayment);
+        // Dispatch automatic Supplier Payment Paid notification
+        try {
+            $supplier = Supplier::find($request->input('supplier_id'));
+            (new \App\Services\NotificationService())->dispatch(
+                Auth::user(),
+                'supplier_payment',
+                [
+                    'supplier_name' => $supplier ? $supplier->name : 'Supplier',
+                    'amount' => number_format($request->input('amount'), 2),
+                    'payment_method' => $request->input('payment_method') ?: 'Payment',
+                    'date' => $request->input('payment_date') ?: now()->toDateString(),
+                    'business_name' => Auth::user()->name ?: 'OkayERP',
+                    'pdf_url' => '#',
+                ],
+                $supplier ? $supplier->phone : null,
+                $supplier ? $supplier->email : null,
+                "/paymentSupplier"
+            );
+        } catch (\Exception $ne) {
+            \Illuminate\Support\Facades\Log::error('Supplier payment notification dispatch failed: ' . $ne->getMessage());
+        }
 
         return response()->json(['message' => 'Supplier Payments added successfully!']);
     }

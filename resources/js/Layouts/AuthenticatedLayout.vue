@@ -35,7 +35,7 @@
 <script>
 import Sidebar from './Sidebar.vue';
 import Header from './Header.vue';
-import { computed, ref } from 'vue';
+import { computed, ref, onMounted } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
 export default {
@@ -51,6 +51,14 @@ export default {
         const role = computed(() => props.auth?.user?.role || null);
         const session = computed(() => props.session || null);
         const isSidebarOpen = ref(false);
+
+        onMounted(() => {
+            if ('serviceWorker' in navigator) {
+                navigator.serviceWorker.register('/firebase-messaging-sw.js').catch(err => {
+                    console.log('FCM Service worker note:', err);
+                });
+            }
+        });
 
         return { role, session, isSidebarOpen };
     },

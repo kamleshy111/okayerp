@@ -181,6 +181,29 @@ class PurchasesController extends Controller
             }
 
             DB::commit();
+
+            // Dispatch automatic Purchase Order Created notification
+            try {
+                $supplier = Supplier::find($purchase->supplier_id);
+                (new \App\Services\NotificationService())->dispatch(
+                    Auth::user(),
+                    'purchase_created',
+                    [
+                        'supplier_name' => $supplier ? $supplier->name : 'Supplier',
+                        'invoice_no' => $purchase->id,
+                        'amount' => number_format($purchase->grand_total, 2),
+                        'date' => $purchase->purchase_date ?: now()->toDateString(),
+                        'business_name' => Auth::user()->name ?: 'OkayERP',
+                        'pdf_url' => '#',
+                    ],
+                    $supplier ? $supplier->phone : null,
+                    $supplier ? $supplier->email : null,
+                    "/purchase/{$purchase->id}"
+                );
+            } catch (\Exception $ne) {
+                \Illuminate\Support\Facades\Log::error('Purchase notification dispatch failed: ' . $ne->getMessage());
+            }
+
             return response()->json(['message' => 'purchase added successfully.']);
 
         } catch (\Exception $e) {

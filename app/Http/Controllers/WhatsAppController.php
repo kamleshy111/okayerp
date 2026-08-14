@@ -20,44 +20,32 @@ class WhatsAppController extends Controller
      */
     private function sendWhatsAppMessage(string $mobileNumber, string $pdfUrl, string $message = 'Please find the attached document.'): bool
     {
-        $apiKey = config('services.whatsapp.api_key', '30dce73d773a4ceaa7b35c369e4b5b43');
-        $campName = config('services.whatsapp.camp_name', 'sarpanchsangh');
+        $user = Auth::user();
+        if (!$user) return false;
 
-        $encodedMessage = rawurlencode($message);
-        $encodedPdfUrl  = rawurlencode($pdfUrl);
+        $setting = \App\Models\NotificationSetting::where('user_id', $user->id)->first();
+        $apiKey = $setting?->whatsapp_api_key ?: config('services.whatsapp.api_key');
+        $appName = $setting?->whatsapp_app_name ?: config('services.whatsapp.camp_name');
+        $baseUrl = $setting?->whatsapp_api_url ?: config('services.whatsapp.node_url', 'http://localhost:3000/send-message');
 
-        // Ensure we only use the last 10 digits
-        $cleanNumber = preg_replace('/\D/', '', $mobileNumber);
-        $mobile10    = substr($cleanNumber, -10);
+        // Delegate to NotificationService driver dispatch
+        $result = (new \App\Services\NotificationService())->dispatchInline(
+            $user,
+            'sale_created',
+            [
+                'customer_name' => 'Customer',
+                'amount' => '0.00',
+                'invoice_no' => 'DOC',
+                'date' => date('Y-m-d'),
+                'pdf_url' => $pdfUrl,
+                'business_name' => $user->name ?: 'OkayERP',
+            ],
+            $mobileNumber,
+            null,
+            $pdfUrl
+        );
 
-        if (strlen($mobile10) !== 10) {
-            return false;
-        }
-
-        $apiUrl = 'https://wapi.hspsms.com/public/wa/api/send'
-            . '?campname=' . rawurlencode($campName)
-            . '&campbody=' . $encodedMessage
-            . '&contact=91' . $mobile10
-            . '&apikey=' . $apiKey
-            . '&attpdf=' . $encodedPdfUrl;
-
-        $curl = curl_init();
-        curl_setopt_array($curl, [
-            CURLOPT_URL            => $apiUrl,
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_ENCODING       => '',
-            CURLOPT_MAXREDIRS      => 10,
-            CURLOPT_TIMEOUT        => 15,
-            CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_HTTP_VERSION   => CURL_HTTP_VERSION_1_1,
-            CURLOPT_CUSTOMREQUEST  => 'GET',
-        ]);
-
-        $response = curl_exec($curl);
-        $httpCode = curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        curl_close($curl);
-
-        return $httpCode >= 200 && $httpCode < 300;
+        return isset($result['whatsapp']) && $result['whatsapp'] === 'sent';
     }
 
     /**

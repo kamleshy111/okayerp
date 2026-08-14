@@ -174,60 +174,29 @@ class SendAutomaticAgingReminders extends Command
      */
     private function sendWhatsAppReminder($store, $customer, $totalDue, $bucket)
     {
-        $cleanNumber = preg_replace('/\D/', '', $customer->phone);
-        $mobile10 = substr($cleanNumber, -10);
-        if (strlen($mobile10) !== 10) {
-            return;
-        }
-
-        $apiUrlBase = $store->whatsapp_api_url ?: 'https://wapi.hspsms.com/public/wa/api/send';
-        $apiKey = $store->whatsapp_api_key ?: config('services.whatsapp.api_key', '30dce73d773a4ceaa7b35c369e4b5b43');
-        $campName = $store->whatsapp_app_name ?: config('services.whatsapp.camp_name', 'sarpanchsangh');
-        
-        $pdfUrl = url("/paymentsCustomer/{$customer->id}/history/download-pdf");
-        $businessName = $store->name ?? 'OkayERP';
+        $eventKey = 'aging_' . str_replace('_days', '', $bucket);
         $amount = number_format($totalDue, 2);
+        $pdfUrl = url("/paymentsCustomer/{$customer->id}/history/download-pdf");
 
-        $template = $store->whatsapp_message_template ?: "Dear {customer_name}, you have an outstanding balance of ₹{amount} with {business_name}. Please find your account statement link below. Thank you!";
-        
-        $message = str_replace(
-            ['{customer_name}', '{amount}', '{business_name}', '{pdf_url}'],
-            [$customer->name, $amount, $businessName, $pdfUrl],
-            $template
+        (new \App\Services\NotificationService())->dispatchInline(
+            $store,
+            $eventKey,
+            [
+                'customer_name' => $customer->name,
+                'amount' => $amount,
+                'business_name' => $store->name ?: 'OkayERP',
+                'pdf_url' => $pdfUrl,
+                'date' => now()->toDateString(),
+            ],
+            $customer->phone,
+            $customer->email,
+            "/reports/aging"
         );
 
-        $apiUrl = $apiUrlBase
-            . '?campname=' . rawurlencode($campName)
-            . '&campbody=' . rawurlencode($message)
-            . '&contact=91' . $mobile10
-            . '&apikey=' . $apiKey
-            . '&attpdf=' . rawurlencode($pdfUrl);
-
-        try {
-            $response = Http::timeout(15)->get($apiUrl);
-            if ($response->successful()) {
-                $customer->update([
-                    'last_whatsapp_sent_at' => now(),
-                    'last_whatsapp_bucket' => $bucket,
-                ]);
-
-                AuditLog::create([
-                    'user_id' => $store->id,
-                    'action' => 'send_automatic_whatsapp_aging_reminder',
-                    'model_type' => Customer::class,
-                    'model_id' => $customer->id,
-                    'new_values' => [
-                        'bucket' => $bucket,
-                        'total_due' => $totalDue,
-                        'message_sent' => $message,
-                    ],
-                ]);
-
-                Log::info("Auto WhatsApp reminder sent to {$customer->name} ({$mobile10}): " . $response->body());
-            }
-        } catch (\Exception $e) {
-            Log::error("Failed sending auto WhatsApp reminder to {$customer->name}: " . $e->getMessage());
-        }
+        $customer->update([
+            'last_whatsapp_sent_at' => now(),
+            'last_whatsapp_bucket' => $bucket,
+        ]);
     }
 
     /**
@@ -235,59 +204,28 @@ class SendAutomaticAgingReminders extends Command
      */
     private function sendSmsReminder($store, $customer, $totalDue, $bucket)
     {
-        $cleanNumber = preg_replace('/\D/', '', $customer->phone);
-        $mobile10 = substr($cleanNumber, -10);
-        if (strlen($mobile10) !== 10) {
-            return;
-        }
-
-        $apiUrlBase = $store->sms_api_url ?: 'http://sms.hspsms.com/sendSMS';
-        $apiKey = $store->sms_api_key ?: config('services.whatsapp.api_key', '30dce73d773a4ceaa7b35c369e4b5b43');
-        $senderName = $store->sms_sender_name ?: 'SARPCH';
-        
-        $pdfUrl = url("/paymentsCustomer/{$customer->id}/history/download-pdf");
-        $businessName = $store->name ?? 'OkayERP';
+        $eventKey = 'aging_' . str_replace('_days', '', $bucket);
         $amount = number_format($totalDue, 2);
+        $pdfUrl = url("/paymentsCustomer/{$customer->id}/history/download-pdf");
 
-        $template = $store->sms_message_template ?: "Dear {customer_name}, you have an outstanding balance of ₹{amount} with {business_name}. Please find your account statement link: {pdf_url} Thank you!";
-        
-        $message = str_replace(
-            ['{customer_name}', '{amount}', '{business_name}', '{pdf_url}'],
-            [$customer->name, $amount, $businessName, $pdfUrl],
-            $template
+        (new \App\Services\NotificationService())->dispatchInline(
+            $store,
+            $eventKey,
+            [
+                'customer_name' => $customer->name,
+                'amount' => $amount,
+                'business_name' => $store->name ?: 'OkayERP',
+                'pdf_url' => $pdfUrl,
+                'date' => now()->toDateString(),
+            ],
+            $customer->phone,
+            $customer->email,
+            "/reports/aging"
         );
 
-        $apiUrl = $apiUrlBase
-            . '?apikey=' . $apiKey
-            . '&message=' . rawurlencode($message)
-            . '&numbers=91' . $mobile10
-            . '&sendername=' . rawurlencode($senderName)
-            . '&smstype=TRANS';
-
-        try {
-            $response = Http::timeout(15)->get($apiUrl);
-            if ($response->successful()) {
-                $customer->update([
-                    'last_sms_sent_at' => now(),
-                    'last_sms_bucket' => $bucket,
-                ]);
-
-                AuditLog::create([
-                    'user_id' => $store->id,
-                    'action' => 'send_automatic_sms_aging_reminder',
-                    'model_type' => Customer::class,
-                    'model_id' => $customer->id,
-                    'new_values' => [
-                        'bucket' => $bucket,
-                        'total_due' => $totalDue,
-                        'message_sent' => $message,
-                    ],
-                ]);
-
-                Log::info("Auto SMS reminder sent to {$customer->name} ({$mobile10}): " . $response->body());
-            }
-        } catch (\Exception $e) {
-            Log::error("Failed sending auto SMS reminder to {$customer->name}: " . $e->getMessage());
-        }
+        $customer->update([
+            'last_sms_sent_at' => now(),
+            'last_sms_bucket' => $bucket,
+        ]);
     }
 }

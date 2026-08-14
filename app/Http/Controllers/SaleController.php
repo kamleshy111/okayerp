@@ -214,6 +214,28 @@ class SaleController extends Controller
 
             DB::commit();
 
+            // Dispatch automatic Sale Created notification
+            try {
+                $customer = Customer::find($sale->customer_id);
+                $pdfUrl = route('sale.invoice.download', ['id' => $sale->id]);
+                (new \App\Services\NotificationService())->dispatch(
+                    Auth::user(),
+                    'sale_created',
+                    [
+                        'customer_name' => $customer ? $customer->name : 'Customer',
+                        'invoice_no' => $sale->id,
+                        'amount' => number_format($sale->grand_total, 2),
+                        'date' => $sale->sale_date,
+                        'pdf_url' => $pdfUrl,
+                    ],
+                    $customer ? $customer->phone : null,
+                    $customer ? $customer->email : null,
+                    "/sale/{$sale->id}"
+                );
+            } catch (\Exception $ne) {
+                \Illuminate\Support\Facades\Log::error('Sale notification dispatch failed: ' . $ne->getMessage());
+            }
+
             return response()->json([
                 'message' => 'sale added successfully.',
                 'invoice_url' => route('sale.invoice.download', ['id' => $sale->id]),

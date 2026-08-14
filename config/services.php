@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'whatsapp' => [
+        'node_url' => env('WHATSAPP_NODE_URL', 'http://localhost:3000/send-message'),
+        'node_secret_token' => env('WHATSAPP_NODE_SECRET_TOKEN', 'master_secret_token_2026'),
+    ],
+
 ];
