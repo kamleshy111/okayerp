@@ -209,4 +209,57 @@ class WhatsAppController extends Controller
 
         return response()->json(['success' => false, 'message' => 'Failed to send WhatsApp message.'], 500);
     }
+
+    /**
+     * Send 1-Click Aging Due Reminder from /reports/aging
+     */
+    public function sendAgingReminder(Request $request, $customerId)
+    {
+        $user = Auth::user();
+        $customer = Customer::where('user_id', $user->id)->findOrFail($customerId);
+
+        if (empty($customer->phone)) {
+            return response()->json(['success' => false, 'message' => 'Customer phone number is missing.'], 422);
+        }
+
+        // Try automatic dispatch via NotificationService
+        $result = (new \App\Services\NotificationService())->dispatchInline(
+            $user,
+            'aging_30',
+            [
+                'customer_name' => $customer->name,
+                'amount' => number_format($customer->total_due ?? 0, 2),
+                'business_name' => $user->name ?: 'OkayERP',
+                'pdf_url' => route('customer.payment-history.pdf', ['customerId' => $customer->id]),
+                'date' => now()->toDateString(),
+            ],
+            $customer->phone,
+            $customer->email,
+            "/reports/aging"
+        );
+
+        if (isset($result['whatsapp']) && $result['whatsapp'] === 'sent') {
+            return response()->json([
+                'success' => true,
+                'sent_auto' => true,
+                'message' => "WhatsApp reminder sent automatically to {$customer->name}!",
+            ]);
+        }
+
+        // Fallback: Generate manual WhatsApp web URL if gateway is offline/unconfigured
+        $cleanPhone = preg_replace('/[^0-9]/', '', $customer->phone);
+        if (strlen($cleanPhone) === 10) {
+            $cleanPhone = '91' . $cleanPhone;
+        }
+        $pdfUrl = route('customer.payment-history.pdf', ['customerId' => $customer->id]);
+        $messageText = "Dear {$customer->name}, you have an outstanding balance of ₹" . number_format($customer->total_due ?? 0, 2) . " with " . ($user->name ?: 'OkayERP') . ". Account statement: {$pdfUrl}";
+        $waUrl = "https://api.whatsapp.com/send?phone={$cleanPhone}&text=" . rawurlencode($messageText);
+
+        return response()->json([
+            'success' => true,
+            'sent_auto' => false,
+            'wa_url' => $waUrl,
+            'message' => 'WhatsApp Gateway offline or not connected. Opening manual WhatsApp Web...',
+        ]);
+    }
 }

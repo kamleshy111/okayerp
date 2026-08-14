@@ -32,6 +32,47 @@ const formatCurrency = (val) => {
   }).format(val);
 };
 
+import Swal from 'sweetalert2';
+import axios from 'axios';
+
+const sendAgingReminder = async (row) => {
+  if (!row.phone || row.phone === 'N/A') {
+    Swal.fire('Phone Required', 'This customer does not have a valid phone number.', 'warning');
+    return;
+  }
+
+  Swal.fire({
+    title: 'Sending Reminder...',
+    text: `Checking WhatsApp gateway status for ${row.name}...`,
+    allowOutsideClick: false,
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  });
+
+  try {
+    const res = await axios.post(route('reports.aging.send-reminder', { customerId: row.id }));
+    if (res.data.sent_auto) {
+      Swal.fire('Dispatched!', res.data.message, 'success');
+    } else if (res.data.wa_url) {
+      Swal.fire({
+        title: 'Gateway Offline',
+        text: res.data.message || 'WhatsApp Gateway is not connected. Opening manual WhatsApp...',
+        icon: 'info',
+        confirmButtonText: 'Open WhatsApp Web',
+      }).then((result) => {
+        if (result.isConfirmed) {
+          window.open(res.data.wa_url, '_blank');
+        }
+      });
+    } else {
+      Swal.fire('Error', res.data.message || 'Could not send reminder.', 'error');
+    }
+  } catch (err) {
+    Swal.fire('Error', err.response?.data?.message || 'Failed to dispatch reminder.', 'error');
+  }
+};
+
 // Column definitions for AR DataTable
 const arColumns = [
   { 
@@ -86,12 +127,16 @@ const arColumns = [
     data: null,
     title: 'Actions',
     render: (data, type, row) => {
-      const phone = row.phone && row.phone !== 'N/A' ? row.phone.replace(/\D/g, '') : '';
-      const text = encodeURIComponent(`Dear ${row.name}, you have an outstanding balance of ₹${row.total_due}. Please clear your account. Statement: ${window.location.origin}/paymentsCustomer/${row.id}/history/download-pdf`);
-      const href = phone ? `https://api.whatsapp.com/send?phone=${phone}&text=${text}` : '#';
-      return `<a href="${href}" target="_blank" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition ${!phone ? 'opacity-50 pointer-events-none' : ''}">
+      const btnId = `btn-remind-${row.id}`;
+      setTimeout(() => {
+        const el = document.getElementById(btnId);
+        if (el) {
+          el.onclick = () => sendAgingReminder(row);
+        }
+      }, 50);
+      return `<button id="${btnId}" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition">
         <i class="bi bi-whatsapp"></i> Send Reminder
-      </a>`;
+      </button>`;
     },
     className: 'text-center border-b border-gray-200 whitespace-nowrap'
   }

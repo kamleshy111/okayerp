@@ -310,6 +310,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::post('/whatsapp/send-statement/{customerId}', [WhatsAppController::class, 'sendCustomerStatement'])->name('whatsapp.customer-statement');
     Route::post('/whatsapp/send-supplier-statement/{supplierId}', [WhatsAppController::class, 'sendSupplierStatement'])->name('whatsapp.supplier-statement');
     Route::post('/whatsapp/send-custom', [WhatsAppController::class, 'sendCustom'])->name('whatsapp.send-custom');
+    Route::post('/reports/aging/send-reminder/{customerId}', [WhatsAppController::class, 'sendAgingReminder'])->name('reports.aging.send-reminder');
 
     // In-App Header Notifications API & FCM Push
     Route::get('/notifications/header-list', [NotificationController::class, 'headerList'])->name('notifications.header-list');
