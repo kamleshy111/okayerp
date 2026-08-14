@@ -184,6 +184,27 @@ class SaleController extends Controller
                         'reference_id' => $sale->id,
                         'reason' => "Sale Invoice #{$sale->id}",
                     ]);
+
+                    // Trigger Low Stock Alert for Store Owner if stock drops <= 0
+                    if ($product->stock_quantity <= 0) {
+                        try {
+                            (new \App\Services\NotificationService())->dispatch(
+                                Auth::user(),
+                                'low_stock_alert',
+                                [
+                                    'product_name' => $product->name,
+                                    'stock_qty' => $product->stock_quantity,
+                                    'unit_type' => $product->unit_type ?: 'units',
+                                    'business_name' => Auth::user()->name ?: 'OkayERP',
+                                ],
+                                Auth::user()->phone,
+                                Auth::user()->email,
+                                "/product/{$product->id}/edit"
+                            );
+                        } catch (\Exception $lse) {
+                            \Illuminate\Support\Facades\Log::error('Low stock alert error: ' . $lse->getMessage());
+                        }
+                    }
                 }
             }
 

@@ -90,9 +90,9 @@ class NotificationService
             'low_stock_alert' => [
                 'name' => 'Low Stock Warning Alert',
                 'email_subject' => 'Low Stock Alert: {product_name}',
-                'email_body' => 'Alert! Product {product_name} is running low (Current Qty: {stock_qty}). Please reorder.',
-                'whatsapp_body' => '⚠️ Low Stock Alert at {business_name}: {product_name} stock is down to {stock_qty} unit(s).',
-                'sms_body' => 'Low Stock Alert: {product_name} qty is {stock_qty}. Reorder needed.',
+                'email_body' => 'Alert! Product {product_name} is running low (Current Qty: {stock_qty} {unit_type}). Please reorder.',
+                'whatsapp_body' => '⚠️ Low Stock Alert at {business_name}: {product_name} stock is down to {stock_qty} {unit_type}.',
+                'sms_body' => 'Low Stock Alert: {product_name} qty is {stock_qty} {unit_type}. Reorder needed.',
             ],
         ];
 
