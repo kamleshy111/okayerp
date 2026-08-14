@@ -187,31 +187,20 @@ class NotificationService
         $variables['business_name'] = $variables['business_name'] ?? $businessName;
         $results = [];
 
-        // 1. In-App Notification (Header Bell)
-        if (($trigger ? $trigger->in_app_enabled : true) && ($setting ? $setting->in_app_enabled : true)) {
+        // 1. In-App Bell & FCM Push — Store Internal Alerts Only (e.g. Low Stock Warning)
+        $storeInternalEvents = ['low_stock_alert'];
+
+        if (in_array($eventKey, $storeInternalEvents) && ($trigger ? $trigger->in_app_enabled : true) && ($setting ? $setting->in_app_enabled : true)) {
             $title = $template->name;
             $message = self::compile($template->whatsapp_body ?: $template->email_subject ?: 'Notification', $variables);
-            
-            $iconMap = [
-                'sale_created' => 'bi-cart-check',
-                'purchase_created' => 'bi-bag-plus',
-                'customer_payment' => 'bi-cash-coin',
-                'supplier_payment' => 'bi-wallet',
-                'low_stock_alert' => 'bi-exclamation-triangle',
-                'aging_30' => 'bi-clock-history',
-                'aging_60' => 'bi-exclamation-circle',
-                'aging_90' => 'bi-exclamation-diamond',
-            ];
-            
-            $icon = $iconMap[$eventKey] ?? 'bi-bell';
 
             Notification::create([
                 'user_id' => $user->id,
-                'type' => explode('_', $eventKey)[0] ?? 'info',
+                'type' => 'warning',
                 'title' => $title,
                 'message' => $message,
                 'action_url' => $actionUrl,
-                'icon' => $icon,
+                'icon' => 'bi-exclamation-triangle',
                 'is_read' => false,
             ]);
 
@@ -226,7 +215,7 @@ class NotificationService
                 'sent_at' => Carbon::now(),
             ]);
 
-            // Automatically dispatch FCM Web Push alongside In-App Bell Alert
+            // Dispatch FCM Web Push for Store Owner
             try {
                 $fcmTokens = \App\Models\UserFcmToken::where('user_id', $user->id)->pluck('fcm_token')->toArray();
                 if (!empty($fcmTokens)) {

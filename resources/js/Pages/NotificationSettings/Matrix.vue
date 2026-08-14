@@ -95,9 +95,10 @@ const saveMatrix = () => {
                     </select>
                   </td>
 
-                  <!-- In-App Switch -->
+                  <!-- In-App & Push Switch -->
                   <td class="px-5 py-4 text-center">
-                    <input type="checkbox" v-model="trig.in_app_enabled" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4" />
+                    <input v-if="trig.event_key === 'low_stock_alert'" type="checkbox" v-model="trig.in_app_enabled" class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500 h-4 w-4" />
+                    <span v-else class="text-gray-400 font-mono text-xs">—</span>
                   </td>
 
                   <!-- WhatsApp Switch -->
