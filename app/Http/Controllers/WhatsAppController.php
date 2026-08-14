@@ -230,7 +230,7 @@ class WhatsAppController extends Controller
                 'customer_name' => $customer->name,
                 'amount' => number_format($customer->total_due ?? 0, 2),
                 'business_name' => $user->name ?: 'OkayERP',
-                'pdf_url' => route('customer.payment-history.pdf', ['customerId' => $customer->id]),
+                'pdf_url' => route('paymentsCustomer.history.pdf', ['id' => $customer->id]),
                 'date' => now()->toDateString(),
             ],
             $customer->phone,
@@ -251,7 +251,7 @@ class WhatsAppController extends Controller
         if (strlen($cleanPhone) === 10) {
             $cleanPhone = '91' . $cleanPhone;
         }
-        $pdfUrl = route('customer.payment-history.pdf', ['customerId' => $customer->id]);
+        $pdfUrl = route('paymentsCustomer.history.pdf', ['id' => $customer->id]);
         $messageText = "Dear {$customer->name}, you have an outstanding balance of ₹" . number_format($customer->total_due ?? 0, 2) . " with " . ($user->name ?: 'OkayERP') . ". Account statement: {$pdfUrl}";
         $waUrl = "https://api.whatsapp.com/send?phone={$cleanPhone}&text=" . rawurlencode($messageText);
 

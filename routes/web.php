@@ -282,7 +282,6 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/paymentsCustomer/create', [CustomerPaymentsController::class, 'create'])->name('paymentsCustomer.create');
         Route::post('/paymentsCustomer/store', [CustomerPaymentsController::class, 'store'])->name('paymentsCustomer.store');
         Route::get('/paymentsCustomer/{id}/history', [CustomerPaymentsController::class, 'history'])->name('paymentsCustomer.history');
-        Route::get('/paymentsCustomer/{id}/history/download-pdf', [CustomerPaymentsController::class, 'downloadHistoryPdf'])->name('paymentsCustomer.history.pdf');
         Route::get('/paymentsCustomer/receipt/{source}/{id}', [CustomerPaymentsController::class, 'showReceipt'])->name('paymentsCustomer.receipt.show');
         Route::get('/paymentsCustomer/receipt/{source}/{id}/pdf', [CustomerPaymentsController::class, 'downloadReceiptPdf'])->name('paymentsCustomer.receipt.pdf');
         
@@ -338,7 +337,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     });
 });
    
-// Publicly accessible Invoice PDF download for customers
+// Publicly accessible Invoice PDF & Payment History PDF downloads for customers
 Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
+Route::get('/paymentsCustomer/{id}/history/download-pdf', [CustomerPaymentsController::class, 'downloadHistoryPdf'])->name('paymentsCustomer.history.pdf');
 
 require __DIR__.'/auth.php';

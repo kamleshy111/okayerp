@@ -132,8 +132,8 @@ class CustomerPaymentsController extends Controller
     }
 
     public function downloadHistoryPdf($id) {
-        $userId = Auth::id();
-        $customer = Customer::where('user_id', $userId)->findOrFail($id);
+        $customer = Customer::findOrFail($id);
+        $userId = $customer->user_id;
 
         $history = $this->getCustomerLedgerHistory($id, $userId);
 
