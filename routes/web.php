@@ -219,9 +219,6 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/sale/update/{id}', [SaleController::class, 'update'])->name('sale.update');
         Route::delete('/sale/destroy/{id}', [SaleController::class, 'destroy'])->name('sale.destroy');
 
-        //downloadInvoice
-        Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
-
         // Sale Payment Information
         Route::get('/sale/payment/{id}', [SaleController::class, 'payment'])->name('sale.payment');
 
@@ -340,4 +337,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     });
 });
    
+// Publicly accessible Invoice PDF download for customers
+Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
+
 require __DIR__.'/auth.php';
