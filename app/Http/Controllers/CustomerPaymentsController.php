@@ -563,6 +563,11 @@ class CustomerPaymentsController extends Controller
             $q->where('user_id', $userId);
         })->findOrFail($id);
 
+        $setting = \App\Models\NotificationSetting::where('user_id', $userId)->first();
+        if ($setting && !$setting->allow_sale_delete) {
+            return response()->json(['message' => 'Customer payment deletion is disabled in your store settings.'], 403);
+        }
+
         DB::beginTransaction();
         try {
             if ($payment->sale_id) {

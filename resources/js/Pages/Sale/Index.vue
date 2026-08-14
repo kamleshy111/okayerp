@@ -126,7 +126,7 @@ const columns = [
       className: 'whitespace-nowrap',
       render: (data, type, row) => {
         if (!row.is_deletable) {
-          return `<i class="fa fa-lock text-gray-400" title="Cannot delete: created more than 10 mins ago or has sales returns"></i>`;
+          return `<i class="fa fa-lock text-gray-400" title="Cannot delete: items have been returned in a Sale Return"></i>`;
         }
         const isChecked = selectedIds.value.includes(data.id) ? 'checked' : '';
         return `<input type="checkbox" class="row-checkbox rounded border-gray-300 text-indigo-600 focus:ring-indigo-500" data-id="${data.id}" ${isChecked}>`;

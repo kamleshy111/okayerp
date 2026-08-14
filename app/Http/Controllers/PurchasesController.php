@@ -23,14 +23,16 @@ class PurchasesController extends Controller
         //             ->get();
 
         $userId = Auth::id();
+        $setting = \App\Models\NotificationSetting::where('user_id', $userId)->first();
+        $allowPurchaseDelete = $setting ? (bool)$setting->allow_purchase_delete : true;
+
         $purchases = Purchase::whereHas('supplier', function ($q) use ($userId) {
             $q->where('user_id', $userId);
         })
         ->with(['supplier', 'purchaseReturns'])
         ->get()
-        ->map(function ($item) {
+        ->map(function ($item) use ($allowPurchaseDelete) {
             $hasReturn = $item->purchaseReturns->isNotEmpty();
-            $isWithinTenMinutes = $item->created_at->diffInMinutes(now(), false) <= 10;
 
             return [
                 'id' => $item->id,
@@ -40,7 +42,7 @@ class PurchasesController extends Controller
                 'grand_total' => $item->grand_total ?? '--',
                 'purchase_Date' => $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->payment_status,
-                'is_deletable' => !$hasReturn && $isWithinTenMinutes,
+                'is_deletable' => !$hasReturn && $allowPurchaseDelete,
             ];
         });
 
@@ -507,13 +509,14 @@ class PurchasesController extends Controller
             return response()->json(['message' => 'Purchase not found or unauthorized access.'], 404);
         }
 
+        $setting = \App\Models\NotificationSetting::where('user_id', Auth::id())->first();
+        if ($setting && !$setting->allow_purchase_delete) {
+            return response()->json(['message' => 'Purchase order deletion is disabled in your store settings.'], 403);
+        }
+
         $hasReturn = \App\Models\PurchaseReturn::where('purchase_id', $id)->exists();
         if ($hasReturn) {
             return response()->json(['message' => 'Cannot delete purchase because items have been returned.'], 422);
-        }
-
-        if ($purchase->created_at->diffInMinutes(now(), false) > 10) {
-            return response()->json(['message' => 'Cannot delete purchase because it was created more than 10 minutes ago.'], 403);
         }
 
         $lastClosedDate = Auth::user()->last_closed_date;

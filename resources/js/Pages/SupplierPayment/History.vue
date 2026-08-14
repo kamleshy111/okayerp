@@ -47,6 +47,33 @@ const handleRowClick = (item) => {
     window.open(route('purchase-return.pdf', item.ref_id), '_blank');
   }
 };
+
+const deletePayment = (item, event) => {
+  if (event) event.stopPropagation();
+  Swal.fire({
+    title: 'Delete Payment?',
+    text: 'Deleting this payment will automatically rearrange supplier purchase bills in FIFO order.',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#dc2626',
+    cancelButtonColor: '#6b7280',
+    confirmButtonText: 'Yes, Delete & Rearrange',
+    cancelButtonText: 'Cancel'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+      axios.delete(`/paymentSupplier/destroy/${item.ref_id}`)
+        .then((response) => {
+          Swal.fire('Deleted!', response.data.message, 'success').then(() => {
+            window.location.reload();
+          });
+        })
+        .catch((error) => {
+          Swal.fire('Error', error.response?.data?.message || 'Failed to delete payment.', 'error');
+        });
+    }
+  });
+};
 </script>
 
 <template>
@@ -166,7 +193,8 @@ const handleRowClick = (item) => {
                             <th class="px-6 py-4">Particulars</th>
                             <th class="px-6 py-4 text-right">Debit (Dr)</th>
                             <th class="px-6 py-4 text-right">Credit (Cr)</th>
-                            <th class="px-6 py-4 text-right rounded-tr-lg">Balance</th>
+                            <th class="px-6 py-4 text-right">Balance</th>
+                            <th class="px-6 py-4 text-center rounded-tr-lg">Action</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-200">
@@ -195,9 +223,20 @@ const handleRowClick = (item) => {
                             <td class="px-6 py-4 text-right text-gray-900 font-bold">
                               ₹{{ Math.abs(item.running_balance).toFixed(2) }} {{ item.running_balance >= 0 ? 'Cr' : 'Dr' }}
                             </td>
+                            <td class="px-6 py-4 text-center">
+                              <button
+                                v-if="item.type === 'Payment'"
+                                @click.stop="deletePayment(item, $event)"
+                                class="text-white bg-red-600 hover:bg-red-700 px-2.5 py-1 rounded text-xs transition shadow-sm"
+                                title="Delete Payment"
+                              >
+                                <i class="fa fa-trash"></i>
+                              </button>
+                              <span v-else class="text-gray-400 font-mono text-xs">—</span>
+                            </td>
                         </tr>
                         <tr v-if="!history.length">
-                            <td colspan="6" class="px-6 py-8 text-center text-gray-400">No ledger entries found.</td>
+                            <td colspan="7" class="px-6 py-8 text-center text-gray-400">No ledger entries found.</td>
                         </tr>
                     </tbody>
                 </table>

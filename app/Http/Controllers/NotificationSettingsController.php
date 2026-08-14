@@ -51,6 +51,8 @@ class NotificationSettingsController extends Controller
             'email_enabled' => 'boolean',
             'in_app_enabled' => 'boolean',
             'fcm_enabled' => 'boolean',
+            'allow_sale_delete' => 'boolean',
+            'allow_purchase_delete' => 'boolean',
             'firebase_project_id' => 'nullable|string',
             'firebase_credentials_json' => 'nullable|string',
         ]);

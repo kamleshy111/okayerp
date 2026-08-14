@@ -26,6 +26,8 @@ class NotificationSetting extends Model
         'in_app_enabled',
         'fcm_enabled',
         'firebase_credentials_json',
+        'allow_sale_delete',
+        'allow_purchase_delete',
     ];
 
     protected $casts = [
@@ -34,6 +36,8 @@ class NotificationSetting extends Model
         'email_enabled' => 'boolean',
         'in_app_enabled' => 'boolean',
         'fcm_enabled' => 'boolean',
+        'allow_sale_delete' => 'boolean',
+        'allow_purchase_delete' => 'boolean',
     ];
 
     public function user()

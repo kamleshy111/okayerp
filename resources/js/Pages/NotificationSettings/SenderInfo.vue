@@ -30,6 +30,9 @@ const form = useForm({
   email_enabled: !!props.setting.email_enabled,
   in_app_enabled: !!props.setting.in_app_enabled,
 
+  allow_sale_delete: props.setting.allow_sale_delete !== undefined ? !!props.setting.allow_sale_delete : true,
+  allow_purchase_delete: props.setting.allow_purchase_delete !== undefined ? !!props.setting.allow_purchase_delete : true,
+
   fcm_enabled: !!props.setting.fcm_enabled,
   firebase_project_id: props.setting.firebase_project_id || '',
   firebase_credentials_json: props.setting.firebase_credentials_json || '',
@@ -390,6 +393,41 @@ onMounted(() => {
             <label class="block text-xs font-semibold text-gray-600">Service Account Key JSON Content</label>
             <p class="text-[11px] text-gray-500">Paste your Firebase Service Account JSON file content below, or place <code>firebase-credentials.json</code> directly in <code>storage/app/</code>.</p>
             <textarea v-model="form.firebase_credentials_json" rows="5" class="w-full border border-gray-300 rounded-xl p-3 text-xs font-mono focus:ring-2 focus:ring-rose-500" placeholder="{ &quot;type&quot;: &quot;service_account&quot;, &quot;project_id&quot;: &quot;...&quot;, &quot;private_key_id&quot;: &quot;...&quot; }"></textarea>
+          </div>
+        </div>
+
+        <!-- Store Record Deletion Permissions Card -->
+        <div class="bg-white border border-gray-200/80 rounded-2xl p-6 shadow-sm space-y-4">
+          <div class="flex items-center gap-2">
+            <i class="bi bi-shield-lock-fill text-amber-600 text-xl"></i>
+            <h2 class="text-base font-bold text-gray-900">Record Deletion Permissions</h2>
+          </div>
+          <p class="text-xs text-gray-500">Manage whether store staff can delete sales invoices, purchase bills, and payment records.</p>
+
+          <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-2">
+            <!-- Allow Sales & Customer Payment Deletion Switch -->
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <div>
+                <span class="block text-sm font-bold text-gray-900">Allow Sales & Customer Payment Deletion</span>
+                <span class="text-xs text-gray-500">Enable or disable deleting sales invoices and customer payments.</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="form.allow_sale_delete" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+              </label>
+            </div>
+
+            <!-- Allow Purchase & Supplier Payment Deletion Switch -->
+            <div class="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100">
+              <div>
+                <span class="block text-sm font-bold text-gray-900">Allow Purchase & Supplier Payment Deletion</span>
+                <span class="text-xs text-gray-500">Enable or disable deleting purchase orders and supplier payments.</span>
+              </div>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" v-model="form.allow_purchase_delete" class="sr-only peer">
+                <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-amber-600"></div>
+              </label>
+            </div>
           </div>
         </div>
 

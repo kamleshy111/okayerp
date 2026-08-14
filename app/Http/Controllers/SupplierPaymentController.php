@@ -23,6 +23,7 @@ class SupplierPaymentController extends Controller
             ->where('suppliers.user_id', $userId);
 
         $payments = $paymentsQuery->select(
+            'purchase_payments.id as transaction_id',
             'suppliers.id as supplier_id',
             'suppliers.user_id',
             'suppliers.name',
@@ -35,6 +36,7 @@ class SupplierPaymentController extends Controller
         )->get()->map(function ($item) {
             return [
                 'id' => $item->supplier_id,
+                'transaction_id' => $item->transaction_id,
                 'user_id' => $item->user_id,
                 'name' => $item->name,
                 'email' => $item->email,
@@ -269,37 +271,66 @@ class SupplierPaymentController extends Controller
         $userId = Auth::id();
         $payment = PurchasePayment::whereHas('supplier', function($q) use ($userId) {
             $q->where('user_id', $userId);
-        })->findOrFail($id);
+        })->find($id);
+
+        if (!$payment) {
+            return response()->json(['message' => 'Payment record not found.'], 404);
+        }
+
+        $setting = \App\Models\NotificationSetting::where('user_id', $userId)->first();
+        if ($setting && !$setting->allow_purchase_delete) {
+            return response()->json(['message' => 'Supplier payment deletion is disabled in your store settings.'], 403);
+        }
+
+        $supplierId = $payment->supplier_id;
 
         DB::beginTransaction();
         try {
-            if ($payment->purchase_id) {
-                $purchase = Purchase::find($payment->purchase_id);
-                if ($purchase) {
-                    $purchase->paid = max(0, (float)$purchase->paid - (float)$payment->amount);
-                    
-                    $totalDueDeductions = \App\Models\PurchaseReturnItem::where('purchase_id', $purchase->id)->sum('due_deduction');
-                    $effectiveBalance = max(0, (float)$purchase->grand_total - (float)$purchase->paid - $totalDueDeductions);
-
-                    if ($effectiveBalance <= 0) {
-                        $purchase->payment_status = 'Paid';
-                    } elseif ((float)$purchase->paid + $totalDueDeductions <= 0) {
-                        $purchase->payment_status = 'Unpaid';
-                    } else {
-                        $purchase->payment_status = 'Partial';
-                    }
-                    $purchase->save();
-                }
-            }
-
             // Clear Ledger entries
             $accountingService = new \App\Services\AccountingService($userId);
             $accountingService->clearEntries('PurchasePayment', $payment->id);
 
+            // Delete payment record
             $payment->delete();
-            DB::commit();
 
-            return response()->json(['message' => 'Payment record deleted successfully.']);
+            // Re-align and rearrange all supplier purchases FIFO
+            $purchases = Purchase::where('supplier_id', $supplierId)
+                ->orderBy('created_at', 'asc')
+                ->get();
+
+            $totalPayments = PurchasePayment::where('supplier_id', $supplierId)
+                ->whereNotIn('payment_method', ['Wallet', 'Advance Deduction'])
+                ->sum('amount');
+
+            foreach ($purchases as $p) {
+                $returnDueDeduction = \App\Models\PurchaseReturnItem::where('purchase_id', $p->id)->sum('due_deduction');
+                $netBill = (float)$p->grand_total - (float)$returnDueDeduction;
+
+                $allocated = 0.0;
+                if ($totalPayments > 0 && $netBill > 0) {
+                    if ($totalPayments >= $netBill) {
+                        $allocated = $netBill;
+                        $totalPayments -= $netBill;
+                    } else {
+                        $allocated = $totalPayments;
+                        $totalPayments = 0.0;
+                    }
+                }
+
+                $p->paid = round($allocated, 2);
+
+                if ($p->paid + $returnDueDeduction >= (float)$p->grand_total) {
+                    $p->payment_status = 'Paid';
+                } elseif ($p->paid <= 0) {
+                    $p->payment_status = 'Unpaid';
+                } else {
+                    $p->payment_status = 'Partial';
+                }
+                $p->save();
+            }
+
+            DB::commit();
+            return response()->json(['message' => 'Payment record deleted and supplier bills rearranged successfully.']);
         } catch (\Exception $e) {
             DB::rollBack();
             return response()->json(['message' => 'Failed to delete payment record: ' . $e->getMessage()], 500);

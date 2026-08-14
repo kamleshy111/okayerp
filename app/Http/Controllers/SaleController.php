@@ -32,14 +32,16 @@ class SaleController extends Controller
                 $q->where('user_id', $userId);
             });
         }
+        $setting = \App\Models\NotificationSetting::where('user_id', Auth::id())->first();
+        $allowSaleDelete = $setting ? (bool)$setting->allow_sale_delete : true;
+
         $sales = $query->with(['customer', 'saleReturns', 'saleReturnItems'])
         ->get()
-        ->map(function ($item) {
+        ->map(function ($item) use ($allowSaleDelete) {
             $dueDeductions = $item->saleReturnItems ? $item->saleReturnItems->sum('due_deduction') : 0;
             $effectiveGrandTotal = max(0, $item->grand_total);
 
             $hasReturn = $item->saleReturns->isNotEmpty();
-            $isWithinTenMinutes = $item->created_at->diffInMinutes(now(), false) <= 10;
 
             return [
                 'id' => $item->id,
@@ -49,7 +51,7 @@ class SaleController extends Controller
                 'grand_total' => number_format($effectiveGrandTotal, 2, '.', ''),
                 'sale_date' => $item->sale_date ? \Carbon\Carbon::parse($item->sale_date)->format('d-m-Y') : $item->created_at->format('d-m-Y'),
                 'payment_status' => $item->paid >= $effectiveGrandTotal ? 'Paid' : $item->payment_status,
-                'is_deletable' => !$hasReturn && $isWithinTenMinutes,
+                'is_deletable' => !$hasReturn && $allowSaleDelete,
             ];
         });
 
@@ -698,13 +700,14 @@ class SaleController extends Controller
             return response()->json(['message' => 'Sale not found.'], 404);
         }
 
+        $setting = \App\Models\NotificationSetting::where('user_id', Auth::id())->first();
+        if ($setting && !$setting->allow_sale_delete) {
+            return response()->json(['message' => 'Sales invoice deletion is disabled in your store settings.'], 403);
+        }
+
         $hasReturn = \App\Models\SaleReturn::where('sale_id', $id)->exists();
         if ($hasReturn) {
             return response()->json(['message' => 'Cannot delete sale because items have been returned.'], 422);
-        }
-
-        if ($sale->created_at->diffInMinutes(now(), false) > 10) {
-            return response()->json(['message' => 'Cannot delete sale because it was created more than 10 minutes ago.'], 403);
         }
 
         $lastClosedDate = Auth::user()->last_closed_date;
