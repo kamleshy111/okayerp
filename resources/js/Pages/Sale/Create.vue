@@ -57,17 +57,78 @@ const activeSearchIndex = ref(null);
 const searchQuery = ref('');
 const selectedSidebarProductIndex = ref(0);
 
+const allProductsMaster = ref([]);
+const isProductsCatalogLoaded = ref(false);
+
+const loadAllProductsCatalog = async () => {
+  if (isProductsCatalogLoaded.value) return;
+  try {
+    const res = await axios.get('/product/search?query=');
+    if (res.data && Array.isArray(res.data)) {
+      allProductsMaster.value = res.data;
+      res.data.forEach(p => {
+        productRegistry.value[p.id] = p;
+      });
+      isProductsCatalogLoaded.value = true;
+      if (products.value.length === 0) {
+        products.value = res.data.slice(0, 30);
+      }
+    }
+  } catch (err) {
+    console.error("Error loading product catalog in-memory:", err);
+  }
+};
+
+onMounted(() => {
+  loadAllProductsCatalog();
+});
+
+const filterProductsInMemory = (queryStr) => {
+  const query = (queryStr || '').trim();
+  if (!query) {
+    return allProductsMaster.value.slice(0, 30);
+  }
+
+  const rawLower = query.toLowerCase();
+  const cleanTokens = query.replace(/[^a-zA-Z0-9\s]/g, ' ').toLowerCase().split(/\s+/).filter(Boolean);
+  const sanitizedQuery = query.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
+
+  return allProductsMaster.value.filter(p => {
+    const name = (p.name || '').toLowerCase();
+    const sku = (p.sku || '').toLowerCase();
+    const hsn = (p.hsn_code || '').toLowerCase();
+    const sanitizedName = name.replace(/[^a-zA-Z0-9]/g, '');
+
+    // 1. Direct match
+    if (name.includes(rawLower) || sku.includes(rawLower) || hsn.includes(rawLower)) {
+      return true;
+    }
+
+    // 2. Multi-word token match (All tokens must exist in name/sku/hsn)
+    if (cleanTokens.length > 0) {
+      const allTokensMatched = cleanTokens.every(token => 
+        name.includes(token) || sku.includes(token) || hsn.includes(token)
+      );
+      if (allTokensMatched) return true;
+    }
+
+    // 3. Sanitized match without quotes/spaces/dashes
+    if (sanitizedQuery.length >= 1 && sanitizedName.includes(sanitizedQuery)) {
+      return true;
+    }
+
+    return false;
+  }).slice(0, 30);
+};
+
 const onProductSearch = async (search, loading) => {
   const searchVal = search || '';
   productSearchQuery.value = searchVal;
-  if (loading) loading(true);
-  try {
-    const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}`);
-    response.data.forEach(p => {
-      productRegistry.value[p.id] = p;
-    });
 
-    let results = response.data;
+  if (allProductsMaster.value.length > 0) {
+    let results = filterProductsInMemory(searchVal);
+    
+    // Ensure selected products in form items are included
     form.value.sale_items.forEach(item => {
       if (item.product_id && productRegistry.value[item.product_id]) {
         const alreadyInResults = results.some(p => p.id === item.product_id);
@@ -77,6 +138,18 @@ const onProductSearch = async (search, loading) => {
       }
     });
     products.value = results;
+    if (loading) loading(false);
+    return;
+  }
+
+  if (loading) loading(true);
+  try {
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}`);
+    allProductsMaster.value = response.data || [];
+    response.data.forEach(p => {
+      productRegistry.value[p.id] = p;
+    });
+    products.value = response.data.slice(0, 30);
   } catch (error) {
     console.error("Error fetching products:", error);
   } finally {
@@ -92,6 +165,8 @@ const onProductInputFocus = (index) => {
     onProductSearch(searchQuery.value);
 };
 
+let productSearchTimer = null;
+
 const onProductInputChanged = (index, value) => {
     searchQuery.value = value;
     const item = form.value.sale_items[index];
@@ -100,7 +175,10 @@ const onProductInputChanged = (index, value) => {
     if (!value) {
         item.product_id = "";
     }
-    onProductSearch(value);
+    if (productSearchTimer) clearTimeout(productSearchTimer);
+    productSearchTimer = setTimeout(() => {
+        onProductSearch(value);
+    }, 120);
 };
 
 const navigateSidebar = (direction) => {
@@ -1030,7 +1108,8 @@ watch(showProductModal, async (isOpen) => {
 
 const handleProductSuccess = (createdProduct) => {
   productRegistry.value[createdProduct.id] = createdProduct;
-  products.value.push(createdProduct);
+  allProductsMaster.value.unshift(createdProduct);
+  products.value.unshift(createdProduct);
   if (activeProductRowIndex.value !== null) {
     form.value.sale_items[activeProductRowIndex.value].product_id = createdProduct.id;
   }

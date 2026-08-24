@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use App\Models\Product;
 use App\Models\Category;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -358,20 +359,57 @@ class ProductController extends Controller
 
     public function search(Request $request)
     {
-        $query = $request->query('query');
+        $rawQuery = trim((string)$request->query('query', ''));
         $userId = Auth::id();
 
-        $productsQuery = Product::where('user_id', $userId);
+        $productsQuery = Product::where('user_id', $userId)
+            ->select('id', 'name', 'price', 'category_id', 'unit_type', 'width', 'height', 'alternate_unit_type', 'stock_quantity', 'description', 'type', 'sku', 'hsn_code');
 
-        if ($query) {
-            $productsQuery->where(function($q) use ($query) {
-                $q->where('name', 'LIKE', "%{$query}%")
-                  ->orWhere('sku', 'LIKE', "%{$query}%");
+        if (!empty($rawQuery)) {
+            $productsQuery->where(function ($q) use ($rawQuery) {
+                // 1. Direct exact/substring match on raw query
+                $q->where('name', 'LIKE', "%{$rawQuery}%")
+                  ->orWhere('sku', 'LIKE', "%{$rawQuery}%")
+                  ->orWhere('hsn_code', 'LIKE', "%{$rawQuery}%");
+
+                // 2. Cleaned query (stripping special characters like quotes, dashes, slashes)
+                $cleanQuery = trim(preg_replace('/[^a-zA-Z0-9\s]/', ' ', $rawQuery));
+                if ($cleanQuery !== '' && $cleanQuery !== $rawQuery) {
+                    $q->orWhere('name', 'LIKE', "%{$cleanQuery}%")
+                      ->orWhere('sku', 'LIKE', "%{$cleanQuery}%");
+                }
+
+                // 3. Tokenized multi-word search (All words must be present in product details)
+                $words = array_filter(explode(' ', $cleanQuery));
+                if (!empty($words)) {
+                    $q->orWhere(function ($wordQ) use ($words) {
+                        foreach ($words as $word) {
+                            if (strlen($word) > 0) {
+                                $wordQ->where(function ($subQ) use ($word) {
+                                    $subQ->where('name', 'LIKE', "%{$word}%")
+                                         ->orWhere('sku', 'LIKE', "%{$word}%")
+                                         ->orWhere('hsn_code', 'LIKE', "%{$word}%");
+                                });
+                            }
+                        }
+                    });
+                }
+
+                // 4. Raw SQL replace match (Only executed if special characters/quotes/spaces exist)
+                if (preg_match('/["\'\-\s]/', $rawQuery)) {
+                    $sanitizedSearch = preg_replace('/[^a-zA-Z0-9]/', '', $rawQuery);
+                    if (strlen($sanitizedSearch) >= 1) {
+                        $q->orWhereRaw(
+                            "REPLACE(REPLACE(REPLACE(REPLACE(name, '\"', ''), '\'', ''), '-', ''), ' ', '') LIKE ?",
+                            ["%{$sanitizedSearch}%"]
+                        );
+                    }
+                }
             });
         }
 
         $products = $productsQuery->orderBy('name', 'asc')
-            ->limit(50)
+            ->limit(30)
             ->get();
 
         return response()->json($products);
