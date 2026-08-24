@@ -196,7 +196,7 @@ class PurchasesController extends Controller
                         'amount' => number_format($purchase->grand_total, 2),
                         'date' => $purchase->purchase_date ?: now()->toDateString(),
                         'business_name' => Auth::user()->name ?: 'OkayERP',
-                        'pdf_url' => '#',
+                        'pdf_url' => url("/purchase/{$purchase->id}/download-pdf"),
                     ],
                     $supplier ? $supplier->phone : null,
                     $supplier ? $supplier->email : null,

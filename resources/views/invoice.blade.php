@@ -544,16 +544,40 @@
       </tr>
       @endif
 
-      <!-- Grand Total row -->
+      <!-- Total row -->
       <tr class="total-row" style="background-color: #f3f4f6;">
         <td class="border-right">&nbsp;</td>
-        <td class="bold border-right text-right" colspan="2">Grand Total</td>
+        <td class="bold border-right text-right" colspan="2">Total</td>
         <td class="text-right border-right bold">{{ number_format($totalQty, 2) }}</td>
         <td class="border-right">&nbsp;</td>
         <td class="text-right bold">
           {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($roundedGrandTotal / $exchangeRate, 2) }}@else{{ number_format($roundedGrandTotal, 2) }}@endif
         </td>
       </tr>
+
+      @if(isset($previousBalance) && (float)$previousBalance != 0.0)
+      <!-- Previous Balance row -->
+      <tr class="total-row">
+        <td class="border-right">&nbsp;</td>
+        <td class="bold border-right text-right" colspan="2">Previous Balance</td>
+        <td class="text-right border-right">&nbsp;</td>
+        <td class="border-right">&nbsp;</td>
+        <td class="text-right bold">
+          {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($previousBalance / $exchangeRate, 2) }}@else{{ number_format($previousBalance, 2) }}@endif
+        </td>
+      </tr>
+
+      <!-- Current Balance row -->
+      <tr class="total-row" style="background-color: #e5e7eb;">
+        <td class="border-right">&nbsp;</td>
+        <td class="bold border-right text-right" colspan="2">Current Balance</td>
+        <td class="text-right border-right">&nbsp;</td>
+        <td class="border-right">&nbsp;</td>
+        <td class="text-right bold">
+          {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($currentBalance / $exchangeRate, 2) }}@else{{ number_format($currentBalance, 2) }}@endif
+        </td>
+      </tr>
+      @endif
     </tbody>
   </table>
 

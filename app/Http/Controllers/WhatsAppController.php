@@ -12,34 +12,30 @@ use Illuminate\Support\Facades\Auth;
 class WhatsAppController extends Controller
 {
     /**
-     * Send a WhatsApp message with a PDF attachment URL.
-     *
-     * @param  string  $mobileNumber  The recipient's mobile number (any length, uses last 10 digits)
-     * @param  string  $pdfUrl        The publicly accessible PDF URL to attach
-     * @param  string  $message       Custom message body (optional)
+     * Send a WhatsApp message with dynamic template parameters.
      */
-    private function sendWhatsAppMessage(string $mobileNumber, string $pdfUrl, string $message = 'Please find the attached document.'): bool
+    private function sendWhatsAppMessage(string $mobileNumber, string $pdfUrl, array $params = [], string $eventKey = 'sale_created'): bool
     {
         $user = Auth::user();
         if (!$user) return false;
 
-        $setting = \App\Models\NotificationSetting::where('user_id', $user->id)->first();
-        $apiKey = $setting?->whatsapp_api_key ?: config('services.whatsapp.api_key');
-        $appName = $setting?->whatsapp_app_name ?: config('services.whatsapp.camp_name');
-        $baseUrl = $setting?->whatsapp_api_url ?: config('services.whatsapp.node_url', 'http://localhost:3000/send-message');
+        $defaultParams = [
+            'customer_name' => 'Customer',
+            'supplier_name' => 'Supplier',
+            'amount' => '0.00',
+            'invoice_no' => 'DOC',
+            'date' => date('d-m-Y'),
+            'pdf_url' => $pdfUrl,
+            'business_name' => $user->name ?: 'OkayERP',
+        ];
+
+        $variables = array_merge($defaultParams, $params);
 
         // Delegate to NotificationService driver dispatch
         $result = (new \App\Services\NotificationService())->dispatchInline(
             $user,
-            'sale_created',
-            [
-                'customer_name' => 'Customer',
-                'amount' => '0.00',
-                'invoice_no' => 'DOC',
-                'date' => date('Y-m-d'),
-                'pdf_url' => $pdfUrl,
-                'business_name' => $user->name ?: 'OkayERP',
-            ],
+            $eventKey,
+            $variables,
             $mobileNumber,
             null,
             $pdfUrl
@@ -75,9 +71,16 @@ class WhatsAppController extends Controller
         $customerName = $sale->customer->name ?? 'Customer';
         $amount       = number_format($sale->grand_total, 2);
 
-        $message = "Dear {$customerName}, please find your invoice #{$id} for ₹{$amount} from {$businessName}. You can download it using the link provided.";
+        $params = [
+            'customer_name' => $customerName,
+            'amount'        => $amount,
+            'invoice_no'    => $sale->id,
+            'date'          => $sale->created_at ? $sale->created_at->format('d-m-Y') : date('d-m-Y'),
+            'pdf_url'       => $pdfUrl,
+            'business_name' => $businessName,
+        ];
 
-        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $message);
+        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $params, 'sale_created');
 
         if ($sent) {
             return response()->json(['success' => true, 'message' => 'Invoice sent via WhatsApp successfully.']);
@@ -113,9 +116,17 @@ class WhatsAppController extends Controller
         $supplierName  = $purchase->supplier->name ?? 'Supplier';
         $amount        = number_format($purchase->grand_total, 2);
 
-        $message = "Dear {$supplierName}, please find the purchase bill #{$id} for ₹{$amount} from {$businessName}.";
+        $params = [
+            'supplier_name' => $supplierName,
+            'customer_name' => $supplierName,
+            'amount'        => $amount,
+            'invoice_no'    => $purchase->invoice_no ?? $purchase->id,
+            'date'          => $purchase->created_at ? $purchase->created_at->format('d-m-Y') : date('d-m-Y'),
+            'pdf_url'       => $pdfUrl,
+            'business_name' => $businessName,
+        ];
 
-        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $message);
+        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $params, 'purchase_created');
 
         if ($sent) {
             return response()->json(['success' => true, 'message' => 'Purchase bill sent via WhatsApp successfully.']);
@@ -144,10 +155,17 @@ class WhatsAppController extends Controller
         $pdfUrl       = url("/paymentsCustomer/{$customerId}/history/download-pdf");
         $businessName = Auth::user()->name ?? 'OkayERP';
         $customerName = $customer->name ?? 'Customer';
+        $amount       = number_format($customer->total_due ?? 0, 2);
 
-        $message = "Dear {$customerName}, please find your account statement from {$businessName} attached.";
+        $params = [
+            'customer_name' => $customerName,
+            'amount'        => $amount,
+            'business_name' => $businessName,
+            'pdf_url'       => $pdfUrl,
+            'date'          => date('d-m-Y'),
+        ];
 
-        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $message);
+        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $params, 'aging_30');
 
         if ($sent) {
             return response()->json(['success' => true, 'message' => 'Statement sent via WhatsApp successfully.']);
@@ -177,9 +195,16 @@ class WhatsAppController extends Controller
         $businessName = Auth::user()->name ?? 'OkayERP';
         $supplierName = $supplier->name ?? 'Supplier';
 
-        $message = "Dear {$supplierName}, please find your account statement from {$businessName} attached.";
+        $params = [
+            'supplier_name' => $supplierName,
+            'customer_name' => $supplierName,
+            'amount'        => '0.00',
+            'business_name' => $businessName,
+            'pdf_url'       => $pdfUrl,
+            'date'          => date('d-m-Y'),
+        ];
 
-        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $message);
+        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $params, 'supplier_payment');
 
         if ($sent) {
             return response()->json(['success' => true, 'message' => 'Statement sent via WhatsApp successfully.']);
@@ -200,8 +225,11 @@ class WhatsAppController extends Controller
             'message' => 'nullable|string|max:500',
         ]);
 
-        $message = $request->input('message', 'Please find the attached document.');
-        $sent    = $this->sendWhatsAppMessage($request->phone, $request->pdf_url, $message);
+        $params = [
+            'pdf_url' => $request->pdf_url,
+        ];
+
+        $sent = $this->sendWhatsAppMessage($request->phone, $request->pdf_url, $params, 'sale_created');
 
         if ($sent) {
             return response()->json(['success' => true, 'message' => 'WhatsApp message sent successfully.']);
@@ -228,10 +256,10 @@ class WhatsAppController extends Controller
             'aging_30',
             [
                 'customer_name' => $customer->name,
-                'amount' => number_format($customer->total_due ?? 0, 2),
+                'amount'        => number_format($customer->total_due ?? 0, 2),
                 'business_name' => $user->name ?: 'OkayERP',
-                'pdf_url' => route('paymentsCustomer.history.pdf', ['id' => $customer->id]),
-                'date' => now()->toDateString(),
+                'pdf_url'       => route('paymentsCustomer.history.pdf', ['id' => $customer->id]),
+                'date'          => now()->toDateString(),
             ],
             $customer->phone,
             $customer->email,

@@ -382,6 +382,7 @@ class CustomerPaymentsController extends Controller
                     'payment_method' => $request->input('payment_method') ?: 'Payment',
                     'date' => $request->input('payment_date') ?: now()->toDateString(),
                     'remaining_due' => '0.00',
+                    'business_name' => Auth::user()->name ?: 'OkayERP',
                     'pdf_url' => $receiptUrl ?: '#',
                 ],
                 $customer ? $customer->phone : null,

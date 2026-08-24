@@ -208,10 +208,43 @@ const onReferralSearch = async (search, loading) => {
   }
 };
 
+const getCurrentTimeStr = () => {
+  const d = new Date();
+  const hours = String(d.getHours()).padStart(2, '0');
+  const minutes = String(d.getMinutes()).padStart(2, '0');
+  return `${hours}:${minutes}`;
+};
+
+const showDateTimePicker = ref(false);
+
+const formattedSalesDateTimeDisplay = computed(() => {
+  if (!form.value.sale_date) return 'Select Date & Time';
+  const [year, month, day] = form.value.sale_date.split('-');
+  const dateFormatted = `${day}/${month}/${year}`;
+  
+  if (!form.value.sale_time) return dateFormatted;
+  
+  const [hoursStr, minutesStr] = form.value.sale_time.split(':');
+  let hours = parseInt(hoursStr, 10);
+  const minutes = minutesStr || '00';
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const strHours = String(hours).padStart(2, '0');
+  
+  return `${dateFormatted} ${strHours}:${minutes} ${ampm}`;
+});
+
+const resetToCurrentDateTime = () => {
+  form.value.sale_date = new Date().toLocaleDateString('en-CA');
+  form.value.sale_time = getCurrentTimeStr();
+};
+
 const form = ref({
     customer_id: "",
     referral_user_id: "",
     sale_date: new Date().toLocaleDateString('en-CA'),
+    sale_time: getCurrentTimeStr(),
     estimate_id: "",
     grand_total: "",
     GstAmount: "",
@@ -936,6 +969,7 @@ const submitForm = async () => {
       customer_id: "",
       referral_user_id: "",
       sale_date: new Date().toLocaleDateString('en-CA'),
+      sale_time: getCurrentTimeStr(),
       grand_total: "",
       GstAmount: "",
       accepted: false,
@@ -1082,7 +1116,70 @@ const handleAltFocusOut = (event, index) => {
                 </div>
                 <h2 class="text-2xl font-bold text-[#2E2C92] tracking-tight">Create New Sale</h2>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-3">
+                <!-- Date & Time Interactive Pill Popover -->
+                <div class="relative">
+                    <button
+                        type="button"
+                        @click.stop="showDateTimePicker = !showDateTimePicker"
+                        class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer shadow-sm"
+                        title="Click to edit sales date & time"
+                    >
+                        <i class="bi bi-calendar3 text-indigo-600"></i>
+                        <span>{{ formattedSalesDateTimeDisplay }}</span>
+                        <i class="bi bi-pencil-fill text-[10px] text-slate-400"></i>
+                    </button>
+
+                    <!-- DateTime Popover Box -->
+                    <div
+                        v-if="showDateTimePicker"
+                        @click.stop
+                        class="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 space-y-3"
+                    >
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <i class="bi bi-clock-history text-indigo-600"></i>
+                                Sales Date & Time
+                            </span>
+                            <button type="button" @click="showDateTimePicker = false" class="text-slate-400 hover:text-slate-600 text-xs">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Sales Date</label>
+                            <input
+                                type="date"
+                                v-model="form.sale_date"
+                                class="w-full border border-slate-200 px-3 py-1.5 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-black"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Sales Time</label>
+                            <input
+                                type="time"
+                                v-model="form.sale_time"
+                                class="w-full border border-slate-200 px-3 py-1.5 rounded-lg text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none bg-white text-black"
+                            />
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <button
+                                type="button"
+                                @click="resetToCurrentDateTime"
+                                class="text-xs text-indigo-600 hover:underline font-semibold"
+                            >
+                                Reset to Now
+                            </button>
+                            <button
+                                type="button"
+                                @click="showDateTimePicker = false"
+                                class="px-3 py-1 text-xs bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <span class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700">
                     <span class="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
                     Draft Sale
@@ -1101,7 +1198,7 @@ const handleAltFocusOut = (event, index) => {
         </div>
 
         <div>
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                     <label class="block text-slate-700 text-sm font-semibold mb-2">Customer <span class="text-red-500">*</span></label>
                     <vSelect
@@ -1131,15 +1228,6 @@ const handleAltFocusOut = (event, index) => {
                             </div>
                         </template>
                     </vSelect>
-                </div>
-                <div>
-                    <label class="block text-slate-700 text-sm font-semibold mb-2">Sales Date <span class="text-red-500">*</span></label>
-                    <input
-                        type="date"
-                        v-model="form.sale_date"
-                        required
-                        class="w-full border border-slate-200 px-3 py-2 rounded-xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:outline-none transition bg-white text-black text-sm shadow-sm"
-                    />
                 </div>
                 <div>
                     <label class="block text-slate-700 text-sm font-semibold mb-2">Referral User (Optional)</label>

@@ -100,8 +100,15 @@ class SaleController extends Controller
 
         $userId = Auth::id();
 
+        $saleDateStr = $request->input('sale_date') ?: now()->toDateString();
+        $saleTimeStr = $request->input('sale_time') ?: now()->format('H:i:s');
+        if (strlen($saleTimeStr) === 5) {
+            $saleTimeStr .= ':00';
+        }
+        $saleDateTime = \Carbon\Carbon::parse("{$saleDateStr} {$saleTimeStr}");
+
         $lastClosedDate = Auth::user()->last_closed_date;
-        if ($lastClosedDate && now()->toDateString() <= $lastClosedDate) {
+        if ($lastClosedDate && $saleDateTime->toDateString() <= $lastClosedDate) {
             return response()->json(['message' => 'Cannot create transactions on or before the last closed date (' . $lastClosedDate . ').'], 403);
         }
 
@@ -130,7 +137,7 @@ class SaleController extends Controller
                 'customer_id' => $request->input('customer_id'),
                 'estimate_id' => $request->input('estimate_id'),
                 'referral_user_id' => $request->input('referral_user_id') ?: null,
-                'sale_date' => $request->input('sale_date') ?: now()->toDateString(),
+                'sale_date' => $saleDateTime->toDateString(),
                 'grand_total' => $request->input('grand_total') ?? 0.00,
                 'total_amount' => $request->input('total_amount') ?? 0.00,
                 'gst_amount' => $request->input('GstAmount') ?? 0.00,
@@ -141,7 +148,15 @@ class SaleController extends Controller
                 'discount'  => $request->input('discount') ?? 0,
                 'currency' => $request->input('currency') ?: 'INR',
                 'exchange_rate' => $request->input('exchange_rate') ?: 1.0000,
+                'created_at' => $saleDateTime,
+                'updated_at' => $saleDateTime,
             ]);
+
+            DB::table('sales')->where('id', $sale->id)->update([
+                'created_at' => $saleDateTime,
+                'updated_at' => $saleDateTime,
+            ]);
+            $sale->created_at = $saleDateTime;
 
             // Update Estimate status to Invoiced if estimate_id is passed
             if ($request->filled('estimate_id')) {
@@ -250,6 +265,7 @@ class SaleController extends Controller
                         'amount' => number_format($sale->grand_total, 2),
                         'date' => $sale->sale_date,
                         'pdf_url' => $pdfUrl,
+                        'business_name' => Auth::user()->name ?: 'OkayERP',
                     ],
                     $customer ? $customer->phone : null,
                     $customer ? $customer->email : null,
@@ -465,11 +481,18 @@ class SaleController extends Controller
                 $query = Sale::whereHas('customer', fn($q) => $q->where('user_id', $userId));
                 $sale = $query->where('id', $id)->first();
 
-                // Update purchase data
+                $saleDateStr = $request->input('sale_date') ?: ($sale ? $sale->created_at->toDateString() : now()->toDateString());
+                $saleTimeStr = $request->input('sale_time') ?: ($sale ? $sale->created_at->format('H:i:s') : now()->format('H:i:s'));
+                if (strlen($saleTimeStr) === 5) {
+                    $saleTimeStr .= ':00';
+                }
+                $saleDateTime = \Carbon\Carbon::parse("{$saleDateStr} {$saleTimeStr}");
+
+                // Update sale data
                 $sale->update([
                     'customer_id' => $request->input('customer_id'),
                     'referral_user_id' => $request->input('referral_user_id') ?: null,
-                    'sale_date' => $request->input('sale_date') ?: now()->toDateString(),
+                    'sale_date' => $saleDateTime->toDateString(),
                     'gst_amount' => $request->input('GstAmount'),
                     'accepted' => 1,
                     'grand_total' => $request->input('grand_total'),
@@ -480,7 +503,13 @@ class SaleController extends Controller
                     'discount'  => $request->input('discount') ?? 0,
                     'currency' => $request->input('currency') ?: 'INR',
                     'exchange_rate' => $request->input('exchange_rate') ?: 1.0000,
+                    'created_at' => $saleDateTime,
                 ]);
+
+                DB::table('sales')->where('id', $sale->id)->update([
+                    'created_at' => $saleDateTime,
+                ]);
+                $sale->created_at = $saleDateTime;
 
                 //SaleItem old get and product in update quantity
                 $oldItems = SaleItem::where('sale_id', $id)->get();
@@ -682,7 +711,11 @@ class SaleController extends Controller
             $paperOrientation = $isA5 ? 'landscape' : 'portrait';
         }
 
-        $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction'))
+        $balances = $this->calculateCustomerBalances($sale);
+        $previousBalance = $balances['previousBalance'];
+        $currentBalance = $balances['currentBalance'];
+
+        $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction', 'previousBalance', 'currentBalance'))
             ->setPaper($paperSize, $paperOrientation);
 
         return $pdf->stream("invoice_{$sale->id}.pdf");
@@ -776,13 +809,65 @@ class SaleController extends Controller
         $returnDueDeduction = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
         $payments = \App\Models\SalePayment::where('sale_id', $sale->id)->whereNotIn('payment_method', ['Wallet', 'Advance Deduction'])->orderBy('payment_date', 'asc')->get();
 
-        // Keep the original down payment amount on the invoice details page as requested.
+        $balances = $this->calculateCustomerBalances($sale);
 
         return Inertia::render('Sale/Show', [
             'sale' => $sale,
             'allocatedPayment' => $allocatedPayment,
             'returnDueDeduction' => $returnDueDeduction,
             'payments' => $payments,
+            'previousBalance' => $balances['previousBalance'],
+            'currentBalance' => $balances['currentBalance'],
         ]);
+    }
+
+    private function calculateCustomerBalances($sale)
+    {
+        $previousBalance = 0.0;
+        $currentBalance = 0.0;
+
+        if ($sale && $sale->customer_id) {
+            $customerId = $sale->customer_id;
+            
+            $priorSales = Sale::where('customer_id', $customerId)
+                ->where('id', '<', $sale->id)
+                ->get();
+
+            $dueAmount = 0.0;
+            $advanceAmount = 0.0;
+
+            foreach ($priorSales as $priorSale) {
+                $paymentsSum = \App\Models\SalePayment::where('sale_id', $priorSale->id)->sum('amount');
+                $dueDeductionsSum = (float)\App\Models\SaleReturnItem::where('sale_id', $priorSale->id)->sum('due_deduction');
+
+                $saleBalance = $paymentsSum - (float)$priorSale->grand_total + $dueDeductionsSum;
+                if ($saleBalance < 0) {
+                    $dueAmount += abs($saleBalance);
+                } elseif ($saleBalance > 0) {
+                    $advanceAmount += $saleBalance;
+                }
+            }
+
+            $totalDirectPaid = \App\Models\SalePayment::where('customer_id', $customerId)
+                ->whereNull('sale_id')
+                ->where('created_at', '<=', $sale->created_at)
+                ->sum('amount');
+
+            $advanceAmount += $totalDirectPaid;
+
+            $previousBalance = round($dueAmount - $advanceAmount, 2);
+
+            $currentReturnDeduction = (float)\App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
+            $currentSalePayments = (float)\App\Models\SalePayment::where('sale_id', $sale->id)->sum('amount');
+            $currentSalePaid = max((float)$sale->paid, $currentSalePayments);
+            $currentSaleOutstanding = (float)$sale->grand_total - $currentSalePaid - $currentReturnDeduction;
+
+            $currentBalance = round($previousBalance + $currentSaleOutstanding, 2);
+        }
+
+        return [
+            'previousBalance' => $previousBalance,
+            'currentBalance' => $currentBalance,
+        ];
     }
 }

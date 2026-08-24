@@ -240,11 +240,25 @@
   @endif
   
   <tr class="bold">
-    <td>Grand Total:</td>
+    <td>Total:</td>
     <td class="text-right">
       {{ $currencySymbol }}@if($isExport){{ number_format($roundedGrandTotal / $exchangeRate, 2) }}@else{{ number_format($roundedGrandTotal, 2) }}@endif
     </td>
   </tr>
+  @if(isset($previousBalance) && (float)$previousBalance != 0.0)
+  <tr>
+    <td>Previous Balance:</td>
+    <td class="text-right">
+      {{ $currencySymbol }}@if($isExport){{ number_format($previousBalance / $exchangeRate, 2) }}@else{{ number_format($previousBalance, 2) }}@endif
+    </td>
+  </tr>
+  <tr class="bold">
+    <td>Current Balance:</td>
+    <td class="text-right">
+      {{ $currencySymbol }}@if($isExport){{ number_format($currentBalance / $exchangeRate, 2) }}@else{{ number_format($currentBalance, 2) }}@endif
+    </td>
+  </tr>
+  @endif
 </table>
 
 <div class="divider"></div>

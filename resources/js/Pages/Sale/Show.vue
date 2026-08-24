@@ -22,6 +22,14 @@ const props = defineProps({
   payments: {
     type: Array,
     default: () => []
+  },
+  previousBalance: {
+    type: [Number, String],
+    default: 0
+  },
+  currentBalance: {
+    type: [Number, String],
+    default: 0
   }
 });
 
@@ -68,14 +76,20 @@ const formatAmount = (value) => {
   return `${currencySymbol.value}${amt.toFixed(2)}`;
 };
 
-// Format dates nicely
+// Format dates nicely with local time
 const formatDate = (dateStr) => {
   if (!dateStr) return '';
   const date = new Date(dateStr);
   const day = String(date.getDate()).padStart(2, '0');
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const year = date.getFullYear();
-  return `${day}/${month}/${year}`;
+  let hours = date.getHours();
+  const minutes = String(date.getMinutes()).padStart(2, '0');
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const strHours = String(hours).padStart(2, '0');
+  return `${day}/${month}/${year} ${strHours}:${minutes} ${ampm}`;
 };
 
 const handleKeydown = (e) => {
@@ -240,8 +254,16 @@ onUnmounted(() => {
                 <span class="text-red-500 font-semibold">- ₹{{ parseFloat(sale.discount).toFixed(2) }}</span>
               </div>
               <div class="flex justify-between py-3 text-base font-bold border-t border-gray-200">
-                <span class="text-gray-900">Grand Total</span>
+                <span class="text-gray-900">Total</span>
                 <span class="text-[#2e2c92]">₹{{ parseFloat(sale.grand_total).toFixed(2) }}</span>
+              </div>
+              <div v-if="previousBalance && parseFloat(previousBalance) !== 0" class="flex justify-between py-3 border-t border-gray-100">
+                <span class="text-gray-500 font-medium">Previous Balance</span>
+                <span class="text-gray-900 font-semibold">₹{{ parseFloat(previousBalance).toFixed(2) }}</span>
+              </div>
+              <div v-if="previousBalance && parseFloat(previousBalance) !== 0" class="flex justify-between py-3 text-base font-bold border-t border-gray-200 bg-gray-50 px-3 py-2.5 rounded-lg mt-1">
+                <span class="text-gray-900">Current Balance</span>
+                <span class="text-[#2e2c92]">₹{{ parseFloat(currentBalance).toFixed(2) }}</span>
               </div>
             </div>
           </div>
