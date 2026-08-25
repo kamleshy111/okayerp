@@ -408,8 +408,10 @@ class ProductController extends Controller
             });
         }
 
+        $limit = empty($rawQuery) ? 5000 : 50;
+
         $products = $productsQuery->orderBy('name', 'asc')
-            ->limit(30)
+            ->limit($limit)
             ->get();
 
         return response()->json($products);

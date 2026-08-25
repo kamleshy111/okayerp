@@ -158,6 +158,24 @@ const onProductSearch = async (search, loading) => {
         }
       }
     });
+    // If local memory search returns 0 results and search query is entered, query server as fallback
+    if (results.length === 0 && searchVal.trim().length > 0) {
+      try {
+        const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}`);
+        if (response.data && response.data.length > 0) {
+          response.data.forEach(p => {
+            productRegistry.value[p.id] = p;
+            if (!allProductsMaster.value.some(existing => existing.id === p.id)) {
+              allProductsMaster.value.push(p);
+            }
+          });
+          results = response.data;
+        }
+      } catch (e) {
+        console.error("Error fetching fallback search products:", e);
+      }
+    }
+
     products.value = results;
     if (loading) loading(false);
     return;
