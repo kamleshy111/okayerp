@@ -164,6 +164,12 @@
 
 @php
   $store = $customer->user;
+  $allowGst = $store ? (bool)$store->allow_gst_invoice : false;
+  if ($allowGst) {
+      $invoiceTitle = !empty($store->invoice_title_with_gst) ? $store->invoice_title_with_gst : 'INVOICE';
+  } else {
+      $invoiceTitle = !empty($store->invoice_title_without_gst) ? $store->invoice_title_without_gst : 'INVOICE';
+  }
 @endphp
 
 <div class="invoice-container">
@@ -181,10 +187,10 @@
         @endif
       </td>
       <td class="company-details">
-        <div class="bold text-center" style="font-size: 10px; margin-bottom: 2px; letter-spacing: 1px;">CUSTOMER INVOICES STATEMENT</div>
+        <div class="bold text-center" style="font-size: 10px; margin-bottom: 2px; letter-spacing: 1px;">CUSTOMER {{ strtoupper($invoiceTitle) }} STATEMENT</div>
         <div class="company-name">{{ $store ? $store->name : 'Your Store Name' }}</div>
         <div>{{ $store ? $store->address : 'Store Address' }}</div>
-        @if($store && $store->gstin)
+        @if($allowGst && $store && $store->gstin)
           <div class="bold">GSTIN : {{ $store->gstin }}</div>
         @endif
         @if($store && $store->phone)
@@ -233,20 +239,28 @@
 
   <!-- Invoice listing loop -->
   @foreach ($data as $saleIndex => $sale)
+    @php
+      $hasGstForSale = $allowGst && ($sale['gstAmount'] > 0 || collect($sale['items'])->contains(function($item) {
+          return (float)str_replace(',', '', $item['cgst']) > 0 || (float)str_replace(',', '', $item['sgst']) > 0;
+      }));
+    @endphp
+
     <div class="invoice-section-title">
-      Invoice #{{ $sale['sale_id'] }} | Date: {{ $sale['sale_date'] }}
+      {{ $invoiceTitle }} #{{ $sale['sale_id'] }} | Date: {{ $sale['sale_date'] }}
     </div>
 
     <table class="items-table border-bottom">
       <thead>
         <tr>
           <th class="border-right" style="width: 5%;">S.N.</th>
-          <th class="border-right" style="width: 45%;">Product Description</th>
-          <th class="border-right" style="width: 10%;">Qty.</th>
-          <th class="border-right" style="width: 10%;">Price</th>
-          <th class="border-right" style="width: 10%;">SGST</th>
-          <th class="border-right" style="width: 10%;">CGST</th>
-          <th style="width: 10%;">Total(₹)</th>
+          <th class="border-right" style="width: {{ $hasGstForSale ? '45%' : '55%' }};">Product Description</th>
+          <th class="border-right" style="width: {{ $hasGstForSale ? '10%' : '12%' }};">Qty.</th>
+          <th class="border-right" style="width: {{ $hasGstForSale ? '10%' : '13%' }};">Price</th>
+          @if($hasGstForSale)
+            <th class="border-right" style="width: 10%;">SGST</th>
+            <th class="border-right" style="width: 10%;">CGST</th>
+          @endif
+          <th style="width: {{ $hasGstForSale ? '10%' : '15%' }};">Total(₹)</th>
         </tr>
       </thead>
       <tbody>
@@ -274,22 +288,26 @@
             </td>
             <td class="text-right border-right">{{ number_format($item['quantity'], 2) }}</td>
             <td class="text-right border-right">{{ number_format($item['price'], 2) }}</td>
-            <td class="text-right border-right">{{ $item['sgst'] }}%</td>
-            <td class="text-right border-right">{{ $item['cgst'] }}%</td>
+            @if($hasGstForSale)
+              <td class="text-right border-right">{{ $item['sgst'] }}%</td>
+              <td class="text-right border-right">{{ $item['cgst'] }}%</td>
+            @endif
             <td class="text-right">{{ number_format($item['total'], 2) }}</td>
           </tr>
           @php $saleTotal += $item['total']; @endphp
         @endforeach
 
         <!-- GST / Discount footer values inside table -->
+        @if($hasGstForSale)
+          <tr class="total-row">
+            <td class="border-right">&nbsp;</td>
+            <td class="bold border-right text-right" colspan="5">GST Amount</td>
+            <td class="text-right bold">{{ number_format($sale['gstAmount'], 2) }}</td>
+          </tr>
+        @endif
         <tr class="total-row">
           <td class="border-right">&nbsp;</td>
-          <td class="bold border-right text-right" colspan="5">GST Amount</td>
-          <td class="text-right bold">{{ number_format($sale['gstAmount'], 2) }}</td>
-        </tr>
-        <tr class="total-row">
-          <td class="border-right">&nbsp;</td>
-          <td class="bold border-right text-right" colspan="5">Discount Amount</td>
+          <td class="bold border-right text-right" colspan="{{ $hasGstForSale ? 5 : 3 }}">Discount Amount</td>
           <td class="text-right bold">{{ number_format($sale['discount'], 2) }}</td>
         </tr>
       </tbody>
