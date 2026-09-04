@@ -1,7 +1,9 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Head } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
+import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const props = defineProps({
   arData: {
@@ -31,9 +33,6 @@ const formatCurrency = (val) => {
     currency: 'INR'
   }).format(val);
 };
-
-import Swal from 'sweetalert2';
-import axios from 'axios';
 
 const sendAgingReminder = async (row) => {
   if (!row.phone || row.phone === 'N/A') {
@@ -72,6 +71,27 @@ const sendAgingReminder = async (row) => {
     Swal.fire('Error', err.response?.data?.message || 'Failed to dispatch reminder.', 'error');
   }
 };
+
+const handleReminderClick = (e) => {
+  const btn = e.target.closest('.btn-send-reminder');
+  if (!btn) return;
+  
+  const customerId = btn.getAttribute('data-id');
+  if (!customerId) return;
+  
+  const customer = props.arData.find(c => String(c.id) === String(customerId));
+  if (customer) {
+    sendAgingReminder(customer);
+  }
+};
+
+onMounted(() => {
+  document.addEventListener('click', handleReminderClick);
+});
+
+onUnmounted(() => {
+  document.removeEventListener('click', handleReminderClick);
+});
 
 // Column definitions for AR DataTable
 const arColumns = [
@@ -127,14 +147,7 @@ const arColumns = [
     data: null,
     title: 'Actions',
     render: (data, type, row) => {
-      const btnId = `btn-remind-${row.id}`;
-      setTimeout(() => {
-        const el = document.getElementById(btnId);
-        if (el) {
-          el.onclick = () => sendAgingReminder(row);
-        }
-      }, 50);
-      return `<button id="${btnId}" class="inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition">
+      return `<button data-id="${row.id}" class="btn-send-reminder inline-flex items-center gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-3 py-1.5 rounded-lg shadow-sm transition cursor-pointer">
         <i class="bi bi-whatsapp"></i> Send Reminder
       </button>`;
     },
