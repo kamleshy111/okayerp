@@ -125,7 +125,7 @@ const onProductSearch = async (search, loading) => {
   const searchVal = search || '';
   productSearchQuery.value = searchVal;
 
-  if (allProductsMaster.value.length > 0) {
+  if (isProductsCatalogLoaded.value && allProductsMaster.value.length > 0) {
     let results = filterProductsInMemory(searchVal);
     
     // Ensure selected products in form items are included
@@ -137,6 +137,7 @@ const onProductSearch = async (search, loading) => {
         }
       }
     });
+
     // If local memory search returns 0 results and search query is entered, query server as fallback
     if (results.length === 0 && searchVal.trim().length > 0) {
       try {
@@ -155,7 +156,7 @@ const onProductSearch = async (search, loading) => {
       }
     }
 
-    products.value = results;
+    products.value = results.slice(0, 30);
     if (loading) loading(false);
     return;
   }
@@ -163,11 +164,29 @@ const onProductSearch = async (search, loading) => {
   if (loading) loading(true);
   try {
     const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}`);
-    allProductsMaster.value = response.data || [];
-    response.data.forEach(p => {
+    const resData = response.data || [];
+    resData.forEach(p => {
       productRegistry.value[p.id] = p;
+      if (!allProductsMaster.value.some(existing => existing.id === p.id)) {
+        allProductsMaster.value.push(p);
+      }
     });
-    products.value = response.data.slice(0, 30);
+
+    if (!searchVal.trim()) {
+      allProductsMaster.value = resData;
+      isProductsCatalogLoaded.value = true;
+    }
+
+    let results = [...resData];
+    form.value.sale_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        const alreadyInResults = results.some(p => p.id === item.product_id);
+        if (!alreadyInResults) {
+          results.push(productRegistry.value[item.product_id]);
+        }
+      }
+    });
+    products.value = results.slice(0, 30);
   } catch (error) {
     console.error("Error fetching products:", error);
   } finally {
