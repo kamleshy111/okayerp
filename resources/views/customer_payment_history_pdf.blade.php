@@ -221,7 +221,7 @@
         <div class="bold text-center" style="font-size: 10px; margin-bottom: 2px; letter-spacing: 1px;">ACCOUNT STATEMENT</div>
         <div class="company-name">{{ $store ? $store->name : 'Your Store Name' }}</div>
         <div>{{ $store ? $store->address : 'Store Address' }}</div>
-        @if($store && $store->gstin)
+        @if($store && $store->allow_gst_invoice && $store->gstin)
           <div class="bold">GSTIN : {{ $store->gstin }}</div>
         @endif
         @if($store && $store->phone)
@@ -268,11 +268,13 @@
             <td>:</td>
             <td class="bold text-emerald">ACTIVE</td>
           </tr>
+          @if($store && $store->allow_gst_invoice && !empty($customer->gst_number))
           <tr>
             <td class="bold">GSTIN / UIN</td>
             <td>:</td>
-            <td>{{ $customer->gst_number ?? 'N/A' }}</td>
+            <td>{{ $customer->gst_number }}</td>
           </tr>
+          @endif
         </table>
       </td>
     </tr>
