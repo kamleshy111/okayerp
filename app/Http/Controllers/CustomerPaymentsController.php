@@ -371,8 +371,36 @@ class CustomerPaymentsController extends Controller
 
         // Dispatch automatic Customer Payment Received notification
         try {
-            $customer = Customer::find($request->input('customer_id'));
+            $customer = Customer::with(['sales.saleReturnItems', 'sales.saleReturns', 'payments'])->find($request->input('customer_id'));
             $paidAmt = (float)$cashAmount + (float)$advanceAmountUsed;
+
+            $remainingDue = 0.00;
+            if ($customer) {
+                $dueAmount = 0.0;
+                $advanceAmount = 0.0;
+
+                foreach ($customer->sales as $sItem) {
+                    $actualPaid = SalePayment::where('sale_id', $sItem->id)->sum('amount');
+                    $dueDeductionsSum = (float)\App\Models\SaleReturnItem::where('sale_id', $sItem->id)->sum('due_deduction');
+                    $storeCreditRefundsSum = (float)$sItem->saleReturns
+                        ->where('refund_method', 'Store Credit')
+                        ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+                    $saleBalance = $actualPaid - (float)$sItem->grand_total + $dueDeductionsSum;
+                    if ($saleBalance < 0) {
+                        $dueAmount += abs($saleBalance);
+                    } elseif ($saleBalance > 0) {
+                        $advanceAmount += $saleBalance;
+                    }
+                    $advanceAmount += $storeCreditRefundsSum;
+                }
+
+                $totalDirectPaid = SalePayment::where('customer_id', $customer->id)->whereNull('sale_id')->sum('amount');
+                $advanceAmount += $totalDirectPaid;
+
+                $remainingDue = max(0, $dueAmount - $advanceAmount);
+            }
+
             (new \App\Services\NotificationService())->dispatch(
                 Auth::user(),
                 'customer_payment',
@@ -381,7 +409,7 @@ class CustomerPaymentsController extends Controller
                     'amount' => number_format($paidAmt, 2),
                     'payment_method' => $request->input('payment_method') ?: 'Payment',
                     'date' => $request->input('payment_date') ?: now()->toDateString(),
-                    'remaining_due' => '0.00',
+                    'remaining_due' => number_format($remainingDue, 2),
                     'business_name' => Auth::user()->name ?: 'OkayERP',
                     'pdf_url' => $receiptUrl ?: '#',
                 ],
