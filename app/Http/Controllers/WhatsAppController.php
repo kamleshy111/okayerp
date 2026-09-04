@@ -368,12 +368,14 @@ class WhatsAppController extends Controller
         $totalDue = max(0, array_sum($buckets));
 
         $eventKey = 'aging_30';
-        if ($buckets['bucket_90_plus'] > 0 || ($oldestAge !== null && $oldestAge > 90)) {
-            $eventKey = 'aging_90';
-        } elseif ($buckets['bucket_61_90'] > 0 || ($oldestAge !== null && $oldestAge > 60)) {
-            $eventKey = 'aging_60';
-        } elseif ($buckets['bucket_31_60'] > 0 || ($oldestAge !== null && $oldestAge > 30)) {
-            $eventKey = 'aging_30';
+        if ($oldestAge !== null) {
+            if ($oldestAge <= 30) {
+                $eventKey = 'aging_30';
+            } elseif ($oldestAge <= 60) {
+                $eventKey = 'aging_60';
+            } else {
+                $eventKey = 'aging_90';
+            }
         }
 
         return [
