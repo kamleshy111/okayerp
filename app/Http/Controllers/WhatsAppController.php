@@ -152,10 +152,11 @@ class WhatsAppController extends Controller
             return response()->json(['success' => false, 'message' => 'Customer does not have a phone number on file.'], 422);
         }
 
+        $agingData = $this->calculateCustomerAgingAndDue($customer);
         $pdfUrl       = url("/paymentsCustomer/{$customerId}/history/download-pdf");
         $businessName = Auth::user()->name ?? 'OkayERP';
         $customerName = $customer->name ?? 'Customer';
-        $amount       = number_format($customer->total_due ?? 0, 2);
+        $amount       = number_format($agingData['total_due'], 2);
 
         $params = [
             'customer_name' => $customerName,
@@ -165,7 +166,7 @@ class WhatsAppController extends Controller
             'date'          => date('d-m-Y'),
         ];
 
-        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $params, 'aging_30');
+        $sent = $this->sendWhatsAppMessage($phone, $pdfUrl, $params, $agingData['event_key']);
 
         if ($sent) {
             return response()->json(['success' => true, 'message' => 'Statement sent via WhatsApp successfully.']);
@@ -250,13 +251,17 @@ class WhatsAppController extends Controller
             return response()->json(['success' => false, 'message' => 'Customer phone number is missing.'], 422);
         }
 
+        $agingData = $this->calculateCustomerAgingAndDue($customer);
+        $formattedAmount = number_format($agingData['total_due'], 2);
+        $eventKey = $agingData['event_key'];
+
         // Try automatic dispatch via NotificationService
         $result = (new \App\Services\NotificationService())->dispatchInline(
             $user,
-            'aging_30',
+            $eventKey,
             [
                 'customer_name' => $customer->name,
-                'amount'        => number_format($customer->total_due ?? 0, 2),
+                'amount'        => $formattedAmount,
                 'business_name' => $user->name ?: 'OkayERP',
                 'pdf_url'       => route('paymentsCustomer.history.pdf', ['id' => $customer->id]),
                 'date'          => now()->toDateString(),
@@ -280,7 +285,7 @@ class WhatsAppController extends Controller
             $cleanPhone = '91' . $cleanPhone;
         }
         $pdfUrl = route('paymentsCustomer.history.pdf', ['id' => $customer->id]);
-        $messageText = "Dear {$customer->name}, you have an outstanding balance of ₹" . number_format($customer->total_due ?? 0, 2) . " with " . ($user->name ?: 'OkayERP') . ". Account statement: {$pdfUrl}";
+        $messageText = "Dear {$customer->name}, you have an outstanding balance of ₹{$formattedAmount} with " . ($user->name ?: 'OkayERP') . ". Account statement: {$pdfUrl}";
         $waUrl = "https://api.whatsapp.com/send?phone={$cleanPhone}&text=" . rawurlencode($messageText);
 
         return response()->json([
@@ -289,5 +294,93 @@ class WhatsAppController extends Controller
             'wa_url' => $waUrl,
             'message' => 'WhatsApp Gateway offline or not connected. Opening manual WhatsApp Web...',
         ]);
+    }
+
+    private function calculateCustomerAgingAndDue($customer)
+    {
+        $paymentQuery = $customer->payments();
+        $saleQuery = $customer->sales();
+        $storeCreditRefundsSum = (float)\App\Models\SaleReturn::whereHas('sale', function ($q) use ($customer) {
+            $q->where('customer_id', $customer->id);
+        })
+        ->where('refund_method', 'Store Credit')
+        ->get()
+        ->sum(fn($r) => (float)$r->refund_amount + (float)$r->gst_refund_amount);
+
+        $totalPayments = $paymentQuery->whereNull('sale_id')->sum('amount') + $storeCreditRefundsSum;
+        $sales = $saleQuery->with(['saleReturns', 'saleReturnItems'])->orderBy('created_at', 'asc')->get();
+
+        $buckets = [
+            'bucket_0_30' => 0.0,
+            'bucket_31_60' => 0.0,
+            'bucket_61_90' => 0.0,
+            'bucket_90_plus' => 0.0,
+        ];
+        $oldestAge = null;
+
+        foreach ($sales as $sale) {
+            $paymentsSum = \App\Models\SalePayment::where('sale_id', $sale->id);
+            $actualPaid = $paymentsSum->sum('amount');
+            $dueDeductionsSum = (float)$sale->saleReturnItems->sum('due_deduction');
+
+            $outstanding = (double)$sale->grand_total - (double)max($sale->paid, $actualPaid) - $dueDeductionsSum;
+            if ($outstanding < 0) {
+                $totalPayments += abs($outstanding);
+                continue;
+            }
+            if ($outstanding == 0) {
+                continue;
+            }
+
+            if ($totalPayments > 0) {
+                if ($totalPayments >= $outstanding) {
+                    $totalPayments -= $outstanding;
+                    $outstanding = 0.0;
+                } else {
+                    $outstanding -= $totalPayments;
+                    $totalPayments = 0.0;
+                }
+            }
+
+            if ($outstanding > 0) {
+                $date = \Carbon\Carbon::parse($sale->created_at);
+                $age = $date->isFuture() ? 0 : abs(\Carbon\Carbon::now()->diffInDays($date));
+                if ($oldestAge === null || $age > $oldestAge) {
+                    $oldestAge = $age;
+                }
+
+                if ($age <= 30) {
+                    $buckets['bucket_0_30'] += $outstanding;
+                } elseif ($age <= 60) {
+                    $buckets['bucket_31_60'] += $outstanding;
+                } elseif ($age <= 90) {
+                    $buckets['bucket_61_90'] += $outstanding;
+                } else {
+                    $buckets['bucket_90_plus'] += $outstanding;
+                }
+            }
+        }
+
+        if ($totalPayments > 0) {
+            $buckets['bucket_0_30'] -= $totalPayments;
+        }
+
+        $totalDue = max(0, array_sum($buckets));
+
+        $eventKey = 'aging_30';
+        if ($buckets['bucket_90_plus'] > 0 || ($oldestAge !== null && $oldestAge > 90)) {
+            $eventKey = 'aging_90';
+        } elseif ($buckets['bucket_61_90'] > 0 || ($oldestAge !== null && $oldestAge > 60)) {
+            $eventKey = 'aging_60';
+        } elseif ($buckets['bucket_31_60'] > 0 || ($oldestAge !== null && $oldestAge > 30)) {
+            $eventKey = 'aging_30';
+        }
+
+        return [
+            'total_due'  => $totalDue,
+            'event_key'  => $eventKey,
+            'buckets'    => $buckets,
+            'oldest_age' => $oldestAge,
+        ];
     }
 }
