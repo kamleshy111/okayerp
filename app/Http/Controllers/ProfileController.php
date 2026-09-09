@@ -49,8 +49,13 @@ class ProfileController extends Controller
             $user->email_verified_at = null;
         }
 
-        // Handle profile photo
-        if ($request->hasFile('profile_photo')) {
+        // Handle profile photo removal or upload
+        if ($request->boolean('remove_profile_photo')) {
+            if ($user->profile_photo && Storage::disk('public')->exists($user->profile_photo)) {
+                Storage::disk('public')->delete($user->profile_photo);
+            }
+            $user->profile_photo = null;
+        } elseif ($request->hasFile('profile_photo')) {
             if ($user->profile_photo && Storage::disk('public')->exists($user->profile_photo)) {
                 Storage::disk('public')->delete($user->profile_photo);
             }

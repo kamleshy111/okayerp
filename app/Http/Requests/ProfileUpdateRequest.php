@@ -33,6 +33,7 @@ class ProfileUpdateRequest extends FormRequest
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
             'profile_photo' => ['nullable', 'max:2048'], // 2MB max
+            'remove_profile_photo' => ['nullable', 'boolean'],
             'ledger_pin' => ['nullable', 'string', 'digits:4'],
             'bank_name' => ['nullable', 'string', 'max:255'],
             'account_number' => ['nullable', 'string', 'max:255'],

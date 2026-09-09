@@ -175,7 +175,7 @@
     <tr>
       <td class="logo-container">
         @if($store && $store->profile_photo && file_exists(storage_path('app/public/' . $store->profile_photo)))
-          <img src="{{ storage_path('app/public/' . $store->profile_photo) }}" style="height: 55px; width: auto;">
+          <img src="{{ storage_path('app/public/' . $store->profile_photo) }}" style="width: 55px; height: 55px; border-radius: 50%; border: 1px solid #2e2c92;">
         @elseif(file_exists(public_path('images/logo.png')))
           <img src="{{ public_path('images/logo.png') }}" style="height: 55px; width: auto;">
         @endif

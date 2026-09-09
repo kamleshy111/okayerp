@@ -35,6 +35,7 @@ const form = useForm({
     pin_code: user.pin_code || '',
     email: user.email,
     profile_photo: null,
+    remove_profile_photo: false,
     ledger_pin: '',
     bank_name: user.bank_name || '',
     account_number: user.account_number || '',
@@ -78,15 +79,26 @@ watch(() => form.state, (newVal, oldVal) => {
     }
 });
 
+const fileInputRef = ref(null);
 // preview image
 const preview = ref(user.profile_photo ? `/storage/${user.profile_photo}` : null);
 
 const handleFileUpload = (event) => {
     const file = event.target.files[0];
     form.profile_photo = file;
+    form.remove_profile_photo = false;
 
     if (file) {
         preview.value = URL.createObjectURL(file);
+    }
+};
+
+const removePhoto = () => {
+    form.profile_photo = null;
+    form.remove_profile_photo = true;
+    preview.value = null;
+    if (fileInputRef.value) {
+        fileInputRef.value.value = '';
     }
 };
 
@@ -102,6 +114,10 @@ const submitProfile = () => {
                 enabled: form.allow_gst_invoice,
                 time: Date.now()
             }));
+            if (form.remove_profile_photo) {
+                preview.value = null;
+                form.remove_profile_photo = false;
+            }
         }
     });
 };
@@ -433,14 +449,38 @@ const submitProfile = () => {
             <!-- Profile Photo -->
             <div>
                 <InputLabel for="profile_photo" value="Profile Photo / Store Logo" />
-                <input type="file" id="profile_photo" accept="image/*"
+                <input
+                    ref="fileInputRef"
+                    type="file"
+                    id="profile_photo"
+                    accept="image/*"
                     @change="handleFileUpload"
-                    class="mt-1 block w-full border rounded-md px-3 py-2"/>
+                    class="mt-1 block w-full border rounded-md px-3 py-2 text-sm text-gray-600 file:mr-4 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer"
+                />
                 <InputError class="mt-2" :message="form.errors.profile_photo" />
 
+                <!-- Existing / Uploaded Preview with Remove Option -->
+                <div v-if="preview" class="mt-3 flex items-center gap-4">
+                    <div class="relative">
+                        <img :src="preview" alt="Profile Preview" class="w-20 h-20 rounded-full object-cover border-2 border-indigo-100 shadow-sm" style="max-height: 80px;" />
+                    </div>
+                    <div>
+                        <button
+                            type="button"
+                            @click="removePhoto"
+                            class="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-rose-700 bg-rose-50 hover:bg-rose-100 active:bg-rose-200 border border-rose-200 rounded-lg transition-colors cursor-pointer"
+                        >
+                            <i class="fa fa-trash text-rose-500"></i>
+                            <span>Remove Photo</span>
+                        </button>
+                        <p class="text-[11px] text-gray-500 mt-1">Click "SAVE" below to confirm removal.</p>
+                    </div>
+                </div>
 
-                <div v-if="preview" class="mt-3">
-                    <img :src="preview" alt="Profile Preview" class="w-20 h-20 rounded-full object-cover" style="max-height: 80px;" />
+                <!-- Removal Pending Alert -->
+                <div v-else-if="form.remove_profile_photo" class="mt-3 inline-flex items-center gap-2 px-3.5 py-2 text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg">
+                    <i class="fa fa-info-circle text-amber-600"></i>
+                    <span>Photo marked for removal. Click <strong>SAVE</strong> below to update.</span>
                 </div>
             </div>
 
