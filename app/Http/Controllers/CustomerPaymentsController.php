@@ -251,7 +251,7 @@ class CustomerPaymentsController extends Controller
             if ($saleBalance < 0) {
                 $dueInvoices[] = [
                     'id' => $sale->id,
-                    'invoice_no' => $sale->id,
+                    'invoice_no' => $sale->invoice_no ?? $sale->id,
                     'date' => $sale->created_at->format('Y-m-d'),
                     'grand_total' => $sale->grand_total,
                     'due' => round(abs($saleBalance), 2)

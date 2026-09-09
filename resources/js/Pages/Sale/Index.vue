@@ -99,7 +99,7 @@ const bulkDelete = () => {
 const dtOptions = {
   lengthMenu: [[10, 25, 50, 100, -1], [10, 25, 50, 100, "All"]],
   pageLength: 10,
-  order: [[6, 'desc']], // Order by Sale Date by default
+  order: [[7, 'desc']], // Order by Sale Date by default
   responsive: true,
   drawCallback: function() {
     const checkboxes = document.querySelectorAll('.row-checkbox');
@@ -137,6 +137,14 @@ const columns = [
       title: 'S No',
       className: 'whitespace-nowrap',
       render: (data, type, row, meta) => meta.row + 1,
+    },
+    { 
+      data: 'invoice_no', 
+      title: 'Invoice No', 
+      className: 'whitespace-nowrap font-semibold text-slate-800',
+      render: function (data, type, row) {
+        return `<a href="/sale/${row.id}" class="text-indigo-600 hover:text-indigo-900 font-bold">${data || '#' + row.id}</a>`;
+      }
     },
     { data: 'customerName', title: 'Customer Name', className: 'whitespace-nowrap' },
     { data: 'phone', title: 'Phone', className: 'whitespace-nowrap' },

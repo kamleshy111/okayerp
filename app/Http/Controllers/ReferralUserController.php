@@ -126,7 +126,7 @@ class ReferralUserController extends Controller
             ->map(function ($item) {
                 return [
                     'id' => $item->id,
-                    'invoice_no' => "Invoice #" . $item->sale_id,
+                    'invoice_no' => "Invoice #" . ($item->sale->invoice_no ?? $item->sale_id),
                     'customer_name' => $item->sale->customer->name ?? 'N/A',
                     'sale_amount' => $item->sale_amount,
                     'date' => $item->created_at->format('d-m-Y'),

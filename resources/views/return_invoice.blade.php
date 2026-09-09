@@ -278,9 +278,9 @@
             <td>{{ \Carbon\Carbon::parse($return->return_date)->format('d-m-Y') }}</td>
           </tr>
           <tr>
-            <td class="bold">Original Invoice ID</td>
+            <td class="bold">Original Invoice No.</td>
             <td>:</td>
-            <td>{{ $return->items->pluck('sale_id')->filter()->unique()->map(fn($id) => "#{$id}")->implode(', ') ?: 'N/A' }}</td>
+            <td>{{ $return->items->map(fn($item) => $item->sale ? ($item->sale->invoice_no ?: "#{$item->sale_id}") : "#{$item->sale_id}")->filter()->unique()->implode(', ') ?: 'N/A' }}</td>
           </tr>
         </table>
       </td>

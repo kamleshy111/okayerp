@@ -74,7 +74,7 @@ class WhatsAppController extends Controller
         $params = [
             'customer_name' => $customerName,
             'amount'        => $amount,
-            'invoice_no'    => $sale->id,
+            'invoice_no'    => $sale->invoice_no ?? $sale->id,
             'date'          => $sale->created_at ? $sale->created_at->format('d-m-Y') : date('d-m-Y'),
             'pdf_url'       => $pdfUrl,
             'business_name' => $businessName,
