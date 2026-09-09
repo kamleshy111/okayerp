@@ -13,6 +13,10 @@ class Purchase extends Model
     protected $fillable = ['supplier_id', 'invoice_no', 'purchase_date', 'transport_amount', 'gst_amount', 'accepted', 'total_amount', 'grand_total',
                             'paid', 'payment_method', 'payment_status', 'received_date', 'delivery_mode', 'delivery_person_name', 'delivery_person_phone', 'vehicle_type', 'vehicle_number'];
 
+    public function setTransportAmountAttribute($value)
+    {
+        $this->attributes['transport_amount'] = (is_numeric($value) && (float)$value > 0) ? (float)$value : 0.00;
+    }
 
     public function items()
     {

@@ -594,6 +594,7 @@ const submitForm = async () => {
   try {
     const payload = {
       ...form.value,
+      transport: parseFloat(form.value.transport) || 0,
       grand_total: grandTotal.value,
       total_amount: totalAmount.value,
       GstAmount: totalGST.value,
@@ -1069,7 +1070,7 @@ const handleAltFocusOut = (event, index) => {
          class="fixed inset-0 overflow-y-auto bg-black/50 backdrop-blur-sm transition-all duration-300 flex items-start sm:items-center justify-center p-4 sm:p-6"
          style="z-index: 9999;"
          @click.self="showPaymentModal = false">
-        <form @submit.prevent="submitForm" class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
+        <form @submit.prevent="submitForm" novalidate class="bg-white p-6 rounded-2xl shadow-2xl w-full max-w-md my-auto transform transition-all duration-300 border border-gray-100 space-y-4">
             <div class="flex justify-between items-center pb-2 border-b border-gray-100">
                 <h2 class="text-xl font-bold text-[#292688]">Payment Details</h2>
                 <button type="button" @click="showPaymentModal = false" class="text-gray-400 hover:text-gray-600 transition">
@@ -1081,7 +1082,7 @@ const handleAltFocusOut = (event, index) => {
 
                 <div class="flex justify-between items-center">
                     <label class="text-gray-700 font-medium">Transport Amount</label>
-                    <input type="number" ref="paymentTransportInput" v-model="form.transport"
+                    <input type="number" step="any" ref="paymentTransportInput" v-model="form.transport" placeholder="0"
                         class="w-32 px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-[#292688] focus:outline-none transition" />
                 </div>
 
