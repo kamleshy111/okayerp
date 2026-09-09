@@ -263,7 +263,7 @@
             <tr>
               <td class="bold" style="width: 35%;">Invoice No.</td>
               <td style="width: 5%;">:</td>
-              <td class="bold">{{ $sale->id }}</td>
+              <td class="bold">{{ $sale->invoice_no ?? $sale->id }}</td>
             </tr>
             <tr>
               <td class="bold">Dated</td>

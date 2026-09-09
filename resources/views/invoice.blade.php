@@ -357,7 +357,7 @@
           <tr>
             <td class="bold" style="width: 35%;">Invoice No.</td>
             <td style="width: 5%;">:</td>
-            <td>{{ $sale->id }}/2026-27</td>
+            <td>{{ $sale->invoice_no ?? ($sale->id . '/2026-27') }}</td>
           </tr>
           <tr>
             <td class="bold">Dated</td>

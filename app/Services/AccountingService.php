@@ -86,7 +86,7 @@ class AccountingService
 
         $accounts = $this->getDefaultAccounts($sale->accepted);
         $date = $sale->sale_date ?? ($sale->created_at ? $sale->created_at->toDateString() : now()->toDateString());
-        $desc = "Sale Invoice #{$sale->id}" . ($sale->invoice_no ? " ({$sale->invoice_no})" : "");
+        $desc = "Sale Invoice #" . ($sale->invoice_no ?: $sale->id);
 
         $baseAmount = $sale->total_amount;
         $gstAmount = $sale->gst_amount;

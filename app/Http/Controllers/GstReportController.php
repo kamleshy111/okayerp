@@ -111,7 +111,7 @@ class GstReportController extends Controller
 
             $salesReport[] = [
                 'id' => $sale->id,
-                'invoice_no' => $sale->id . '/2026-27',
+                'invoice_no' => $sale->invoice_no ?? ($sale->id . '/2026-27'),
                 'date' => Carbon::parse($sale->created_at)->format('Y-m-d'),
                 'customer_name' => $sale->customer->name ?? 'N/A',
                 'gstin' => $sale->customer->gst_number ?? 'N/A',

@@ -28,8 +28,11 @@ class SaleController extends Controller
         $userId = Auth::id();
         $query = Sale::query();
         if (Auth::user()->role !== 'admin') {
-            $query->whereHas('customer', function ($q) use ($userId) {
-                $q->where('user_id', $userId);
+            $query->where(function ($q) use ($userId) {
+                $q->where('sales.user_id', $userId)
+                  ->orWhereHas('customer', function ($cq) use ($userId) {
+                      $cq->where('user_id', $userId);
+                  });
             });
         }
         $setting = \App\Models\NotificationSetting::where('user_id', Auth::id())->first();
@@ -45,6 +48,7 @@ class SaleController extends Controller
 
             return [
                 'id' => $item->id,
+                'invoice_no' => $item->invoice_no ?: ($item->id . '/2026-27'),
                 'customerName' => $item->customer->name ?? '',
                 'email' => $item->customer->email ?? '',
                 'phone' => $item->customer->phone ?? '',
@@ -132,16 +136,38 @@ class SaleController extends Controller
 
         try {
 
+            // Calculate store-wise sequential invoice number
+            $nextSeq = (Sale::where('user_id', $userId)->max('invoice_seq') ?? 0) + 1;
+            $year = $saleDateTime->year;
+            $month = $saleDateTime->month;
+            $fy = ($month >= 4) ? $year . '-' . substr($year + 1, 2) : ($year - 1) . '-' . substr($year, 2);
+
+            // Avoid any collisions if an invoice_no was manually edited/set previously
+            while (Sale::where(function ($q) use ($userId) {
+                $q->where('sales.user_id', $userId)
+                  ->orWhereHas('customer', fn($cq) => $cq->where('user_id', $userId));
+            })->where('invoice_no', "{$nextSeq}/{$fy}")->exists()) {
+                $nextSeq++;
+            }
+            $invoiceNo = "{$nextSeq}/{$fy}";
+
+            $storeUser = Auth::user();
+            $allowGstInvoice = $storeUser ? (bool)$storeUser->allow_gst_invoice : false;
+            $accepted = $allowGstInvoice ? ($request->boolean('accepted') ? 1 : 0) : 0;
+
             // 1. Insert into `sales` table
             $sale = Sale::create([
+                'user_id' => $userId,
+                'invoice_seq' => $nextSeq,
+                'invoice_no' => $invoiceNo,
                 'customer_id' => $request->input('customer_id'),
                 'estimate_id' => $request->input('estimate_id'),
                 'referral_user_id' => $request->input('referral_user_id') ?: null,
                 'sale_date' => $saleDateTime->toDateString(),
                 'grand_total' => $request->input('grand_total') ?? 0.00,
                 'total_amount' => $request->input('total_amount') ?? 0.00,
-                'gst_amount' => $request->input('GstAmount') ?? 0.00,
-                'accepted' => 1,
+                'gst_amount' => $accepted ? ($request->input('GstAmount') ?? 0.00) : 0.00,
+                'accepted' => $accepted,
                 'paid'  => $request->input('paid') ?? 0.00,
                 'payment_method' => $request->input('payment_method') ?? "",
                 'payment_status' => $request->input('payment_status') ?? "Unpaid",
@@ -261,7 +287,7 @@ class SaleController extends Controller
                     'sale_created',
                     [
                         'customer_name' => $customer ? $customer->name : 'Customer',
-                        'invoice_no' => $sale->id,
+                        'invoice_no' => $sale->invoice_no ?: $sale->id,
                         'amount' => number_format($sale->grand_total, 2),
                         'date' => $sale->sale_date,
                         'pdf_url' => $pdfUrl,
@@ -346,6 +372,10 @@ class SaleController extends Controller
             abort(403, 'Sale not found or unauthorized access');
         }
 
+        if (!$sales->invoice_no) {
+            $sales->invoice_no = $sales->id . '/2026-27';
+        }
+
         $productItems = $sales->saleItems->map(function ($item) {
             return [
                 'product_id' => $item->product_id,
@@ -365,6 +395,7 @@ class SaleController extends Controller
             ];
         });
 
+        $allocatedPayment = 0.0;
         $totalPayments = \App\Models\SalePayment::where('customer_id', $sales->customer_id)
             ->whereNull('sale_id')
             ->sum('amount');
@@ -432,7 +463,7 @@ class SaleController extends Controller
 
         $validated = $request->validate([
             'customer_id' => 'required',
-
+            'invoice_no' => 'nullable|string|max:100',
         ], [
             'customer_id.required' => 'Customer name is required.',
         ]);
@@ -465,6 +496,26 @@ class SaleController extends Controller
             return response()->json(['message' => 'Selected customer is invalid or unauthorized.'], 403);
         }
 
+        // Validate invoice_no uniqueness within this store
+        $newInvoiceNo = trim($request->input('invoice_no', ''));
+        if (!empty($newInvoiceNo)) {
+            $duplicateExists = Sale::where('id', '!=', $id)
+                ->where(function ($q) use ($userId) {
+                    $q->where('sales.user_id', $userId)
+                      ->orWhereHas('customer', function ($cq) use ($userId) {
+                          $cq->where('user_id', $userId);
+                      });
+                })
+                ->where('invoice_no', $newInvoiceNo)
+                ->exists();
+
+            if ($duplicateExists) {
+                return response()->json([
+                    'message' => "Invoice number '{$newInvoiceNo}' is already used in another invoice of this store. Please use a unique invoice number."
+                ], 422);
+            }
+        }
+
         // Validate products belong to logged-in user
         $productIds = collect($request->input('sale_items', []))->pluck('product_id')->unique();
         if ($productIds->isNotEmpty()) {
@@ -488,13 +539,17 @@ class SaleController extends Controller
                 }
                 $saleDateTime = \Carbon\Carbon::parse("{$saleDateStr} {$saleTimeStr}");
 
+                $storeUser = Auth::user();
+                $allowGstInvoice = $storeUser ? (bool)$storeUser->allow_gst_invoice : false;
+                $accepted = $allowGstInvoice ? ($request->boolean('accepted') ? 1 : 0) : 0;
+
                 // Update sale data
-                $sale->update([
+                $updateData = [
                     'customer_id' => $request->input('customer_id'),
                     'referral_user_id' => $request->input('referral_user_id') ?: null,
                     'sale_date' => $saleDateTime->toDateString(),
-                    'gst_amount' => $request->input('GstAmount'),
-                    'accepted' => 1,
+                    'gst_amount' => $accepted ? ($request->input('GstAmount') ?? 0.00) : 0.00,
+                    'accepted' => $accepted,
                     'grand_total' => $request->input('grand_total'),
                     'total_amount' => $request->input('total_amount'),
                     'paid'  => $request->input('paid') ?? 0.00,
@@ -504,7 +559,17 @@ class SaleController extends Controller
                     'currency' => $request->input('currency') ?: 'INR',
                     'exchange_rate' => $request->input('exchange_rate') ?: 1.0000,
                     'created_at' => $saleDateTime,
-                ]);
+                ];
+
+                if ($request->filled('invoice_no')) {
+                    $updateData['invoice_no'] = trim($request->input('invoice_no'));
+                }
+                if (!$sale->user_id) {
+                    $updateData['user_id'] = $userId;
+                }
+
+                $sale->update($updateData);
+                $sale->refresh();
 
                 DB::table('sales')->where('id', $sale->id)->update([
                     'created_at' => $saleDateTime,
@@ -606,7 +671,7 @@ class SaleController extends Controller
                             'amount' => $sale->paid,
                             'payment_date' => $sale->created_at ? $sale->created_at->toDateString() : now()->toDateString(),
                             'payment_method' => $sale->payment_method ?: 'Cash',
-                            'note' => "Payment for Sale Invoice #{$sale->id}",
+                            'note' => "Payment for Sale Invoice #" . ($sale->invoice_no ?: $sale->id),
                             'accepted' => $sale->accepted,
                         ]);
                     }
@@ -718,7 +783,8 @@ class SaleController extends Controller
         $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction', 'previousBalance', 'currentBalance'))
             ->setPaper($paperSize, $paperOrientation);
 
-        return $pdf->stream("invoice_{$sale->id}.pdf");
+        $safeInvoiceNo = $sale->invoice_no ? str_replace(['/', '\\'], '-', $sale->invoice_no) : $sale->id;
+        return $pdf->stream("invoice_{$safeInvoiceNo}.pdf");
     }
 
     public function destroy($id){
@@ -869,5 +935,34 @@ class SaleController extends Controller
             'previousBalance' => $previousBalance,
             'currentBalance' => $currentBalance,
         ];
+    }
+
+    public function checkInvoiceNo(Request $request)
+    {
+        $userId = Auth::id();
+        $invoiceNo = trim($request->input('invoice_no', ''));
+        $excludeId = $request->input('exclude_id');
+
+        if (empty($invoiceNo)) {
+            return response()->json(['available' => true, 'message' => '']);
+        }
+
+        $query = Sale::where(function ($q) use ($userId) {
+            $q->where('sales.user_id', $userId)
+              ->orWhereHas('customer', function ($cq) use ($userId) {
+                  $cq->where('user_id', $userId);
+              });
+        })->where('invoice_no', $invoiceNo);
+
+        if (!empty($excludeId)) {
+            $query->where('id', '!=', $excludeId);
+        }
+
+        $exists = $query->exists();
+
+        return response()->json([
+            'available' => !$exists,
+            'message' => $exists ? "Invoice number '{$invoiceNo}' is already used in this store." : "",
+        ]);
     }
 }

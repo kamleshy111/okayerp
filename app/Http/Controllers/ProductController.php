@@ -361,22 +361,65 @@ class ProductController extends Controller
     {
         $rawQuery = trim((string)$request->query('query', ''));
         $userId = Auth::id();
+        $customerId = $request->query('customer_id');
 
-        $productsQuery = Product::where('user_id', $userId)
-            ->select('id', 'name', 'price', 'category_id', 'unit_type', 'width', 'height', 'alternate_unit_type', 'stock_quantity', 'description', 'type', 'sku', 'hsn_code');
+        $productsQuery = Product::where('products.user_id', $userId);
+
+        if ($customerId && Auth::user()->allow_customer_based_pricing) {
+            $productsQuery->leftJoin('customer_products', function ($join) use ($userId, $customerId) {
+                $join->on('products.id', '=', 'customer_products.product_id')
+                     ->where('customer_products.user_id', '=', $userId)
+                     ->where('customer_products.customer_id', '=', $customerId);
+            })
+            ->select(
+                'products.id',
+                'products.name',
+                DB::raw('COALESCE(customer_products.sale_price, products.price) as price'),
+                'products.price as master_price',
+                'customer_products.sale_price as customer_sale_price',
+                'products.category_id',
+                'products.unit_type',
+                'products.width',
+                'products.height',
+                'products.alternate_unit_type',
+                'products.stock_quantity',
+                'products.description',
+                'products.type',
+                'products.sku',
+                'products.hsn_code'
+            );
+        } else {
+            $productsQuery->select(
+                'products.id',
+                'products.name',
+                'products.price',
+                'products.price as master_price',
+                DB::raw('NULL as customer_sale_price'),
+                'products.category_id',
+                'products.unit_type',
+                'products.width',
+                'products.height',
+                'products.alternate_unit_type',
+                'products.stock_quantity',
+                'products.description',
+                'products.type',
+                'products.sku',
+                'products.hsn_code'
+            );
+        }
 
         if (!empty($rawQuery)) {
             $productsQuery->where(function ($q) use ($rawQuery) {
                 // 1. Direct exact/substring match on raw query
-                $q->where('name', 'LIKE', "%{$rawQuery}%")
-                  ->orWhere('sku', 'LIKE', "%{$rawQuery}%")
-                  ->orWhere('hsn_code', 'LIKE', "%{$rawQuery}%");
+                $q->where('products.name', 'LIKE', "%{$rawQuery}%")
+                  ->orWhere('products.sku', 'LIKE', "%{$rawQuery}%")
+                  ->orWhere('products.hsn_code', 'LIKE', "%{$rawQuery}%");
 
                 // 2. Cleaned query (stripping special characters like quotes, dashes, slashes)
                 $cleanQuery = trim(preg_replace('/[^a-zA-Z0-9\s]/', ' ', $rawQuery));
                 if ($cleanQuery !== '' && $cleanQuery !== $rawQuery) {
-                    $q->orWhere('name', 'LIKE', "%{$cleanQuery}%")
-                      ->orWhere('sku', 'LIKE', "%{$cleanQuery}%");
+                    $q->orWhere('products.name', 'LIKE', "%{$cleanQuery}%")
+                      ->orWhere('products.sku', 'LIKE', "%{$cleanQuery}%");
                 }
 
                 // 3. Tokenized multi-word search (All words must be present in product details)
@@ -386,9 +429,9 @@ class ProductController extends Controller
                         foreach ($words as $word) {
                             if (strlen($word) > 0) {
                                 $wordQ->where(function ($subQ) use ($word) {
-                                    $subQ->where('name', 'LIKE', "%{$word}%")
-                                         ->orWhere('sku', 'LIKE', "%{$word}%")
-                                         ->orWhere('hsn_code', 'LIKE', "%{$word}%");
+                                    $subQ->where('products.name', 'LIKE', "%{$word}%")
+                                         ->orWhere('products.sku', 'LIKE', "%{$word}%")
+                                         ->orWhere('products.hsn_code', 'LIKE', "%{$word}%");
                                 });
                             }
                         }
@@ -400,7 +443,7 @@ class ProductController extends Controller
                     $sanitizedSearch = preg_replace('/[^a-zA-Z0-9]/', '', $rawQuery);
                     if (strlen($sanitizedSearch) >= 1) {
                         $q->orWhereRaw(
-                            "REPLACE(REPLACE(REPLACE(REPLACE(name, '\"', ''), '\'', ''), '-', ''), ' ', '') LIKE ?",
+                            "REPLACE(REPLACE(REPLACE(REPLACE(products.name, '\"', ''), '\'', ''), '-', ''), ' ', '') LIKE ?",
                             ["%{$sanitizedSearch}%"]
                         );
                     }
@@ -410,7 +453,7 @@ class ProductController extends Controller
 
         $limit = empty($rawQuery) ? 5000 : 50;
 
-        $products = $productsQuery->orderBy('name', 'asc')
+        $products = $productsQuery->orderBy('products.name', 'asc')
             ->limit($limit)
             ->get();
 

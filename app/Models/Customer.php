@@ -23,4 +23,16 @@ class Customer extends Model
     {
         return $this->hasMany(SalePayment::class);
     }
+
+    public function customerProducts()
+    {
+        return $this->hasMany(CustomerProduct::class);
+    }
+
+    public function assignedProducts()
+    {
+        return $this->belongsToMany(Product::class, 'customer_products')
+            ->withPivot('sale_price')
+            ->withTimestamps();
+    }
 }

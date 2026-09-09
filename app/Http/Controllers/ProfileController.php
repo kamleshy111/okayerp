@@ -37,6 +37,7 @@ class ProfileController extends Controller
         $data['allow_provide_additional_descriptions'] = $request->has('allow_provide_additional_descriptions') ? (bool)$request->input('allow_provide_additional_descriptions') : false;
         $data['allow_gst_invoice'] = $request->has('allow_gst_invoice') ? (bool)$request->input('allow_gst_invoice') : false;
         $data['allow_alternate_units'] = $request->has('allow_alternate_units') ? (bool)$request->input('allow_alternate_units') : false;
+        $data['allow_customer_based_pricing'] = $request->has('allow_customer_based_pricing') ? (bool)$request->input('allow_customer_based_pricing') : false;
         $data['hide_bank_details'] = $request->has('hide_bank_details') ? (bool)$request->input('hide_bank_details') : false;
         if (empty($data['ledger_pin'])) {
             unset($data['ledger_pin']);
@@ -48,8 +49,13 @@ class ProfileController extends Controller
             $user->email_verified_at = null;
         }
 
-        // Handle profile photo
-        if ($request->hasFile('profile_photo')) {
+        // Handle profile photo removal or upload
+        if ($request->boolean('remove_profile_photo')) {
+            if ($user->profile_photo && Storage::disk('public')->exists($user->profile_photo)) {
+                Storage::disk('public')->delete($user->profile_photo);
+            }
+            $user->profile_photo = null;
+        } elseif ($request->hasFile('profile_photo')) {
             if ($user->profile_photo && Storage::disk('public')->exists($user->profile_photo)) {
                 Storage::disk('public')->delete($user->profile_photo);
             }
@@ -65,6 +71,23 @@ class ProfileController extends Controller
         $user->save();
 
         return Redirect::route('profile.edit');
+    }
+
+    /**
+     * Instantly toggle customer based pricing without needing full form submission
+     */
+    public function toggleCustomerPricing(Request $request)
+    {
+        $user = $request->user();
+        $enabled = $request->boolean('allow_customer_based_pricing');
+        $user->allow_customer_based_pricing = $enabled;
+        $user->save();
+
+        return response()->json([
+            'success' => true,
+            'allow_customer_based_pricing' => $enabled,
+            'message' => $enabled ? 'Customer Based Sales Price enabled.' : 'Customer Based Sales Price disabled.'
+        ]);
     }
 
     /**

@@ -10,6 +10,9 @@ import "vue3-select/dist/vue3-select.css";
 
 import AddProductModal from '@/Components/AddProductModal.vue';
 
+const page = usePage();
+const isGstAllowed = computed(() => !!page.props.auth?.user?.allow_gst_invoice);
+
 const props = defineProps({
   customers: {
     type: Array,
@@ -60,18 +63,28 @@ const selectedSidebarProductIndex = ref(0);
 const allProductsMaster = ref([]);
 const isProductsCatalogLoaded = ref(false);
 
+const customerProductsConfigured = ref(false);
+const customerProductsCount = ref(0);
+
 const loadAllProductsCatalog = async () => {
   if (isProductsCatalogLoaded.value) return;
   try {
-    const res = await axios.get('/product/search?query=');
+    const custIdParam = form.value.customer_id ? `&customer_id=${form.value.customer_id}` : '';
+    const res = await axios.get(`/product/search?query=${custIdParam}`);
     if (res.data && Array.isArray(res.data)) {
-      allProductsMaster.value = res.data;
       res.data.forEach(p => {
-        productRegistry.value[p.id] = p;
+        if (p.master_price === undefined) {
+          p.master_price = p.price;
+        }
+        productRegistry.value[p.id] = { ...p };
       });
+      allProductsMaster.value = res.data.map(p => ({ ...p }));
       isProductsCatalogLoaded.value = true;
       if (products.value.length === 0) {
-        products.value = res.data.slice(0, 30);
+        products.value = [...allProductsMaster.value];
+      }
+      if (form.value.customer_id) {
+        await fetchProductsForCustomer(form.value.customer_id);
       }
     }
   } catch (err) {
@@ -79,14 +92,107 @@ const loadAllProductsCatalog = async () => {
   }
 };
 
+const fetchProductsForCustomer = async (customerId) => {
+  if (!customerId) {
+    customerProductsConfigured.value = false;
+    customerProductsCount.value = 0;
+    // Reset all products to their standard master price
+    allProductsMaster.value.forEach(p => {
+      p.price = p.master_price !== undefined ? p.master_price : p.price;
+      productRegistry.value[p.id] = p;
+    });
+    products.value = searchQuery.value ? filterProductsInMemory(searchQuery.value) : [...allProductsMaster.value];
+    return;
+  }
+
+  // Ensure catalog is loaded first if not already
+  if (!isProductsCatalogLoaded.value || allProductsMaster.value.length === 0) {
+    await loadAllProductsCatalog();
+  }
+
+  try {
+    const res = await axios.get(`/customer-product/customer/${customerId}`);
+    const customerProducts = res.data || [];
+    const customerPriceMap = {};
+    customerProducts.forEach(cp => {
+      customerPriceMap[cp.id] = cp.customer_sale_price || cp.price;
+    });
+
+    customerProductsConfigured.value = customerProducts.length > 0;
+    customerProductsCount.value = customerProducts.length;
+
+    // Apply customer prices while keeping ALL products available in list
+    allProductsMaster.value.forEach(p => {
+      if (customerPriceMap[p.id] !== undefined) {
+        p.price = customerPriceMap[p.id];
+      } else {
+        p.price = p.master_price !== undefined ? p.master_price : p.price;
+      }
+      productRegistry.value[p.id] = p;
+    });
+
+    // If existing rows have selected products, update their price to the customer price
+    form.value.sale_items.forEach(item => {
+      if (item.product_id && productRegistry.value[item.product_id]) {
+        item.price = productRegistry.value[item.product_id].price;
+      }
+    });
+
+    // ALL products remain visible in products list
+    products.value = searchQuery.value ? filterProductsInMemory(searchQuery.value) : [...allProductsMaster.value];
+  } catch (e) {
+    console.error("Error loading customer products:", e);
+  }
+};
+
+const handleTabFocus = () => {
+  if (form.value.customer_id) {
+    fetchProductsForCustomer(form.value.customer_id);
+  }
+};
+
+const handleSyncStorage = (event) => {
+  if (event.key === 'customer_pricing_toggle_sync') {
+    try {
+      const data = JSON.parse(event.newValue);
+      if (page.props.auth?.user) {
+        page.props.auth.user.allow_customer_based_pricing = data.enabled;
+      }
+      if (form.value.customer_id) {
+        fetchProductsForCustomer(form.value.customer_id);
+      }
+    } catch (err) {}
+  }
+  if (event.key === 'gst_invoice_toggle_sync') {
+    try {
+      const data = JSON.parse(event.newValue);
+      if (page.props.auth?.user) {
+        page.props.auth.user.allow_gst_invoice = data.enabled;
+      }
+      if (!data.enabled) {
+        form.value.accepted = false;
+      } else if (!isInternationalCustomer.value) {
+        form.value.accepted = true;
+      }
+    } catch (err) {}
+  }
+};
+
 onMounted(() => {
   loadAllProductsCatalog();
+  window.addEventListener('focus', handleTabFocus);
+  window.addEventListener('storage', handleSyncStorage);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('focus', handleTabFocus);
+  window.removeEventListener('storage', handleSyncStorage);
 });
 
 const filterProductsInMemory = (queryStr) => {
   const query = (queryStr || '').trim();
   if (!query) {
-    return allProductsMaster.value.slice(0, 30);
+    return [...allProductsMaster.value];
   }
 
   const rawLower = query.toLowerCase();
@@ -118,7 +224,7 @@ const filterProductsInMemory = (queryStr) => {
     }
 
     return false;
-  }).slice(0, 30);
+  });
 };
 
 const onProductSearch = async (search, loading) => {
@@ -141,7 +247,8 @@ const onProductSearch = async (search, loading) => {
     // If local memory search returns 0 results and search query is entered, query server as fallback
     if (results.length === 0 && searchVal.trim().length > 0) {
       try {
-        const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}`);
+        const custParam = form.value.customer_id ? `&customer_id=${form.value.customer_id}` : '';
+        const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}${custParam}`);
         if (response.data && response.data.length > 0) {
           response.data.forEach(p => {
             productRegistry.value[p.id] = p;
@@ -156,14 +263,15 @@ const onProductSearch = async (search, loading) => {
       }
     }
 
-    products.value = results.slice(0, 30);
+    products.value = results;
     if (loading) loading(false);
     return;
   }
 
   if (loading) loading(true);
   try {
-    const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}`);
+    const custParam = form.value.customer_id ? `&customer_id=${form.value.customer_id}` : '';
+    const response = await axios.get(`/product/search?query=${encodeURIComponent(searchVal)}${custParam}`);
     const resData = response.data || [];
     resData.forEach(p => {
       productRegistry.value[p.id] = p;
@@ -186,7 +294,7 @@ const onProductSearch = async (search, loading) => {
         }
       }
     });
-    products.value = results.slice(0, 30);
+    products.value = results;
   } catch (error) {
     console.error("Error fetching products:", error);
   } finally {
@@ -400,7 +508,7 @@ const clearEstimatePrefill = () => {
 };
 
 onMounted(async () => {
-    form.value.accepted = !!page.props.auth?.user?.allow_gst_invoice;
+    form.value.accepted = isGstAllowed.value;
     const urlParams = new URLSearchParams(window.location.search);
     const estimateId = urlParams.get('estimate_id');
     if (estimateId) {
@@ -425,7 +533,7 @@ onMounted(async () => {
                 form.value.customer_id = estimate.customer_id;
                 form.value.estimate_id = estimate.id;
                 form.value.discount = parseFloat(estimate.discount) || 0;
-                form.value.accepted = estimate.accepted == 1;
+                form.value.accepted = isGstAllowed.value ? (estimate.accepted == 1) : false;
 
                 // Step 2: Load products from estimate.items.product relation into registry and products array
                 estimate.items.forEach(item => {
@@ -725,11 +833,13 @@ watch(isInternationalCustomer, (isInternational) => {
     }
   } else {
     form.value.currency = 'INR';
+    if (isGstAllowed.value) {
+      form.value.accepted = true;
+    }
   }
   form.value.exchange_rate = 1.0000;
 });
 
-const page = usePage();
 const storeState = computed(() => page.props.auth?.user?.state || '');
 
 const useAlternateUnits = ref(!!page.props.auth?.user?.allow_alternate_units);
@@ -785,7 +895,7 @@ const hasGstSelected = computed(() => {
 });
 
 watch(hasGstSelected, (newVal) => {
-  if (newVal) {
+  if (newVal && isGstAllowed.value) {
     form.value.accepted = true;
   }
 });
@@ -797,6 +907,14 @@ watch(() => form.value.accepted, (newVal) => {
       item.cgst = 0;
       item.sgst = 0;
     });
+  }
+});
+
+watch(isGstAllowed, (newVal) => {
+  if (!newVal) {
+    form.value.accepted = false;
+  } else if (!isInternationalCustomer.value) {
+    form.value.accepted = true;
   }
 });
 
@@ -888,8 +1006,10 @@ watch(
         console.error('Error fetching customer data:', error);
         customerData.value = null;
       }
+      fetchProductsForCustomer(newId);
     } else {
       customerData.value = null;
+      fetchProductsForCustomer(null);
     }
   },
   { immediate: true }
@@ -1087,7 +1207,7 @@ const submitForm = async () => {
       sale_time: getCurrentTimeStr(),
       grand_total: "",
       GstAmount: "",
-      accepted: false,
+      accepted: isGstAllowed.value,
       total_amount: "",
       paid: 0,
       discount: 0,
@@ -1420,10 +1540,10 @@ const handleAltFocusOut = (event, index) => {
                 </div>
             </div>
             
-            <div class="mt-8 flex items-center justify-between border-b border-slate-100 pb-4 mb-4">
+            <div class="mt-8 flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-100 pb-4 mb-4 gap-2">
                 <h3 class="text-lg font-bold text-[#2E2C92] flex items-center gap-2">
                     <i class="bi bi-bag-check text-indigo-600"></i>
-                    Sale Items
+                    <span>Sale Items</span>
                 </h3>
             </div>
             
@@ -1432,7 +1552,7 @@ const handleAltFocusOut = (event, index) => {
                     <thead class="bg-slate-50/80 border-b border-slate-100 text-slate-500 text-xs font-semibold tracking-wider uppercase">
                         <tr>
                             <th class="px-4 py-3.5 text-left">Product <span class="text-red-500">*</span></th>
-                            <th v-if="form.accepted" class="px-4 py-3.5 text-left">GST</th>
+                            <th v-if="isGstAllowed && form.accepted" class="px-4 py-3.5 text-left">GST</th>
                             <th v-if="useAlternateUnits" class="px-4 py-3.5 text-left" style="width: 18%;">Alt Qty / Size</th>
                             <th class="px-4 py-3.5 text-left">Quantity <span class="text-red-500">*</span></th>
                             <th class="px-4 py-3.5 text-left">Unit Type</th>
@@ -1477,7 +1597,7 @@ const handleAltFocusOut = (event, index) => {
                                     </div>
                                 </div>
                             </td>
-                            <td v-if="form.accepted" class="border-t border-slate-100 px-4 py-4 min-w-[140px]">
+                            <td v-if="isGstAllowed && form.accepted" class="border-t border-slate-100 px-4 py-4 min-w-[140px]">
                                 <select
                                     v-model="item.gst_rate_id"
                                     @change="onGstRateChange(item)"
@@ -1611,7 +1731,7 @@ const handleAltFocusOut = (event, index) => {
                                 </div>
                             </div>
                         </div>
-                        <div v-if="form.accepted" class="grid grid-cols-3 gap-2">
+                        <div v-if="isGstAllowed && form.accepted" class="grid grid-cols-3 gap-2">
                             <div class="col-span-2">
                                 <label class="block text-xs font-semibold text-gray-500 mb-1">GST Rate</label>
                                 <select
@@ -1655,7 +1775,7 @@ const handleAltFocusOut = (event, index) => {
                             </div>
                         </div>
                         <div class="grid grid-cols-3 gap-2 bg-white p-3 rounded-lg border border-gray-100 text-xs font-medium text-gray-500">
-                            <div v-if="form.accepted">
+                            <div v-if="isGstAllowed && form.accepted">
                                 <span class="block text-gray-400">GST</span>
                                 <span class="text-gray-800 font-semibold">
                                     <template v-if="item.gst_rate_id">
@@ -1706,13 +1826,13 @@ const handleAltFocusOut = (event, index) => {
                     :placeholder="currencySymbol + '0.00'" min="0" step="any" />
             </div>
             <div class="space-y-4 border-t pt-4">
-                <div v-if="!isInternationalCustomer" class="flex justify-between items-center">
+                <div v-if="!isInternationalCustomer && isGstAllowed" class="flex justify-between items-center">
                     <label class="inline-flex items-center space-x-2">
                         <input type="checkbox" v-model="form.accepted" class="form-checkbox h-5 w-5 text-[#292688]">
                         <span class="text-sm text-gray-700 font-semibold">Apply To GST</span>
                     </label>
                 </div>
-                <div v-if="form.accepted" class="flex justify-between items-center">
+                <div v-if="isGstAllowed && form.accepted" class="flex justify-between items-center">
                     <span class="text-gray-700 font-semibold">GST</span>
                     <span class="text-gray-800 font-bold">{{ currencySymbol }} {{ totalGST.toFixed(2) }}</span>
                 </div>
@@ -1919,7 +2039,7 @@ const handleAltFocusOut = (event, index) => {
                 <div class="flex flex-col text-left pr-4">
                     <span class="font-semibold">{{ product.name }}</span>
                     <span class="text-xxs opacity-75 mt-0.5" :class="idx === selectedSidebarProductIndex ? 'text-slate-200' : 'text-slate-500'">
-                        SKU: {{ product.sku || '-' }} | Added: {{ new Date(product.created_at).toLocaleDateString() }}
+                        SKU: {{ product.sku || '-' }} | Price: ₹{{ parseFloat(product.price || 0).toFixed(2) }}
                     </span>
                 </div>
                 <div class="text-right flex flex-col items-end shrink-0">

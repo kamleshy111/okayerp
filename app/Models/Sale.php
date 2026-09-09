@@ -11,8 +11,13 @@ class Sale extends Model
     use Auditable;
 
     protected $fillable = [
-        'customer_id', 'estimate_id', 'referral_user_id', 'sale_date', 'gst_amount', 'discount', 'total_amount', 'grand_total', 'accepted', 'paid', 'payment_method', 'payment_status', 'currency', 'exchange_rate', 'created_at', 'updated_at'
+        'user_id', 'invoice_seq', 'invoice_no', 'customer_id', 'estimate_id', 'referral_user_id', 'sale_date', 'gst_amount', 'discount', 'total_amount', 'grand_total', 'accepted', 'paid', 'payment_method', 'payment_status', 'currency', 'exchange_rate', 'created_at', 'updated_at'
     ];
+
+    public function user()
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function customer()
     {

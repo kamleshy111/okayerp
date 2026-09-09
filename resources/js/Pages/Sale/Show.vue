@@ -109,7 +109,7 @@ onUnmounted(() => {
 </script>
 
 <template>
-  <Head :title="`Invoice #${sale.id}`">
+  <Head :title="`Invoice #${sale.invoice_no || sale.id}`">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
   </Head>
 
@@ -161,7 +161,7 @@ onUnmounted(() => {
           </div>
           <div class="text-left md:text-right">
             <h2 class="text-2xl font-bold text-gray-900">INVOICE</h2>
-            <p class="text-sm text-gray-500 mt-1">Invoice #: <span class="font-semibold text-gray-800">{{ sale.id }}</span></p>
+            <p class="text-sm text-gray-500 mt-1">Invoice #: <span class="font-semibold text-gray-800">{{ sale.invoice_no || sale.id }}</span></p>
             <p class="text-sm text-gray-500">Date: <span class="font-semibold text-gray-800">{{ formatDate(sale.created_at) }}</span></p>
           </div>
         </div>
