@@ -1,5 +1,5 @@
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, onMounted, onUnmounted } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import { Link } from '@inertiajs/vue3';
 import ResponsiveNavLink from "@/Components/ResponsiveNavLink.vue";
@@ -22,8 +22,23 @@ const hasPermission = (permission) => {
   return page.props.auth.user?.permissions?.includes(permission);
 };
 
+const handleSidebarSync = (event) => {
+  if (event.key === 'customer_pricing_toggle_sync' && event.newValue) {
+    try {
+      const data = JSON.parse(event.newValue);
+      if (page.props.auth?.user) {
+        page.props.auth.user.allow_customer_based_pricing = data.enabled;
+      }
+    } catch (err) {}
+  }
+};
+
 onMounted(() => {
-  console.log("Sidebar Auth User Permissions:", page.props.auth.user?.permissions);
+  window.addEventListener('storage', handleSidebarSync);
+});
+
+onUnmounted(() => {
+  window.removeEventListener('storage', handleSidebarSync);
 });
 </script>
 
@@ -99,12 +114,21 @@ onMounted(() => {
           </a>
         </li>
 
-        <li v-if="role === 'store' && hasPermission('customer manage')" :class="{ 'active': route().current('customer*') || route().current('paymentsCustomer.history') }">
+        <li v-if="role === 'store' && hasPermission('customer manage')" :class="{ 'active': route().current('customer*') && !route().current('customer-product*') || route().current('paymentsCustomer.history') }">
           <a
             :href="route('customer')"
             class="flex items-center gap-3 px-4 py-2 rounded-l-full"
           >
             <i class="bi bi-people text-xl"></i> <span>Customers</span>
+          </a>
+        </li>
+
+        <li v-if="role === 'store' && (hasPermission('customer manage') || hasPermission('sale manage')) && page.props.auth.user?.allow_customer_based_pricing" :class="{ 'active': route().current('customer-product*') }">
+          <a
+            :href="route('customer-product.index')"
+            class="flex items-center gap-3 px-4 py-2 rounded-l-full"
+          >
+            <i class="bi bi-person-lines-fill text-xl"></i> <span>Customer Products</span>
           </a>
         </li>
 

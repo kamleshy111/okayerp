@@ -32,4 +32,16 @@ class Product extends Model
     {
         return $this->belongsTo(Category::class);
     }
+
+    public function customerProducts()
+    {
+        return $this->hasMany(CustomerProduct::class);
+    }
+
+    public function assignedCustomers()
+    {
+        return $this->belongsToMany(Customer::class, 'customer_products')
+            ->withPivot('sale_price')
+            ->withTimestamps();
+    }
 }

@@ -46,6 +46,7 @@ class ProfileUpdateRequest extends FormRequest
             'allow_provide_additional_descriptions' => ['nullable', 'boolean'],
             'allow_gst_invoice' => ['nullable', 'boolean'],
             'allow_alternate_units' => ['nullable', 'boolean'],
+            'allow_customer_based_pricing' => ['nullable', 'boolean'],
         ];
     }
 }

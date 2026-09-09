@@ -151,6 +151,10 @@ class SaleController extends Controller
             }
             $invoiceNo = "{$nextSeq}/{$fy}";
 
+            $storeUser = Auth::user();
+            $allowGstInvoice = $storeUser ? (bool)$storeUser->allow_gst_invoice : false;
+            $accepted = $allowGstInvoice ? ($request->boolean('accepted') ? 1 : 0) : 0;
+
             // 1. Insert into `sales` table
             $sale = Sale::create([
                 'user_id' => $userId,
@@ -162,8 +166,8 @@ class SaleController extends Controller
                 'sale_date' => $saleDateTime->toDateString(),
                 'grand_total' => $request->input('grand_total') ?? 0.00,
                 'total_amount' => $request->input('total_amount') ?? 0.00,
-                'gst_amount' => $request->input('GstAmount') ?? 0.00,
-                'accepted' => 1,
+                'gst_amount' => $accepted ? ($request->input('GstAmount') ?? 0.00) : 0.00,
+                'accepted' => $accepted,
                 'paid'  => $request->input('paid') ?? 0.00,
                 'payment_method' => $request->input('payment_method') ?? "",
                 'payment_status' => $request->input('payment_status') ?? "Unpaid",
@@ -535,13 +539,17 @@ class SaleController extends Controller
                 }
                 $saleDateTime = \Carbon\Carbon::parse("{$saleDateStr} {$saleTimeStr}");
 
+                $storeUser = Auth::user();
+                $allowGstInvoice = $storeUser ? (bool)$storeUser->allow_gst_invoice : false;
+                $accepted = $allowGstInvoice ? ($request->boolean('accepted') ? 1 : 0) : 0;
+
                 // Update sale data
                 $updateData = [
                     'customer_id' => $request->input('customer_id'),
                     'referral_user_id' => $request->input('referral_user_id') ?: null,
                     'sale_date' => $saleDateTime->toDateString(),
-                    'gst_amount' => $request->input('GstAmount'),
-                    'accepted' => 1,
+                    'gst_amount' => $accepted ? ($request->input('GstAmount') ?? 0.00) : 0.00,
+                    'accepted' => $accepted,
                     'grand_total' => $request->input('grand_total'),
                     'total_amount' => $request->input('total_amount'),
                     'paid'  => $request->input('paid') ?? 0.00,

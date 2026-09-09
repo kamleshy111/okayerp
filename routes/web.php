@@ -15,6 +15,7 @@ use App\Http\Controllers\SuppliersController;
 use App\Http\Controllers\PurchasesController;
 use App\Http\Controllers\SupplierPaymentController;
 use App\Http\Controllers\CustomerPaymentsController;
+use App\Http\Controllers\CustomerProductController;
 
 use App\Http\Controllers\Admin\StoresController;
 use App\Http\Controllers\Admin\RolesController;
@@ -61,6 +62,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 Route::middleware(['auth'])->group(function () {
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::post('/profile/toggle-customer-pricing', [ProfileController::class, 'toggleCustomerPricing'])->name('profile.toggle-customer-pricing');
     Route::patch('/profile/reminders', [ProfileController::class, 'updateReminders'])->name('profile.update-reminders');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
@@ -137,6 +139,16 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/customer/update/{id}', [CustomersController::class, 'update'])->name('customer.update');
         Route::delete('/customer/destroy/{id}', [CustomersController::class, 'destroy'])->name('customer.destroy');
         Route::get('/customer/{id}/download-pdf', [CustomersController::class, 'downloadInvoice'])->name('customer.invoice.download');
+    });
+
+    // Customer Products
+    Route::middleware('permission:customer manage')->group(function () {
+        Route::get('/customer-product', [CustomerProductController::class, 'index'])->name('customer-product.index');
+        Route::get('/customer-product/customer/{customerId}', [CustomerProductController::class, 'getCustomerProducts'])->name('customer-product.by-customer');
+        Route::post('/customer-product/store', [CustomerProductController::class, 'store'])->name('customer-product.store');
+        Route::post('/customer-product/update/{id}', [CustomerProductController::class, 'update'])->name('customer-product.update');
+        Route::delete('/customer-product/destroy/{id}', [CustomerProductController::class, 'destroy'])->name('customer-product.destroy');
+        Route::post('/customer-product/bulk-delete', [CustomerProductController::class, 'bulkDestroy'])->name('customer-product.bulk-delete');
     });
 
     // Suppliers

@@ -7,6 +7,9 @@ import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 import vSelect from 'vue3-select';
 import 'vue3-select/dist/vue3-select.css';
+import axios from 'axios';
+import { toast } from 'vue3-toastify';
+import 'vue3-toastify/dist/index.css';
 
 defineProps({
     mustVerifyEmail: {
@@ -45,6 +48,7 @@ const form = useForm({
     allow_provide_additional_descriptions: !!user.allow_provide_additional_descriptions,
     allow_gst_invoice: !!user.allow_gst_invoice,
     allow_alternate_units: !!user.allow_alternate_units,
+    allow_customer_based_pricing: !!user.allow_customer_based_pricing,
 });
 
 const availableDistricts = computed(() => {
@@ -86,6 +90,22 @@ const handleFileUpload = (event) => {
     }
 };
 
+const submitProfile = () => {
+    form.post(route('profile.update'), {
+        preserveScroll: true,
+        onSuccess: () => {
+            localStorage.setItem('customer_pricing_toggle_sync', JSON.stringify({
+                enabled: form.allow_customer_based_pricing,
+                time: Date.now()
+            }));
+            localStorage.setItem('gst_invoice_toggle_sync', JSON.stringify({
+                enabled: form.allow_gst_invoice,
+                time: Date.now()
+            }));
+        }
+    });
+};
+
 </script>
 
 <template>
@@ -101,7 +121,7 @@ const handleFileUpload = (event) => {
         </header>
 
         <form
-            @submit.prevent="form.post(route('profile.update'))"
+            @submit.prevent="submitProfile"
             class="mt-6 space-y-6"
         >
 
@@ -393,6 +413,19 @@ const handleFileUpload = (event) => {
                             Allow Alternate Units
                         </label>
                         <InputError class="mt-2" :message="form.errors.allow_alternate_units" />
+                    </div>
+
+                    <div class="md:col-span-2 flex items-center mt-2">
+                        <input
+                            id="allow_customer_based_pricing"
+                            type="checkbox"
+                            class="rounded border-gray-300 text-indigo-600 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 h-4 w-4"
+                            v-model="form.allow_customer_based_pricing"
+                        />
+                        <label for="allow_customer_based_pricing" class="ml-2 block text-sm font-medium text-gray-700">
+                            Customer Based Sales Price
+                        </label>
+                        <InputError class="mt-2" :message="form.errors.allow_customer_based_pricing" />
                     </div>
                 </div>
             </div>
