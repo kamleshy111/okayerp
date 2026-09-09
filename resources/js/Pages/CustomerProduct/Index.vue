@@ -292,14 +292,25 @@ const handleWindowFocus = () => {
   } catch (e) { }
 };
 
+const isReportDropdownOpen = ref(false);
+const reportDropdownRef = ref(null);
+
+const closeOnEscape = (e) => {
+  if (isReportDropdownOpen.value && e.key === 'Escape') {
+    isReportDropdownOpen.value = false;
+  }
+};
+
 onMounted(() => {
   window.addEventListener('storage', handleStorageSync);
   window.addEventListener('focus', handleWindowFocus);
+  document.addEventListener('keydown', closeOnEscape);
 });
 
 onUnmounted(() => {
   window.removeEventListener('storage', handleStorageSync);
   window.removeEventListener('focus', handleWindowFocus);
+  document.removeEventListener('keydown', closeOnEscape);
 });
 </script>
 
@@ -324,8 +335,61 @@ onUnmounted(() => {
 
         <!-- Action Buttons -->
         <div class="flex items-center gap-3">
+          <!-- Download Report Dropdown -->
+          <div v-if="currentCustomer" class="relative" ref="reportDropdownRef">
+            <button
+              type="button"
+              @click="isReportDropdownOpen = !isReportDropdownOpen"
+              class="relative z-50 inline-flex items-center gap-2 px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-sm font-semibold rounded-lg shadow-sm transition-all duration-150 cursor-pointer"
+            >
+              <i class="fa fa-download text-indigo-600"></i>
+              <span>Download Report</span>
+              <i class="bi bi-chevron-down text-xs transition-transform duration-150" :class="{ 'rotate-180': isReportDropdownOpen }"></i>
+            </button>
+
+            <!-- Full Screen Dropdown Overlay to close on side click -->
+            <div
+              v-show="isReportDropdownOpen"
+              class="fixed inset-0 z-40"
+              @click="isReportDropdownOpen = false"
+            ></div>
+
+            <!-- Dropdown Menu -->
+            <div
+              v-show="isReportDropdownOpen"
+              class="absolute right-0 mt-2 w-60 bg-white border border-slate-200 rounded-xl shadow-xl py-2 z-50 text-xs"
+            >
+              <div class="px-3.5 py-1 text-[10px] font-bold text-slate-400 uppercase tracking-wider">
+                {{ currentCustomer.name }}
+              </div>
+              <a
+                :href="`/customer-product/download-pdf?customer_id=${currentCustomer.id}`"
+                target="_blank"
+                @click="isReportDropdownOpen = false"
+                class="flex items-center gap-2.5 px-3.5 py-2 text-slate-700 hover:bg-indigo-50 hover:text-[#2e2c92] transition"
+              >
+                <i class="fa fa-file-pdf-o text-rose-500 text-sm w-4 text-center"></i>
+                <div>
+                  <div class="font-semibold text-xs">Customer Price List (PDF)</div>
+                  <div class="text-[10px] text-slate-400">Printable price sheet for this customer</div>
+                </div>
+              </a>
+              <a
+                :href="`/customer-product/download-csv?customer_id=${currentCustomer.id}`"
+                @click="isReportDropdownOpen = false"
+                class="flex items-center gap-2.5 px-3.5 py-2 text-slate-700 hover:bg-emerald-50 hover:text-emerald-700 transition"
+              >
+                <i class="fa fa-file-excel-o text-emerald-600 text-sm w-4 text-center"></i>
+                <div>
+                  <div class="font-semibold text-xs">Customer Price List (CSV)</div>
+                  <div class="text-[10px] text-slate-400">Excel spreadsheet for this customer</div>
+                </div>
+              </a>
+            </div>
+          </div>
+
           <button v-if="currentCustomer" @click="openAddModal"
-            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-lg shadow-sm transition-all duration-150">
+            class="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 active:bg-indigo-800 text-white text-sm font-semibold rounded-lg shadow-sm transition-all duration-150 cursor-pointer">
             <i class="bi bi-plus-circle text-base"></i>
             <span>Add Products to Customer</span>
           </button>

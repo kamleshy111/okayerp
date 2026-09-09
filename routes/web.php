@@ -144,6 +144,8 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     // Customer Products
     Route::middleware('permission:customer manage')->group(function () {
         Route::get('/customer-product', [CustomerProductController::class, 'index'])->name('customer-product.index');
+        Route::get('/customer-product/download-pdf', [CustomerProductController::class, 'downloadPdf'])->name('customer-product.download-pdf');
+        Route::get('/customer-product/download-csv', [CustomerProductController::class, 'downloadCsv'])->name('customer-product.download-csv');
         Route::get('/customer-product/customer/{customerId}', [CustomerProductController::class, 'getCustomerProducts'])->name('customer-product.by-customer');
         Route::post('/customer-product/store', [CustomerProductController::class, 'store'])->name('customer-product.store');
         Route::post('/customer-product/update/{id}', [CustomerProductController::class, 'update'])->name('customer-product.update');

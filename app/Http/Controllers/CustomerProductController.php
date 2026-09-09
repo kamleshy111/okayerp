@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\CustomerProduct;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 class CustomerProductController extends Controller
 {
@@ -262,5 +264,203 @@ class CustomerProductController extends Controller
             'message' => "{$deleted} product(s) removed successfully.",
             'success' => true
         ]);
+    }
+
+    public function downloadPdf(Request $request)
+    {
+        if (!Auth::user()->allow_customer_based_pricing) {
+            abort(403, 'Customer Based Sales Price feature is disabled.');
+        }
+
+        $userId = Auth::id();
+        $store = Auth::user();
+        $customerId = $request->query('customer_id');
+
+        if ($customerId && $customerId !== 'all') {
+            $customer = Customer::where('user_id', $userId)->findOrFail($customerId);
+
+            $customerProducts = CustomerProduct::where('customer_products.user_id', $userId)
+                ->where('customer_products.customer_id', $customer->id)
+                ->join('products', 'customer_products.product_id', '=', 'products.id')
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->select(
+                    'customer_products.id',
+                    'customer_products.sale_price',
+                    'products.name as product_name',
+                    'products.sku',
+                    'products.price as master_price',
+                    'products.unit_type',
+                    'products.stock_quantity',
+                    'categories.name as category_name'
+                )
+                ->orderBy('products.name', 'asc')
+                ->get();
+
+            $pdf = Pdf::loadView('customer_products_report_pdf', [
+                'store' => $store,
+                'customer' => $customer,
+                'customerProducts' => $customerProducts,
+                'isAll' => false,
+            ])->setPaper('a4', 'portrait');
+
+            $cleanName = Str::slug($customer->name, '_');
+            return $pdf->stream("customer_pricing_{$cleanName}.pdf");
+        }
+
+        // All customers report
+        $customerProducts = CustomerProduct::where('customer_products.user_id', $userId)
+            ->join('customers', 'customer_products.customer_id', '=', 'customers.id')
+            ->join('products', 'customer_products.product_id', '=', 'products.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->select(
+                'customer_products.id',
+                'customer_products.sale_price',
+                'customers.name as customer_name',
+                'customers.phone as customer_phone',
+                'products.name as product_name',
+                'products.sku',
+                'products.price as master_price',
+                'products.unit_type',
+                'categories.name as category_name'
+            )
+            ->orderBy('customers.name', 'asc')
+            ->orderBy('products.name', 'asc')
+            ->get();
+
+        $pdf = Pdf::loadView('customer_products_report_pdf', [
+            'store' => $store,
+            'customer' => null,
+            'customerProducts' => $customerProducts,
+            'isAll' => true,
+        ])->setPaper('a4', 'portrait');
+
+        return $pdf->stream("all_customer_products_pricing.pdf");
+    }
+
+    public function downloadCsv(Request $request)
+    {
+        if (!Auth::user()->allow_customer_based_pricing) {
+            abort(403, 'Customer Based Sales Price feature is disabled.');
+        }
+
+        $userId = Auth::id();
+        $customerId = $request->query('customer_id');
+
+        if ($customerId && $customerId !== 'all') {
+            $customer = Customer::where('user_id', $userId)->findOrFail($customerId);
+
+            $customerProducts = CustomerProduct::where('customer_products.user_id', $userId)
+                ->where('customer_products.customer_id', $customer->id)
+                ->join('products', 'customer_products.product_id', '=', 'products.id')
+                ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+                ->select(
+                    'customer_products.sale_price',
+                    'products.name as product_name',
+                    'products.sku',
+                    'products.price as master_price',
+                    'products.unit_type',
+                    'categories.name as category_name'
+                )
+                ->orderBy('products.name', 'asc')
+                ->get();
+
+            $cleanName = Str::slug($customer->name, '_');
+            $fileName = "customer_pricing_{$cleanName}_" . date('Y-m-d') . ".csv";
+
+            $headers = [
+                "Content-type" => "text/csv; charset=UTF-8",
+                "Content-Disposition" => "attachment; filename={$fileName}",
+                "Pragma" => "no-cache",
+                "Cache-Control" => "no-cache, no-store, must-revalidate",
+                "Expires" => "0"
+            ];
+
+            $callback = function () use ($customerProducts, $customer) {
+                $file = fopen('php://output', 'w');
+                // UTF-8 BOM for Excel compatibility
+                fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+                fputcsv($file, ["Customer Price List Report - {$customer->name}"]);
+                fputcsv($file, ["Phone: " . ($customer->phone ?: 'N/A')]);
+                fputcsv($file, []);
+                fputcsv($file, ['S.No', 'Product Name', 'SKU', 'Category', 'Unit', 'Standard Price (INR)', 'Customer Special Price (INR)']);
+
+                foreach ($customerProducts as $idx => $item) {
+                    $stdPrice = (float)($item->master_price ?? 0);
+                    $custPrice = (float)$item->sale_price;
+
+                    fputcsv($file, [
+                        $idx + 1,
+                        $item->product_name,
+                        $item->sku ?: '',
+                        $item->category_name ?: '',
+                        $item->unit_type ?: '',
+                        number_format($stdPrice, 2, '.', ''),
+                        number_format($custPrice, 2, '.', ''),
+                    ]);
+                }
+                fclose($file);
+            };
+
+            return response()->stream($callback, 200, $headers);
+        }
+
+        // All customers CSV
+        $customerProducts = CustomerProduct::where('customer_products.user_id', $userId)
+            ->join('customers', 'customer_products.customer_id', '=', 'customers.id')
+            ->join('products', 'customer_products.product_id', '=', 'products.id')
+            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
+            ->select(
+                'customer_products.sale_price',
+                'customers.name as customer_name',
+                'customers.phone as customer_phone',
+                'products.name as product_name',
+                'products.sku',
+                'products.price as master_price',
+                'products.unit_type',
+                'categories.name as category_name'
+            )
+            ->orderBy('customers.name', 'asc')
+            ->orderBy('products.name', 'asc')
+            ->get();
+
+        $fileName = "all_customer_pricing_" . date('Y-m-d') . ".csv";
+
+        $headers = [
+            "Content-type" => "text/csv; charset=UTF-8",
+            "Content-Disposition" => "attachment; filename={$fileName}",
+            "Pragma" => "no-cache",
+            "Cache-Control" => "must-revalidate, post-check=0, pre-check=0",
+            "Expires" => "0"
+        ];
+
+        $callback = function () use ($customerProducts) {
+            $file = fopen('php://output', 'w');
+            fprintf($file, chr(0xEF).chr(0xBB).chr(0xBF));
+
+            fputcsv($file, ["All Customer-Specific Pricing Master Report"]);
+            fputcsv($file, []);
+            fputcsv($file, ['S.No', 'Customer Name', 'Phone', 'Product Name', 'SKU', 'Category', 'Unit', 'Standard Price (INR)', 'Customer Special Price (INR)']);
+
+            foreach ($customerProducts as $idx => $item) {
+                $stdPrice = (float)($item->master_price ?? 0);
+                $custPrice = (float)$item->sale_price;
+
+                fputcsv($file, [
+                    $idx + 1,
+                    $item->customer_name,
+                    $item->customer_phone ?: '',
+                    $item->product_name,
+                    $item->sku ?: '',
+                    $item->category_name ?: '',
+                    $item->unit_type ?: '',
+                    number_format($stdPrice, 2, '.', ''),
+                    number_format($custPrice, 2, '.', ''),
+                ]);
+            }
+            fclose($file);
+        };
+
+        return response()->stream($callback, 200, $headers);
     }
 }
