@@ -288,6 +288,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/paymentSupplier/store', [SupplierPaymentController::class, 'store'])->name('paymentSupplier.store');
         Route::get('/paymentSupplier/{id}/history', [SupplierPaymentController::class, 'history'])->name('paymentSupplier.history');
         Route::get('/paymentSupplier/{id}/history/download-pdf', [SupplierPaymentController::class, 'downloadHistoryPdf'])->name('paymentSupplier.history.pdf');
+        Route::get('/paymentSupplier/{id}/product-report/download-pdf', [SupplierPaymentController::class, 'downloadProductReportPdf'])->name('paymentSupplier.product-report.pdf');
         Route::delete('/paymentSupplier/destroy/{id}', [SupplierPaymentController::class, 'destroy'])->name('paymentSupplier.destroy');
     });
 
@@ -356,5 +357,6 @@ Route::middleware(['auth', 'role:store'])->group(function () {
 Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
 Route::get('/paymentsCustomer/{id}/history/download-pdf', [CustomerPaymentsController::class, 'downloadHistoryPdf'])->name('paymentsCustomer.history.pdf');
 Route::get('/paymentsCustomer/{id}/product-report/download-pdf', [CustomerPaymentsController::class, 'downloadProductReportPdf'])->name('paymentsCustomer.product-report.pdf');
+Route::get('/paymentSupplier/{id}/product-report/download-pdf', [SupplierPaymentController::class, 'downloadProductReportPdf'])->name('paymentSupplier.product-report.pdf');
 
 require __DIR__.'/auth.php';
