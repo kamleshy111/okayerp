@@ -124,10 +124,25 @@ class CustomerPaymentsController extends Controller
         $customer = Customer::where('user_id', $userId)->findOrFail($id);
 
         $history = $this->getCustomerLedgerHistory($id, $userId);
+        $productHistory = $this->getCustomerProductHistory($id, $userId);
+
+        $purchasedProducts = collect($productHistory)
+            ->unique('product_id')
+            ->map(function ($item) {
+                return [
+                    'id' => $item['product_id'],
+                    'name' => $item['product_name'],
+                    'code' => $item['product_code'],
+                ];
+            })
+            ->values()
+            ->all();
 
         return Inertia::render('CustomerPayment/History', [
             'customer' => $customer,
             'history' => $history,
+            'productHistory' => $productHistory,
+            'purchasedProducts' => $purchasedProducts,
         ]);
     }
 
@@ -143,6 +158,76 @@ class CustomerPaymentsController extends Controller
 
         $pdf = Pdf::loadView('customer_payment_history_pdf', compact('customer', 'history', 'totalDebits', 'totalCredits', 'currentBalance'))->setPaper('a4');
         return $pdf->stream("payment_history_" . str_replace(' ', '_', strtolower($customer->name)) . ".pdf");
+    }
+
+    public function downloadProductReportPdf(Request $request, $id) {
+        $customer = Customer::findOrFail($id);
+        $userId = $customer->user_id;
+
+        $rawProductHistory = $this->getCustomerProductHistory($id, $userId);
+
+        $invoiceSearch = trim($request->get('invoice', ''));
+        $productSearch = trim($request->get('product', ''));
+        $fromDate = $request->get('from');
+        $toDate = $request->get('to');
+
+        $filtered = collect($rawProductHistory)->filter(function ($item) use ($invoiceSearch, $productSearch, $fromDate, $toDate) {
+            if ($invoiceSearch !== '') {
+                if (!isset($item['invoice_no']) || !str_contains(strtolower($item['invoice_no']), strtolower($invoiceSearch))) {
+                    return false;
+                }
+            }
+            if ($productSearch !== '') {
+                $matchName = isset($item['product_name']) && str_contains(strtolower($item['product_name']), strtolower($productSearch));
+                $matchCode = isset($item['product_code']) && str_contains(strtolower($item['product_code']), strtolower($productSearch));
+                if (!$matchName && !$matchCode) {
+                    return false;
+                }
+            }
+            if ($fromDate && isset($item['date']) && $item['date'] < $fromDate) {
+                return false;
+            }
+            if ($toDate && isset($item['date']) && $item['date'] > $toDate) {
+                return false;
+            }
+            return true;
+        });
+
+        // Group/aggregate by product_id
+        $aggregated = $filtered->groupBy('product_id')->map(function ($items) {
+            $first = $items->first();
+            $totalQty = $items->sum('quantity');
+            $totalSubtotal = $items->sum('subtotal');
+            $totalAmount = $items->sum('total_amount');
+            $rates = $items->pluck('price')->unique()->filter()->values()->all();
+
+            $rateDisplay = '₹0.00';
+            if (count($rates) === 1) {
+                $rateDisplay = '₹' . number_format($rates[0], 2);
+            } elseif (count($rates) > 1) {
+                $rateDisplay = '₹' . number_format(min($rates), 2) . ' - ₹' . number_format(max($rates), 2);
+            } elseif ($totalQty != 0) {
+                $rateDisplay = '₹' . number_format(abs($totalSubtotal / $totalQty), 2);
+            }
+
+            return [
+                'product_id' => $first['product_id'],
+                'product_name' => $first['product_name'],
+                'product_code' => $first['product_code'],
+                'unit_type' => $first['unit_type'] ?? 'Pcs',
+                'total_quantity' => $totalQty,
+                'rate_display' => $rateDisplay,
+                'total_amount' => $totalAmount,
+                'transactions' => $items->values()->all(),
+            ];
+        })->values();
+
+        $totalProductsCount = $aggregated->count();
+        $grandTotalQuantity = $aggregated->sum('total_quantity');
+        $grandTotalAmount = $aggregated->sum('total_amount');
+
+        $pdf = Pdf::loadView('customer_product_report_pdf', compact('customer', 'aggregated', 'totalProductsCount', 'grandTotalQuantity', 'grandTotalAmount', 'fromDate', 'toDate'))->setPaper('a4');
+        return $pdf->stream("product_report_" . str_replace(' ', '_', strtolower($customer->name)) . ".pdf");
     }
 
     private function getCustomerLedgerHistory($customerId, $userId)
@@ -224,6 +309,119 @@ class CustomerPaymentsController extends Controller
 
         // Sort newest first for table presentation
         return array_reverse($sortedArray);
+    }
+
+    private function getCustomerProductHistory($customerId, $userId)
+    {
+        $saleItems = DB::table('sale_items')
+            ->join('sales', 'sale_items.sale_id', '=', 'sales.id')
+            ->join('products', 'sale_items.product_id', '=', 'products.id')
+            ->where('sales.customer_id', $customerId)
+            ->where('sales.user_id', $userId)
+            ->select(
+                'sale_items.id',
+                'sales.id as sale_id',
+                'sales.invoice_no',
+                'sales.sale_date',
+                'sales.created_at',
+                'products.id as product_id',
+                'products.name as product_name',
+                'products.sku as product_code',
+                'sale_items.quantity',
+                'sale_items.unit_type',
+                'sale_items.price',
+                'sale_items.base_price',
+                'sale_items.sgst',
+                'sale_items.cgst',
+                'sale_items.description'
+            )
+            ->get();
+
+        $saleReturnItems = DB::table('sale_return_items')
+            ->join('sale_returns', 'sale_return_items.sale_return_id', '=', 'sale_returns.id')
+            ->join('sales', 'sale_returns.sale_id', '=', 'sales.id')
+            ->join('products', 'sale_return_items.product_id', '=', 'products.id')
+            ->where('sales.customer_id', $customerId)
+            ->where('sale_returns.user_id', $userId)
+            ->select(
+                'sale_return_items.id',
+                'sales.id as sale_id',
+                'sale_returns.id as sale_return_id',
+                'sale_returns.return_no',
+                'sale_returns.return_date',
+                'sale_returns.created_at',
+                'products.id as product_id',
+                'products.name as product_name',
+                'products.sku as product_code',
+                'sale_return_items.quantity',
+                'sale_return_items.price'
+            )
+            ->get();
+
+        $items = collect();
+
+        foreach ($saleItems as $item) {
+            $qty = (float)$item->quantity;
+            $price = (float)$item->price;
+            $subtotal = $qty * $price;
+            $gstRate = (float)$item->sgst + (float)$item->cgst;
+            $gstAmount = $subtotal * ($gstRate / 100);
+            $totalAmount = $subtotal + $gstAmount;
+
+            $items->push([
+                'id' => 'sale_' . $item->id,
+                'ref_id' => $item->sale_id,
+                'type' => 'Sale',
+                'date' => $item->sale_date ?? ($item->created_at ? substr($item->created_at, 0, 10) : null),
+                'created_at' => $item->created_at,
+                'invoice_no' => $item->invoice_no ? $item->invoice_no : ('Invoice #' . $item->sale_id),
+                'product_id' => $item->product_id,
+                'product_name' => $item->product_name,
+                'product_code' => $item->product_code,
+                'quantity' => $qty,
+                'unit_type' => $item->unit_type ?? 'Pcs',
+                'price' => $price,
+                'gst_rate' => $gstRate,
+                'gst_amount' => $gstAmount,
+                'subtotal' => $subtotal,
+                'total_amount' => $totalAmount,
+                'description' => $item->description,
+            ]);
+        }
+
+        foreach ($saleReturnItems as $item) {
+            $qty = (float)$item->quantity;
+            $price = (float)$item->price;
+            $totalAmount = $qty * $price;
+
+            $items->push([
+                'id' => 'return_' . $item->id,
+                'ref_id' => $item->sale_id,
+                'type' => 'Return',
+                'date' => $item->return_date ?? ($item->created_at ? substr($item->created_at, 0, 10) : null),
+                'created_at' => $item->created_at,
+                'invoice_no' => 'Return #' . ($item->return_no ?? $item->sale_return_id),
+                'product_id' => $item->product_id,
+                'product_name' => $item->product_name,
+                'product_code' => $item->product_code,
+                'quantity' => -1 * $qty,
+                'unit_type' => 'Pcs',
+                'price' => $price,
+                'gst_rate' => 0,
+                'gst_amount' => 0,
+                'subtotal' => -1 * $totalAmount,
+                'total_amount' => -1 * $totalAmount,
+                'description' => 'Sales Return',
+            ]);
+        }
+
+        return $items->sort(function ($a, $b) {
+            $dateCompare = strcmp($b['date'] ?? '', $a['date'] ?? '');
+            if ($dateCompare !== 0) {
+                return $dateCompare;
+            }
+            return strcmp($b['created_at'] ?? '', $a['created_at'] ?? '');
+        })->values()->all();
     }
 
     public function create(){

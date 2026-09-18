@@ -355,5 +355,6 @@ Route::middleware(['auth', 'role:store'])->group(function () {
 // Publicly accessible Invoice PDF & Payment History PDF downloads for customers
 Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
 Route::get('/paymentsCustomer/{id}/history/download-pdf', [CustomerPaymentsController::class, 'downloadHistoryPdf'])->name('paymentsCustomer.history.pdf');
+Route::get('/paymentsCustomer/{id}/product-report/download-pdf', [CustomerPaymentsController::class, 'downloadProductReportPdf'])->name('paymentsCustomer.product-report.pdf');
 
 require __DIR__.'/auth.php';
