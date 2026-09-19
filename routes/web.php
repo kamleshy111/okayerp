@@ -40,6 +40,7 @@ use App\Http\Controllers\OfferController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationSettingsController;
+use App\Http\Controllers\ProductSalesReportController;
 
 
 
@@ -315,6 +316,10 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::get('/reports/gst', [GstReportController::class, 'index'])->name('reports.gst');
     Route::post('/purchases/{id}/toggle-refundable', [GstReportController::class, 'toggleRefundable'])->name('purchases.toggle-refundable');
     Route::post('/reports/ledger/close-year', [LedgerController::class, 'closeYear'])->name('reports.ledger.close-year');
+    Route::get('/reports/product-sales', [ProductSalesReportController::class, 'index'])->name('reports.product-sales');
+    Route::get('/reports/product-sales/details/{productId}', [ProductSalesReportController::class, 'details'])->name('reports.product-sales.details');
+    Route::get('/reports/product-sales/pdf', [ProductSalesReportController::class, 'downloadPdf'])->name('reports.product-sales.pdf');
+    Route::get('/reports/product-sales/csv', [ProductSalesReportController::class, 'exportCsv'])->name('reports.product-sales.csv');
 
 
     Route::post('/bulk-delete', [BulkDeleteController::class, 'destroy'])->name('bulk-delete');
