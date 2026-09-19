@@ -23,6 +23,18 @@ const props = defineProps({
     type: Array,
     default: () => []
   },
+  paidAmount: {
+    type: [Number, String],
+    default: 0
+  },
+  dueAmount: {
+    type: [Number, String],
+    default: 0
+  },
+  extraAmount: {
+    type: [Number, String],
+    default: 0
+  },
   previousBalance: {
     type: [Number, String],
     default: 0
@@ -249,7 +261,7 @@ onUnmounted(() => {
                 <span class="text-gray-500 font-medium">GST Amount</span>
                 <span class="text-gray-900 font-semibold">₹{{ parseFloat(sale.gst_amount).toFixed(2) }}</span>
               </div>
-              <div class="flex justify-between py-3">
+              <div v-if="parseFloat(sale.discount || 0) > 0" class="flex justify-between py-3">
                 <span class="text-gray-500 font-medium">Discount</span>
                 <span class="text-red-500 font-semibold">- ₹{{ parseFloat(sale.discount).toFixed(2) }}</span>
               </div>
@@ -257,13 +269,17 @@ onUnmounted(() => {
                 <span class="text-gray-900">Total</span>
                 <span class="text-[#2e2c92]">₹{{ parseFloat(sale.grand_total).toFixed(2) }}</span>
               </div>
-              <div v-if="previousBalance && parseFloat(previousBalance) !== 0" class="flex justify-between py-3 border-t border-gray-100">
-                <span class="text-gray-500 font-medium">Previous Balance</span>
-                <span class="text-gray-900 font-semibold">₹{{ parseFloat(previousBalance).toFixed(2) }}</span>
+              <div v-if="(parseFloat(dueAmount || 0) > 0 || parseFloat(extraAmount || 0) > 0) && parseFloat(paidAmount || 0) > 0" class="flex justify-between py-3 border-t border-gray-100">
+                <span class="text-gray-500 font-medium">Paid Amount</span>
+                <span class="text-green-600 font-semibold">₹{{ parseFloat(paidAmount || 0).toFixed(2) }}</span>
               </div>
-              <div v-if="previousBalance && parseFloat(previousBalance) !== 0" class="flex justify-between py-3 text-base font-bold border-t border-gray-200 bg-gray-50 px-3 py-2.5 rounded-lg mt-1">
-                <span class="text-gray-900">Current Balance</span>
-                <span class="text-[#2e2c92]">₹{{ parseFloat(currentBalance).toFixed(2) }}</span>
+              <div v-if="parseFloat(dueAmount || 0) > 0" class="flex justify-between py-3 text-base font-bold border-t border-gray-200 bg-red-50/60 px-3 py-2.5 rounded-lg mt-1">
+                <span class="text-gray-900">Due Amount</span>
+                <span class="text-red-600 font-bold">₹{{ parseFloat(dueAmount || 0).toFixed(2) }}</span>
+              </div>
+              <div v-if="parseFloat(extraAmount || 0) > 0" class="flex justify-between py-3 text-base font-bold border-t border-gray-200 bg-emerald-50/60 px-3 py-2.5 rounded-lg mt-1">
+                <span class="text-gray-900">Extra Amount</span>
+                <span class="text-emerald-600 font-bold">₹{{ parseFloat(extraAmount || 0).toFixed(2) }}</span>
               </div>
             </div>
           </div>

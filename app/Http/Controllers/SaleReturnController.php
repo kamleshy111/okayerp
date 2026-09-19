@@ -90,9 +90,6 @@ class SaleReturnController extends Controller
             ->whereHas('customer', function ($q) use ($userId) {
                 $q->where('user_id', $userId);
             });
-        if (session('private_ledger_unlocked') !== true) {
-            $salesQuery->where('accepted', 1);
-        }
 
         $sales = $salesQuery->with(['saleItems.product'])->get();
 
@@ -114,17 +111,10 @@ class SaleReturnController extends Controller
         $dueAmountSum = 0;
         $advanceAmountSum = 0;
 
-        $customerSales = Sale::where('customer_id', $customerId);
-        if (session('private_ledger_unlocked') !== true) {
-            $customerSales->where('accepted', 1);
-        }
-        $customerSales = $customerSales->get();
+        $customerSales = Sale::where('customer_id', $customerId)->get();
 
         foreach ($customerSales as $s) {
             $paymentsSum = \App\Models\SalePayment::where('sale_id', $s->id);
-            if (session('private_ledger_unlocked') !== true) {
-                $paymentsSum->where('accepted', 1);
-            }
             $actualPaid = $paymentsSum->sum('amount');
 
             $dueDeductionsSum = (float)\App\Models\SaleReturnItem::where('sale_id', $s->id)->sum('due_deduction');
@@ -145,9 +135,6 @@ class SaleReturnController extends Controller
         }
 
         $totalDirectPaid = \App\Models\SalePayment::where('customer_id', $customerId)->whereNull('sale_id');
-        if (session('private_ledger_unlocked') !== true) {
-            $totalDirectPaid->where('accepted', 1);
-        }
         $advanceAmountSum += $totalDirectPaid->sum('amount');
 
         $customerTotalDue = max(0, $dueAmountSum - $advanceAmountSum);
@@ -156,6 +143,9 @@ class SaleReturnController extends Controller
         foreach ($sales as $sale) {
             $previousDueDeductions = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
             $dueAmount = max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions);
+
+            $saleGross = (float)$sale->saleItems->sum(fn($i) => (float)$i->quantity * (float)$i->price);
+            $discountRatio = ($saleGross > 0 && (float)$sale->discount > 0) ? min(1, (float)$sale->discount / $saleGross) : 0.0;
 
             foreach ($sale->saleItems as $saleItem) {
                 if (!$saleItem->product) {
@@ -166,19 +156,26 @@ class SaleReturnController extends Controller
                 $prevReturned = isset($previousReturns[$key]) ? (int)$previousReturns[$key]->total_returned : 0;
                 $availableQty = max(0, $saleItem->quantity - $prevReturned);
 
+                $discountPerUnit = round((float)$saleItem->price * $discountRatio, 2);
+                $effectiveUnitPrice = max(0, round((float)$saleItem->price - $discountPerUnit, 2));
+
                 if ($availableQty > 0) {
                     $items[] = [
                         'sale_item_id' => $saleItem->id,
                         'sale_id' => $sale->id,
                         'product_id' => $saleItem->product_id,
                         'product_name' => $saleItem->product->name,
-                        'price' => (float)$saleItem->price,
+                        'product_code' => $saleItem->product->sku ?? '',
+                        'original_price' => (float)$saleItem->price,
+                        'discount_per_unit' => $discountPerUnit,
+                        'price' => $effectiveUnitPrice,
                         'cgst' => (float)$saleItem->cgst,
                         'sgst' => (float)$saleItem->sgst,
                         'sold_qty' => $saleItem->quantity,
                         'returned_qty' => $prevReturned,
                         'available_qty' => $availableQty,
-                        'invoice_label' => "Invoice #{$sale->id} - Date: " . $sale->created_at->format('d-M-Y'),
+                        'invoice_no' => $sale->invoice_no ?: ('#' . $sale->id),
+                        'invoice_label' => "Invoice " . ($sale->invoice_no ?: ('#' . $sale->id)) . " - Date: " . $sale->created_at->format('d-M-Y'),
                         'accepted' => $sale->accepted,
                         'sale_due_amount' => $dueAmount,
                     ];
@@ -215,18 +212,28 @@ class SaleReturnController extends Controller
         ->pluck('total_returned', 'product_id')
         ->toArray();
 
-        $items = $sale->saleItems->map(function ($item) use ($previousReturns) {
+        $saleGross = (float)$sale->saleItems->sum(fn($i) => (float)$i->quantity * (float)$i->price);
+        $discountRatio = ($saleGross > 0 && (float)$sale->discount > 0) ? min(1, (float)$sale->discount / $saleGross) : 0.0;
+
+        $items = $sale->saleItems->map(function ($item) use ($previousReturns, $discountRatio) {
             $prevQty = $previousReturns[$item->product_id] ?? 0;
+            $discountPerUnit = round((float)$item->price * $discountRatio, 2);
+            $effectiveUnitPrice = max(0, round((float)$item->price - $discountPerUnit, 2));
+
             return [
                 'id' => $item->id,
                 'product_id' => $item->product_id,
                 'product_name' => $item->product->name ?? 'Unknown',
-                'price' => $item->price,
+                'original_price' => (float)$item->price,
+                'discount_per_unit' => $discountPerUnit,
+                'price' => $effectiveUnitPrice,
                 'cgst' => $item->cgst,
                 'sgst' => $item->sgst,
                 'sold_qty' => $item->quantity,
                 'returned_qty' => $prevQty,
                 'available_qty' => max(0, $item->quantity - $prevQty),
+                'invoice_no' => $sale->invoice_no ?: ('#' . $sale->id),
+                'invoice_label' => "Invoice " . ($sale->invoice_no ?: ('#' . $sale->id)) . " - Date: " . $sale->created_at->format('d-M-Y'),
             ];
         });
 
@@ -336,12 +343,18 @@ class SaleReturnController extends Controller
                 $dueOnSale = max(0, (float)$sale->grand_total - (float)$sale->paid - $previousDueDeductions);
 
                 $saleRefundTotal = 0.0;
+                $saleGross = (float)$sale->saleItems->sum(fn($i) => (float)$i->quantity * (float)$i->price);
+                $discountRatio = ($saleGross > 0 && (float)$sale->discount > 0) ? min(1, (float)$sale->discount / $saleGross) : 0.0;
+
                 foreach ($saleItems as $item) {
                     $saleItem = $sale->saleItems->firstWhere('product_id', $item['product_id']);
                     if (!$saleItem) {
                         throw new \Exception("Product {$item['product_id']} was not part of original sale #{$saleId}.");
                     }
-                    $itemBase = $item['quantity'] * $saleItem->price;
+                    $discountPerUnit = round((float)$saleItem->price * $discountRatio, 2);
+                    $effectiveUnitPrice = max(0, round((float)$saleItem->price - $discountPerUnit, 2));
+
+                    $itemBase = $item['quantity'] * $effectiveUnitPrice;
                     $itemGst = 0.0;
                     if ($sale->accepted == 1) {
                         $gstRate = ($saleItem->sgst + $saleItem->cgst) / 100;
@@ -371,6 +384,9 @@ class SaleReturnController extends Controller
                     ->pluck('total_returned', 'product_id')
                     ->toArray();
 
+                $saleGross = (float)$sale->saleItems->sum(fn($i) => (float)$i->quantity * (float)$i->price);
+                $discountRatio = ($saleGross > 0 && (float)$sale->discount > 0) ? min(1, (float)$sale->discount / $saleGross) : 0.0;
+
                 foreach ($saleItems as $item) {
                     $productId = $item['product_id'];
                     $returnQty = (int) $item['quantity'];
@@ -383,7 +399,10 @@ class SaleReturnController extends Controller
                         throw new \Exception("Returned quantity for product {$productId} exceeds allowed maximum of {$maxReturnable}.");
                     }
 
-                    $itemBaseRefund = $returnQty * $saleItem->price;
+                    $discountPerUnit = round((float)$saleItem->price * $discountRatio, 2);
+                    $effectiveUnitPrice = max(0, round((float)$saleItem->price - $discountPerUnit, 2));
+
+                    $itemBaseRefund = $returnQty * $effectiveUnitPrice;
                     $itemGstRefund = 0;
 
                     if ($sale->accepted == 1) {
@@ -408,7 +427,7 @@ class SaleReturnController extends Controller
                         'sale_id' => $saleId,
                         'product_id' => $productId,
                         'quantity' => $returnQty,
-                        'price' => $saleItem->price,
+                        'price' => $effectiveUnitPrice,
                         'due_deduction' => $itemDueDeduction,
                     ]);
 

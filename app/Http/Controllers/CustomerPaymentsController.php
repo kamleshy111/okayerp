@@ -33,29 +33,12 @@ class CustomerPaymentsController extends Controller
             'sale_payments.amount',
             'sale_payments.payment_date',
             'sale_payments.payment_method',
+            'sale_payments.source',
             'sale_payments.sale_id'
         )->get();
 
-        $saleIds = $paymentsRaw->pluck('sale_id')->filter()->unique()->toArray();
-        $firstPayments = [];
-        if (!empty($saleIds)) {
-            $firstPayments = SalePayment::whereIn('sale_id', $saleIds)
-                ->selectRaw('sale_id, MIN(id) as first_id')
-                ->groupBy('sale_id')
-                ->pluck('first_id', 'sale_id')
-                ->toArray();
-        }
-
-        $payments = $paymentsRaw->map(function ($item) use ($firstPayments) {
-            $source = 'Customer Payment';
-            if ($item->sale_id) {
-                $firstId = $firstPayments[$item->sale_id] ?? null;
-                if ($item->transaction_id == $firstId) {
-                    $source = 'Sale';
-                } else {
-                    $source = 'Due Clearance';
-                }
-            }
+        $payments = $paymentsRaw->map(function ($item) {
+            $source = $item->source ?: ($item->sale_id ? 'Due Clearance' : 'Customer Payment');
             return [
                 'transaction_id' => $item->transaction_id,
                 'created_at' => $item->created_at,
@@ -266,7 +249,7 @@ class CustomerPaymentsController extends Controller
                 'date' => $payment->payment_date ?? $payment->created_at->toDateString(),
                 'created_at' => $payment->created_at ? $payment->created_at->toDateTimeString() : null,
                 'particulars' => $particulars,
-                'source' => $payment->sale_id ? 'Due Clearance' : 'Customer Payment',
+                'source' => $payment->source ?: ($payment->sale_id ? 'Due Clearance' : 'Customer Payment'),
                 'debit' => 0.0,
                 'credit' => (float)$payment->amount,
                 'type' => 'Payment',
@@ -517,6 +500,7 @@ class CustomerPaymentsController extends Controller
                 'amount' => $advanceAmountUsed,
                 'payment_date' => $request->input('payment_date'),
                 'payment_method' => 'Wallet',
+                'source' => 'Due Clearance',
                 'note' => 'Due amount paid from advance balance' . ($request->input('note') ? ' - ' . $request->input('note') : ''),
                 'accepted' => 1,
             ]);
@@ -528,6 +512,7 @@ class CustomerPaymentsController extends Controller
                 'amount' => -$advanceAmountUsed,
                 'payment_date' => $request->input('payment_date'),
                 'payment_method' => 'Advance Deduction',
+                'source' => 'Customer Payment',
                 'note' => 'Applied to Invoice #' . $sale->id,
                 'accepted' => 1,
             ]);
@@ -553,6 +538,7 @@ class CustomerPaymentsController extends Controller
                 'amount' => $cashAmount,
                 'payment_date' => $request->input('payment_date'),
                 'payment_method' => $method,
+                'source' => $saleId ? 'Due Clearance' : 'Customer Payment',
                 'note' => $request->input('note'),
                 'accepted' => 1,
             ]);
@@ -659,7 +645,7 @@ class CustomerPaymentsController extends Controller
                     ->where('id', '<=', $payment->id)
                     ->orderBy('id', 'asc');
                 $payment->payment_history = $historyQuery->get()->map(function ($item) use ($firstPaymentId) {
-                    $reason = ($item->id == $firstPaymentId)
+                    $reason = ($item->source === 'Sale' || (!$item->source && $item->id == $firstPaymentId))
                         ? "Initial Payment against Invoice #" . $item->sale_id
                         : "Due Clearance for Invoice #" . $item->sale_id;
                     return [
@@ -788,11 +774,20 @@ class CustomerPaymentsController extends Controller
         $userId = Auth::id();
         $payment = SalePayment::whereHas('customer', function($q) use ($userId) {
             $q->where('user_id', $userId);
-        })->findOrFail($id);
+        })->find($id);
+
+        if (!$payment) {
+            return response()->json(['message' => 'Payment record not found.'], 404);
+        }
 
         $setting = \App\Models\NotificationSetting::where('user_id', $userId)->first();
         if ($setting && !$setting->allow_sale_delete) {
             return response()->json(['message' => 'Customer payment deletion is disabled in your store settings.'], 403);
+        }
+
+        $lastClosedDate = Auth::user()->last_closed_date;
+        if ($lastClosedDate && $payment->payment_date <= $lastClosedDate) {
+            return response()->json(['message' => 'Cannot delete transactions on or before the last closed date (' . $lastClosedDate . ').'], 403);
         }
 
         DB::beginTransaction();
@@ -800,14 +795,25 @@ class CustomerPaymentsController extends Controller
             if ($payment->sale_id) {
                 $sale = Sale::find($payment->sale_id);
                 if ($sale) {
-                    $sale->paid = max(0, (float)$sale->paid - (float)$payment->amount);
-                    
+                    $firstPaymentId = SalePayment::where('sale_id', $payment->sale_id)->orderBy('id', 'asc')->value('id');
+                    if ($payment->source === 'Sale' || (!$payment->source && $payment->id == $firstPaymentId)) {
+                        $sale->paid = max(0, (float)$sale->paid - (float)$payment->amount);
+                        if ((float)$sale->paid <= 0) {
+                            $sale->payment_method = null;
+                        }
+                    }
+
+                    // Total payments remaining for this sale excluding this payment
+                    $totalRemainingPaid = SalePayment::where('sale_id', $sale->id)
+                        ->where('id', '!=', $payment->id)
+                        ->sum('amount');
+
                     $totalDueDeductions = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
-                    $effectiveBalance = max(0, (float)$sale->grand_total - (float)$sale->paid - $totalDueDeductions);
+                    $effectiveBalance = max(0, (float)$sale->grand_total - (float)$totalRemainingPaid - $totalDueDeductions);
 
                     if ($effectiveBalance <= 0) {
                         $sale->payment_status = 'Paid';
-                    } elseif ((float)$sale->paid + $totalDueDeductions <= 0) {
+                    } elseif ((float)$totalRemainingPaid + $totalDueDeductions <= 0) {
                         $sale->payment_status = 'Unpaid';
                     } else {
                         $sale->payment_status = 'Partial';

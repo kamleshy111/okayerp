@@ -376,16 +376,31 @@
           <td class="text-right bold">{{ $currencySymbol }}&nbsp;{{ number_format($roundedGrandTotal, 2) }}</td>
         </tr>
 
-        @if(isset($previousBalance) && (float)$previousBalance != 0.0)
+        @php
+          $calcPaid = isset($paidAmount) ? (float)$paidAmount : (float)$sale->paid;
+          $calcNetPayable = max(0, (float)$sale->grand_total - (float)($returnDueDeduction ?? 0));
+          $calcDue = isset($dueAmount) ? (float)$dueAmount : max(0, $calcNetPayable - $calcPaid);
+          $calcExtra = isset($extraAmount) ? (float)$extraAmount : max(0, $calcPaid - $calcNetPayable);
+        @endphp
+        @if(($calcDue > 0 || $calcExtra > 0) && $calcPaid > 0)
         <tr class="total-row">
           <td class="border-right">&nbsp;</td>
-          <td class="bold border-right text-right" colspan="3">Previous Balance</td>
-          <td class="text-right bold">{{ $currencySymbol }}&nbsp;{{ number_format($previousBalance, 2) }}</td>
+          <td class="bold border-right text-right" colspan="3">Paid Amount</td>
+          <td class="text-right bold" style="color: #16a34a;">{{ $currencySymbol }}&nbsp;{{ number_format($calcPaid, 2) }}</td>
         </tr>
-        <tr class="total-row" style="background-color: #e5e7eb;">
+        @endif
+        @if($calcDue > 0)
+        <tr class="total-row" style="background-color: #fef2f2;">
           <td class="border-right">&nbsp;</td>
-          <td class="bold border-right text-right" colspan="3">Current Balance</td>
-          <td class="text-right bold">{{ $currencySymbol }}&nbsp;{{ number_format($currentBalance, 2) }}</td>
+          <td class="bold border-right text-right" colspan="3">Due Amount</td>
+          <td class="text-right bold" style="color: #dc2626;">{{ $currencySymbol }}&nbsp;{{ number_format($calcDue, 2) }}</td>
+        </tr>
+        @endif
+        @if($calcExtra > 0)
+        <tr class="total-row" style="background-color: #f0fdf4;">
+          <td class="border-right">&nbsp;</td>
+          <td class="bold border-right text-right" colspan="3">Extra Amount</td>
+          <td class="text-right bold" style="color: #16a34a;">{{ $currencySymbol }}&nbsp;{{ number_format($calcExtra, 2) }}</td>
         </tr>
         @endif
       </tbody>

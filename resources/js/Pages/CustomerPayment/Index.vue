@@ -82,11 +82,15 @@ const columns = [
             const whatsappBtn = phone
               ? `<button class="text-white bg-green-600 hover:bg-green-700 rounded whatsapp-statement-btn px-2 py-1" data-customer-id="${data.id}" data-phone="${phone}" title="Send Statement on WhatsApp" style="font-size:13px;"><i class="fa fa-whatsapp"></i></button>`
               : `<span class="text-gray-300 px-2" title="No phone number"><i class="fa fa-whatsapp"></i></span>`;
+            const deleteBtn = (row.transaction_id && row.source !== 'Return')
+              ? `<button class="text-white bg-red-600 hover:bg-red-700 rounded delete-payment-btn px-2 py-1" data-payment-id="${row.transaction_id}" title="Delete Payment" style="font-size:13px;"><i class="fa fa-trash"></i></button>`
+              : '';
             return `
             <div class="flex gap-2 whitespace-nowrap">
               <a href="/paymentsCustomer/receipt/${sourceParam}/${data.transaction_id}" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Invoice"><i class="fa fa-eye"></i></a>
               <a href="/paymentsCustomer/${data.id}/history" class="text-white bg-[#2e2c92] hover:bg-[#201d70] rounded action-btn" style="padding: 6px 8px;" title="View Statement"><i class="fa fa-list"></i></a>
               ${whatsappBtn}
+              ${deleteBtn}
             </div>
             `;
         }
@@ -125,6 +129,34 @@ onMounted(() => {
             })
             .catch((error) => {
               Swal.fire('Error', error.response?.data?.message || 'Failed to send.', 'error');
+            });
+        }
+      });
+    }
+
+    const delBtn = event.target.closest('.delete-payment-btn');
+    if (delBtn) {
+      const paymentId = delBtn.dataset.paymentId;
+      Swal.fire({
+        title: 'Delete Payment?',
+        text: 'Are you sure you want to delete this payment record?',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#dc2626',
+        cancelButtonColor: '#6b7280',
+        confirmButtonText: 'Yes, Delete',
+        cancelButtonText: 'Cancel'
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({ title: 'Deleting...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+          axios.delete(`/paymentsCustomer/destroy/${paymentId}`)
+            .then((response) => {
+              Swal.fire('Deleted!', response.data.message, 'success').then(() => {
+                window.location.reload();
+              });
+            })
+            .catch((error) => {
+              Swal.fire('Error', error.response?.data?.message || 'Failed to delete payment.', 'error');
             });
         }
       });

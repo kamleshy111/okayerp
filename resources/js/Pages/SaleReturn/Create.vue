@@ -93,7 +93,9 @@ const filteredPurchasedItems = computed(() => {
     return [];
   }
   return purchasedItems.value.filter(item =>
-    item.product_name.toLowerCase().includes(query)
+    item.product_name.toLowerCase().includes(query) ||
+    (item.product_code && item.product_code.toLowerCase().includes(query)) ||
+    (item.invoice_no && item.invoice_no.toLowerCase().includes(query))
   );
 });
 
@@ -118,8 +120,8 @@ watch(selectedCustomerId, async (newVal) => {
     }));
     customerTotalDue.value = parseFloat(response.data.customer_total_due) || 0;
   } catch (error) {
-    console.error("Error fetching purchased items:", error);
-    toast.error("Failed to load customer purchased items.");
+    console.error("Error fetching sales items:", error);
+    toast.error("Failed to load customer sales items.");
   } finally {
     isLoadingItems.value = false;
   }
@@ -353,13 +355,13 @@ const submitReturn = async () => {
           </div>
 
           <div v-if="selectedCustomerId" class="flex flex-col">
-            <label class="block text-black font-medium mb-2">Search Purchased Item <span class="text-red-500">*</span></label>
+            <label class="block text-black font-medium mb-2">Search Sales Item <span class="text-red-500">*</span></label>
             <div class="flex items-center gap-2">
               <vSelect
                 v-model="selectedItemToAdd"
                 :options="filteredPurchasedItems"
                 label="product_name"
-                placeholder="Type to search purchased items..."
+                placeholder="Type to search sales items..."
                 class="w-full text-black bg-white"
                 :disabled="isLoadingItems"
                 @search="(query) => itemSearchQuery = query"
@@ -369,7 +371,16 @@ const submitReturn = async () => {
               >
                 <template #option="option">
                   <div class="flex justify-between items-center w-full">
-                    <span>{{ option.product_name }} [Available: {{ option.available_qty }}]</span>
+                    <span>
+                      <span class="font-semibold text-gray-800">{{ option.product_name }}</span>
+                      <span class="ml-1.5 text-xs font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                        Inv: {{ option.invoice_no }}
+                      </span>
+                      <span class="ml-1 text-gray-500 text-xs">[Available: {{ option.available_qty }}]</span>
+                      <span v-if="option.discount_per_unit > 0" class="text-xs text-green-600 ml-1 font-normal">
+                        (₹{{ option.price.toFixed(2) }} net)
+                      </span>
+                    </span>
                     <span class="text-[#2E2C92] font-bold flex items-center justify-center bg-indigo-50 hover:bg-indigo-100 rounded-full w-6 h-6 shadow-sm"><i class="bi bi-plus-lg"></i></span>
                   </div>
                 </template>
@@ -378,7 +389,7 @@ const submitReturn = async () => {
                 </template>
               </vSelect>
             </div>
-            <p v-if="isLoadingItems" class="text-xs text-gray-500 mt-1">Loading purchased items...</p>
+            <p v-if="isLoadingItems" class="text-xs text-gray-500 mt-1">Loading sales items...</p>
             <p v-else-if="purchasedItems.length === 0" class="text-xs text-amber-600 mt-1">No returnable purchased items found for this customer.</p>
           </div>
         </div>
@@ -393,7 +404,7 @@ const submitReturn = async () => {
                 <tr>
                   <th class="px-4 py-2 text-left">Product</th>
                   <th class="px-4 py-2 text-left">QTY</th>
-                  <th class="px-4 py-2 text-left">Price (Excl. GST)</th>
+                  <th class="px-4 py-2 text-left">Return Rate</th>
                   <th class="px-4 py-2 text-left w-32">Return Qty</th>
                   <th class="px-4 py-2 text-left">Refund Amount</th>
                   <th class="px-4 py-2 text-center w-20">Action</th>
@@ -401,9 +412,16 @@ const submitReturn = async () => {
               </thead>
               <tbody>
                 <tr v-for="(item, index) in form.items" :key="index">
-                  <td class="border-t px-4 py-3 font-semibold text-gray-800">{{ item.product_name }}</td>
+                  <td class="border-t px-4 py-3">
+                    <div class="font-semibold text-gray-800">{{ item.product_name }}</div>
+                    <div class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                      Invoice: {{ item.invoice_no || ('#' + item.sale_id) }}
+                    </div>
+                  </td>
                   <td class="border-t px-4 py-3 font-bold text-indigo-600">{{ item.available_qty }}</td>
-                  <td class="border-t px-4 py-3 text-gray-600">₹ {{ item.price.toFixed(2) }}</td>
+                  <td class="border-t px-4 py-3 text-gray-600">
+                    <div class="font-bold text-gray-800">₹ {{ item.original_price.toFixed(2) }} - ₹{{ item.discount_per_unit.toFixed(2) }} disc</div>
+                  </td>
                   <td class="border-t px-4 py-3">
                     <input
                       type="number"
@@ -438,6 +456,9 @@ const submitReturn = async () => {
                 <div class="flex justify-between items-start font-bold text-[#292688] text-base pb-2 border-b border-gray-100">
                   <div>
                     <div>{{ item.product_name }}</div>
+                    <div class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                      Invoice: {{ item.invoice_no || ('#' + item.sale_id) }}
+                    </div>
                   </div>
                   <button
                     type="button"
@@ -455,8 +476,11 @@ const submitReturn = async () => {
 
                 <div class="flex items-center justify-between gap-4 pt-2">
                   <div class="w-1/2">
-                    <label class="block text-xs font-semibold text-gray-500 mb-1">Price (Excl. GST)</label>
+                    <label class="block text-xs font-semibold text-gray-500 mb-1">Return Rate</label>
                     <span class="font-bold text-gray-800 text-sm">₹ {{ item.price.toFixed(2) }}</span>
+                    <span v-if="item.discount_per_unit > 0" class="text-xs text-green-600 block font-medium">
+                      (-₹{{ item.discount_per_unit.toFixed(2) }} disc)
+                    </span>
                   </div>
                   <div class="w-1/2">
                     <label class="block text-xs font-semibold text-gray-500 mb-1">Return Qty</label>

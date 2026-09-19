@@ -555,26 +555,47 @@
         </td>
       </tr>
 
-      @if(isset($previousBalance) && (float)$previousBalance != 0.0)
-      <!-- Previous Balance row -->
+      @php
+        $calcPaid = isset($paidAmount) ? (float)$paidAmount : (float)$sale->paid;
+        $calcNetPayable = max(0, (float)$sale->grand_total - (float)($returnDueDeduction ?? 0));
+        $calcDue = isset($dueAmount) ? (float)$dueAmount : max(0, $calcNetPayable - $calcPaid);
+        $calcExtra = isset($extraAmount) ? (float)$extraAmount : max(0, $calcPaid - $calcNetPayable);
+      @endphp
+      @if(($calcDue > 0 || $calcExtra > 0) && $calcPaid > 0)
+      <!-- Paid Amount row -->
       <tr class="total-row">
         <td class="border-right">&nbsp;</td>
-        <td class="bold border-right text-right" colspan="2">Previous Balance</td>
+        <td class="bold border-right text-right" colspan="2">Paid Amount</td>
         <td class="text-right border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
-        <td class="text-right bold">
-          {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($previousBalance / $exchangeRate, 2) }}@else{{ number_format($previousBalance, 2) }}@endif
+        <td class="text-right bold" style="color: #16a34a;">
+          {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($calcPaid / $exchangeRate, 2) }}@else{{ number_format($calcPaid, 2) }}@endif
         </td>
       </tr>
+      @endif
 
-      <!-- Current Balance row -->
-      <tr class="total-row" style="background-color: #e5e7eb;">
+      @if($calcDue > 0)
+      <!-- Due Amount row -->
+      <tr class="total-row" style="background-color: #fef2f2;">
         <td class="border-right">&nbsp;</td>
-        <td class="bold border-right text-right" colspan="2">Current Balance</td>
+        <td class="bold border-right text-right" colspan="2">Due Amount</td>
         <td class="text-right border-right">&nbsp;</td>
         <td class="border-right">&nbsp;</td>
-        <td class="text-right bold">
-          {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($currentBalance / $exchangeRate, 2) }}@else{{ number_format($currentBalance, 2) }}@endif
+        <td class="text-right bold" style="color: #dc2626;">
+          {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($calcDue / $exchangeRate, 2) }}@else{{ number_format($calcDue, 2) }}@endif
+        </td>
+      </tr>
+      @endif
+
+      @if($calcExtra > 0)
+      <!-- Extra Amount row -->
+      <tr class="total-row" style="background-color: #f0fdf4;">
+        <td class="border-right">&nbsp;</td>
+        <td class="bold border-right text-right" colspan="2">Extra Amount</td>
+        <td class="text-right border-right">&nbsp;</td>
+        <td class="border-right">&nbsp;</td>
+        <td class="text-right bold" style="color: #16a34a;">
+          {{ $currencySymbol }}&nbsp;@if($isExport){{ number_format($calcExtra / $exchangeRate, 2) }}@else{{ number_format($calcExtra, 2) }}@endif
         </td>
       </tr>
       @endif
