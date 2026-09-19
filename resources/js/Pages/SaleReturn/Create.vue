@@ -373,12 +373,9 @@ const submitReturn = async () => {
                   <div class="flex justify-between items-center w-full">
                     <span>
                       <span class="font-semibold text-gray-800">{{ option.product_name }}</span>
-                      <span class="ml-1.5 text-xs font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
-                        Inv: {{ option.invoice_no }}
-                      </span>
                       <span class="ml-1 text-gray-500 text-xs">[Available: {{ option.available_qty }}]</span>
-                      <span v-if="option.discount_per_unit > 0" class="text-xs text-green-600 ml-1 font-normal">
-                        (₹{{ option.price.toFixed(2) }} net)
+                      <span class="ml-1.5 text-xs font-semibold px-2 py-0.5 text-purple-800">
+                        Inv: {{ option.invoice_no }}
                       </span>
                     </span>
                     <span class="text-[#2E2C92] font-bold flex items-center justify-center bg-indigo-50 hover:bg-indigo-100 rounded-full w-6 h-6 shadow-sm"><i class="bi bi-plus-lg"></i></span>
@@ -414,13 +411,13 @@ const submitReturn = async () => {
                 <tr v-for="(item, index) in form.items" :key="index">
                   <td class="border-t px-4 py-3">
                     <div class="font-semibold text-gray-800">{{ item.product_name }}</div>
-                    <div class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
-                      Invoice: {{ item.invoice_no || ('#' + item.sale_id) }}
-                    </div>
                   </td>
                   <td class="border-t px-4 py-3 font-bold text-indigo-600">{{ item.available_qty }}</td>
                   <td class="border-t px-4 py-3 text-gray-600">
-                    <div class="font-bold text-gray-800">₹ {{ item.original_price.toFixed(2) }} - ₹{{ item.discount_per_unit.toFixed(2) }} disc</div>
+                    <div class="font-bold text-gray-800">₹ {{ item.original_price.toFixed(2) }}</div>
+                    <div class="inline-block mt-1 text-xs font-semibold px-2 py-0.5 rounded text-red-600">
+                        {{item.discount_per_unit > 0 ? ' - ' + item.discount_per_unit.toFixed(2): ''}}
+                    </div>
                   </td>
                   <td class="border-t px-4 py-3">
                     <input
