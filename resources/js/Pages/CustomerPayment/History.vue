@@ -27,11 +27,21 @@ const props = defineProps({
 // Tab state: 'invoice' or 'product'
 const activeTab = ref('invoice');
 
-// Filter states for Product-wise Report (separate search inputs for invoice and product)
+// Default today's date formatted as YYYY-MM-DD
+const getTodayDateStr = () => {
+  const d = new Date();
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+const todayDate = getTodayDateStr();
+
+// Filter states for Product-wise Report (default to today's date)
 const filterInvoiceSearch = ref('');
 const filterProductSearch = ref('');
-const filterStartDate = ref('');
-const filterEndDate = ref('');
+const filterStartDate = ref(todayDate);
+const filterEndDate = ref(todayDate);
 
 // Set of expanded product IDs for breakdown view
 const expandedProductIds = ref(new Set());
@@ -178,11 +188,16 @@ const productSummary = computed(() => {
   };
 });
 
+const clearDateFilter = () => {
+  filterStartDate.value = '';
+  filterEndDate.value = '';
+};
+
 const resetProductFilters = () => {
   filterInvoiceSearch.value = '';
   filterProductSearch.value = '';
-  filterStartDate.value = '';
-  filterEndDate.value = '';
+  filterStartDate.value = todayDate;
+  filterEndDate.value = todayDate;
   expandedProductIds.value = new Set();
 };
 
@@ -464,12 +479,23 @@ const downloadPdfUrl = computed(() => {
                     <i class="fa fa-filter text-[#2e2c92]"></i>
                     <h3 class="text-base font-bold text-gray-900">Filter Product Sales</h3>
                   </div>
-                  <button 
-                    @click="resetProductFilters"
-                    class="text-xs font-semibold text-[#2e2c92] hover:text-indigo-800 flex items-center gap-1 transition-colors"
-                  >
-                    <i class="fa fa-refresh"></i> Reset Filters
-                  </button>
+                  <div class="flex items-center gap-3">
+                    <button 
+                      v-if="filterStartDate || filterEndDate"
+                      type="button"
+                      @click="clearDateFilter"
+                      class="text-xs font-semibold text-gray-500 hover:text-gray-800 flex items-center gap-1 transition-colors"
+                      title="Clear date filter to see all dates"
+                    >
+                      <i class="fa fa-calendar-times-o"></i> All Dates
+                    </button>
+                    <button 
+                      @click="resetProductFilters"
+                      class="text-xs font-semibold text-[#2e2c92] hover:text-indigo-800 flex items-center gap-1 transition-colors"
+                    >
+                      <i class="fa fa-refresh"></i> Reset Filters
+                    </button>
+                  </div>
                 </div>
 
                 <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

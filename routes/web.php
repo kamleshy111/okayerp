@@ -230,6 +230,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/sale/create', [SaleController::class, 'create'])->name('sale.create');
         Route::post('/sale/store', [SaleController::class, 'store'])->name('sale.store');
         Route::get('/sale/check-invoice-no', [SaleController::class, 'checkInvoiceNo'])->name('sale.check-invoice-no');
+        Route::get('/sale/next-invoice-no', [SaleController::class, 'getNextInvoiceNo'])->name('sale.next-invoice-no');
         Route::get('/sale/{id}/edit', [SaleController::class, 'edit'])->name('sale.edit');
         Route::get('/sale/{id}', [SaleController::class, 'show'])->name('sale.show');
         Route::post('/sale/update/{id}', [SaleController::class, 'update'])->name('sale.update');

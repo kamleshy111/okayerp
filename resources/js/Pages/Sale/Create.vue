@@ -39,6 +39,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  nextInvoiceNo: {
+    type: String,
+    default: '',
+  },
 });
 
 const customers = ref([...props.customers]);
@@ -178,15 +182,22 @@ const handleSyncStorage = (event) => {
   }
 };
 
+const handleDocumentClick = () => {
+  showDateTimePicker.value = false;
+  showInvoicePicker.value = false;
+};
+
 onMounted(() => {
   loadAllProductsCatalog();
   window.addEventListener('focus', handleTabFocus);
   window.addEventListener('storage', handleSyncStorage);
+  window.addEventListener('click', handleDocumentClick);
 });
 
 onUnmounted(() => {
   window.removeEventListener('focus', handleTabFocus);
   window.removeEventListener('storage', handleSyncStorage);
+  window.removeEventListener('click', handleDocumentClick);
 });
 
 const filterProductsInMemory = (queryStr) => {
@@ -438,34 +449,10 @@ const getCurrentTimeStr = () => {
   return `${hours}:${minutes}`;
 };
 
-const showDateTimePicker = ref(false);
-
-const formattedSalesDateTimeDisplay = computed(() => {
-  if (!form.value.sale_date) return 'Select Date & Time';
-  const [year, month, day] = form.value.sale_date.split('-');
-  const dateFormatted = `${day}/${month}/${year}`;
-  
-  if (!form.value.sale_time) return dateFormatted;
-  
-  const [hoursStr, minutesStr] = form.value.sale_time.split(':');
-  let hours = parseInt(hoursStr, 10);
-  const minutes = minutesStr || '00';
-  const ampm = hours >= 12 ? 'PM' : 'AM';
-  hours = hours % 12;
-  hours = hours ? hours : 12;
-  const strHours = String(hours).padStart(2, '0');
-  
-  return `${dateFormatted} ${strHours}:${minutes} ${ampm}`;
-});
-
-const resetToCurrentDateTime = () => {
-  form.value.sale_date = new Date().toLocaleDateString('en-CA');
-  form.value.sale_time = getCurrentTimeStr();
-};
-
 const form = ref({
     customer_id: "",
     referral_user_id: "",
+    invoice_no: props.nextInvoiceNo || '',
     sale_date: new Date().toLocaleDateString('en-CA'),
     sale_time: getCurrentTimeStr(),
     estimate_id: "",
@@ -500,6 +487,87 @@ const form = ref({
     }],
 });
 
+const showDateTimePicker = ref(false);
+
+const formattedSalesDateTimeDisplay = computed(() => {
+  if (!form.value.sale_date) return 'Select Date & Time';
+  const [year, month, day] = form.value.sale_date.split('-');
+  const dateFormatted = `${day}/${month}/${year}`;
+  
+  if (!form.value.sale_time) return dateFormatted;
+  
+  const [hoursStr, minutesStr] = form.value.sale_time.split(':');
+  let hours = parseInt(hoursStr, 10);
+  const minutes = minutesStr || '00';
+  const ampm = hours >= 12 ? 'PM' : 'AM';
+  hours = hours % 12;
+  hours = hours ? hours : 12;
+  const strHours = String(hours).padStart(2, '0');
+  
+  return `${dateFormatted} ${strHours}:${minutes} ${ampm}`;
+});
+
+const resetToCurrentDateTime = () => {
+  form.value.sale_date = new Date().toLocaleDateString('en-CA');
+  form.value.sale_time = getCurrentTimeStr();
+};
+
+const showInvoicePicker = ref(false);
+const autoInvoiceNo = ref(props.nextInvoiceNo || '');
+const invoiceError = ref('');
+const isInvoiceCustomized = ref(false);
+let invoiceCheckTimer = null;
+
+const onInvoiceInput = (val) => {
+  isInvoiceCustomized.value = true;
+  checkInvoiceNumber(val);
+};
+
+const checkInvoiceNumber = (val) => {
+  clearTimeout(invoiceCheckTimer);
+  const v = (val || '').trim();
+  if (!v || v === autoInvoiceNo.value.trim()) {
+    invoiceError.value = '';
+    return;
+  }
+  invoiceCheckTimer = setTimeout(async () => {
+    try {
+      const res = await axios.get(`/sale/check-invoice-no?invoice_no=${encodeURIComponent(v)}`);
+      invoiceError.value = res.data?.available ? '' : (res.data?.message || 'Invoice number already exists.');
+    } catch (e) {
+      console.error("Error validating invoice number:", e);
+    }
+  }, 250);
+};
+
+const fetchNextInvoiceNo = async () => {
+  try {
+    const dateParam = form.value.sale_date ? `?sale_date=${form.value.sale_date}` : '';
+    const res = await axios.get(`/sale/next-invoice-no${dateParam}`);
+    if (res.data && res.data.invoice_no) {
+      autoInvoiceNo.value = res.data.invoice_no;
+      if (!isInvoiceCustomized.value) {
+        form.value.invoice_no = res.data.invoice_no;
+      }
+    }
+  } catch (e) {
+    console.error("Error fetching next invoice number:", e);
+  }
+};
+
+const resetToAutoInvoiceNo = async () => {
+  isInvoiceCustomized.value = false;
+  invoiceError.value = '';
+  await fetchNextInvoiceNo();
+  form.value.invoice_no = autoInvoiceNo.value;
+};
+
+watch(() => form.value.sale_date, (newDate) => {
+  if (!isInvoiceCustomized.value && newDate) {
+    fetchNextInvoiceNo();
+  }
+});
+
 const prefilledFromEstimateNo = ref('');
 
 const clearEstimatePrefill = () => {
@@ -508,6 +576,12 @@ const clearEstimatePrefill = () => {
 };
 
 onMounted(async () => {
+    if (!form.value.invoice_no && props.nextInvoiceNo) {
+        form.value.invoice_no = props.nextInvoiceNo;
+        autoInvoiceNo.value = props.nextInvoiceNo;
+    } else if (!form.value.invoice_no) {
+        fetchNextInvoiceNo();
+    }
     form.value.accepted = isGstAllowed.value;
     const urlParams = new URLSearchParams(window.location.search);
     const estimateId = urlParams.get('estimate_id');
@@ -1173,11 +1247,17 @@ const isSubmitting = ref(false);
 
 const submitForm = async () => {
   if (isSubmitting.value) return;
+  if (invoiceError.value) {
+    toast.error(invoiceError.value);
+    showInvoicePicker.value = true;
+    return;
+  }
   isSubmitting.value = true;
   try {
     const rate = parseFloat(form.value.exchange_rate) || 1.0;
     const payload = {
       ...form.value,
+      invoice_no: (form.value.invoice_no || autoInvoiceNo.value || '').trim(),
       exchange_rate: rate,
       discount: (parseFloat(form.value.discount) || 0) * rate,
       paid: (parseFloat(form.value.paid) || 0) * rate,
@@ -1200,9 +1280,14 @@ const submitForm = async () => {
     const invoiceUrl = response.data.invoice_url;
     window.open(invoiceUrl, '_blank');
 
+    isInvoiceCustomized.value = false;
+    invoiceError.value = '';
+    await fetchNextInvoiceNo();
+
     form.value = {
       customer_id: "",
       referral_user_id: "",
+      invoice_no: autoInvoiceNo.value,
       sale_date: new Date().toLocaleDateString('en-CA'),
       sale_time: getCurrentTimeStr(),
       grand_total: "",
@@ -1352,12 +1437,12 @@ const handleAltFocusOut = (event, index) => {
                 </div>
                 <h2 class="text-2xl font-bold text-[#2E2C92] tracking-tight">Create New Sale</h2>
             </div>
-            <div class="flex items-center gap-3">
+            <div class="flex flex-wrap items-center gap-3">
                 <!-- Date & Time Interactive Pill Popover -->
                 <div class="relative">
                     <button
                         type="button"
-                        @click.stop="showDateTimePicker = !showDateTimePicker"
+                        @click.stop="showDateTimePicker = !showDateTimePicker; if (showDateTimePicker) showInvoicePicker = false;"
                         class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer shadow-sm"
                         title="Click to edit sales date & time"
                     >
@@ -1408,6 +1493,73 @@ const handleAltFocusOut = (event, index) => {
                             <button
                                 type="button"
                                 @click="showDateTimePicker = false"
+                                class="px-3 py-1 text-xs bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
+                            >
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Invoice Number Interactive Pill Popover -->
+                <div class="relative">
+                    <button
+                        type="button"
+                        @click.stop="showInvoicePicker = !showInvoicePicker; if (showInvoicePicker) showDateTimePicker = false;"
+                        class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-semibold bg-slate-100 hover:bg-indigo-50 hover:text-indigo-700 text-slate-700 border border-slate-200 hover:border-indigo-200 transition cursor-pointer shadow-sm"
+                        title="Click to view or edit invoice number"
+                    >
+                        <i class="bi bi-receipt text-indigo-600"></i>
+                        <span>Invoice #{{ form.invoice_no || autoInvoiceNo || 'Auto' }}</span>
+                        <i class="bi bi-pencil-fill text-[10px] text-slate-400"></i>
+                    </button>
+
+                    <!-- Invoice No Popover Box -->
+                    <div
+                        v-if="showInvoicePicker"
+                        @click.stop
+                        class="absolute right-0 mt-2 w-72 bg-white rounded-2xl shadow-xl border border-slate-100 p-4 z-50 space-y-3"
+                    >
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-2">
+                            <span class="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                                <i class="bi bi-receipt text-indigo-600"></i>
+                                Invoice Number
+                            </span>
+                            <button type="button" @click="showInvoicePicker = false" class="text-slate-400 hover:text-slate-600 text-xs">
+                                <i class="bi bi-x-lg"></i>
+                            </button>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 mb-1">Invoice Number</label>
+                            <input
+                                type="text"
+                                v-model="form.invoice_no"
+                                :placeholder="autoInvoiceNo || 'e.g. 1/2026-27'"
+                                @input="onInvoiceInput($event.target.value)"
+                                class="w-full border px-3 py-1.5 rounded-lg text-xs focus:ring-2 focus:outline-none bg-white text-black font-medium"
+                                :class="invoiceError ? 'border-red-500 bg-red-50 focus:ring-red-400' : 'border-slate-200 focus:ring-indigo-500'"
+                            />
+                            <p v-if="invoiceError" class="text-[11px] text-red-500 mt-1 font-medium">
+                                {{ invoiceError }}
+                            </p>
+                            <p v-else-if="form.invoice_no && isInvoiceCustomized" class="text-[11px] text-amber-600 mt-1 font-medium flex items-center gap-1">
+                                <i class="bi bi-pencil text-[10px]"></i> Custom Invoice Number
+                            </p>
+                            <p v-else class="text-[11px] text-slate-400 mt-1 font-medium flex items-center gap-1">
+                                <i class="bi bi-magic text-[10px] text-indigo-500"></i> Auto-generated
+                            </p>
+                        </div>
+                        <div class="flex items-center justify-between pt-1">
+                            <button
+                                type="button"
+                                @click="resetToAutoInvoiceNo"
+                                class="text-xs text-indigo-600 hover:underline font-semibold"
+                            >
+                                Reset to Auto
+                            </button>
+                            <button
+                                type="button"
+                                @click="showInvoicePicker = false"
                                 class="px-3 py-1 text-xs bg-indigo-600 text-white font-semibold rounded-lg hover:bg-indigo-700 transition"
                             >
                                 Done

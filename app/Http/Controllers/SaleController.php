@@ -78,12 +78,26 @@ class SaleController extends Controller
             ->orderBy('created_at', 'DESC')
             ->limit(5)
             ->get();
+        $now = now();
+        $year = $now->year;
+        $month = $now->month;
+        $fy = ($month >= 4) ? $year . '-' . substr($year + 1, 2) : ($year - 1) . '-' . substr($year, 2);
+        $nextSeq = (Sale::where('user_id', $userId)->max('invoice_seq') ?? 0) + 1;
+        while (Sale::where(function ($q) use ($userId) {
+            $q->where('sales.user_id', $userId)
+              ->orWhereHas('customer', fn($cq) => $cq->where('user_id', $userId));
+        })->where('invoice_no', "{$nextSeq}/{$fy}")->exists()) {
+            $nextSeq++;
+        }
+        $nextInvoiceNo = "{$nextSeq}/{$fy}";
+
         return Inertia::render('Sale/Create',[
             'products' => $products,
             'categories' => $categories,
             'unitTypes' => $unitTypes,
             'gstRates' => $gstRates,
             'referralUsers' => $referralUsers,
+            'nextInvoiceNo' => $nextInvoiceNo,
         ]);
     }
 
@@ -92,6 +106,7 @@ class SaleController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required',
             'sale_date' => 'nullable|date',
+            'invoice_no' => 'nullable|string|max:100',
             'sale_items.*.product_id' => 'required',
         ], [
             'customer_id.required' => 'Customer name is required.',
@@ -149,7 +164,32 @@ class SaleController extends Controller
             })->where('invoice_no', "{$nextSeq}/{$fy}")->exists()) {
                 $nextSeq++;
             }
-            $invoiceNo = "{$nextSeq}/{$fy}";
+            $autoInvoiceNo = "{$nextSeq}/{$fy}";
+
+            // Check if user provided a custom invoice_no
+            $customInvoiceNo = trim($request->input('invoice_no', ''));
+            if (!empty($customInvoiceNo)) {
+                $duplicateExists = Sale::where(function ($q) use ($userId) {
+                    $q->where('sales.user_id', $userId)
+                      ->orWhereHas('customer', fn($cq) => $cq->where('user_id', $userId));
+                })->where('invoice_no', $customInvoiceNo)->exists();
+
+                if ($duplicateExists) {
+                    return response()->json([
+                        'message' => "Invoice number '{$customInvoiceNo}' is already used. Please use a unique invoice number."
+                    ], 422);
+                }
+
+                $invoiceNo = $customInvoiceNo;
+                if (preg_match('/^(\d+)/', $customInvoiceNo, $matches)) {
+                    $seqVal = (int)$matches[1];
+                    if ($seqVal >= $nextSeq) {
+                        $nextSeq = $seqVal;
+                    }
+                }
+            } else {
+                $invoiceNo = $autoInvoiceNo;
+            }
 
             $storeUser = Auth::user();
             $allowGstInvoice = $storeUser ? (bool)$storeUser->allow_gst_invoice : false;
@@ -973,6 +1013,30 @@ class SaleController extends Controller
         return response()->json([
             'available' => !$exists,
             'message' => $exists ? "Invoice number '{$invoiceNo}' is already used in this store." : "",
+        ]);
+    }
+
+    public function getNextInvoiceNo(Request $request)
+    {
+        $userId = Auth::id();
+        $dateStr = $request->input('sale_date') ?: now()->toDateString();
+        $saleDate = \Carbon\Carbon::parse($dateStr);
+        $year = $saleDate->year;
+        $month = $saleDate->month;
+        $fy = ($month >= 4) ? $year . '-' . substr($year + 1, 2) : ($year - 1) . '-' . substr($year, 2);
+
+        $nextSeq = (Sale::where('user_id', $userId)->max('invoice_seq') ?? 0) + 1;
+        while (Sale::where(function ($q) use ($userId) {
+            $q->where('sales.user_id', $userId)
+              ->orWhereHas('customer', fn($cq) => $cq->where('user_id', $userId));
+        })->where('invoice_no', "{$nextSeq}/{$fy}")->exists()) {
+            $nextSeq++;
+        }
+        $nextInvoiceNo = "{$nextSeq}/{$fy}";
+
+        return response()->json([
+            'invoice_no' => $nextInvoiceNo,
+            'invoice_seq' => $nextSeq
         ]);
     }
 }
