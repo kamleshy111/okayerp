@@ -78,12 +78,26 @@ class SaleController extends Controller
             ->orderBy('created_at', 'DESC')
             ->limit(5)
             ->get();
+        $now = now();
+        $year = $now->year;
+        $month = $now->month;
+        $fy = ($month >= 4) ? $year . '-' . substr($year + 1, 2) : ($year - 1) . '-' . substr($year, 2);
+        $nextSeq = (Sale::where('user_id', $userId)->max('invoice_seq') ?? 0) + 1;
+        while (Sale::where(function ($q) use ($userId) {
+            $q->where('sales.user_id', $userId)
+              ->orWhereHas('customer', fn($cq) => $cq->where('user_id', $userId));
+        })->where('invoice_no', "{$nextSeq}/{$fy}")->exists()) {
+            $nextSeq++;
+        }
+        $nextInvoiceNo = "{$nextSeq}/{$fy}";
+
         return Inertia::render('Sale/Create',[
             'products' => $products,
             'categories' => $categories,
             'unitTypes' => $unitTypes,
             'gstRates' => $gstRates,
             'referralUsers' => $referralUsers,
+            'nextInvoiceNo' => $nextInvoiceNo,
         ]);
     }
 
@@ -92,6 +106,7 @@ class SaleController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required',
             'sale_date' => 'nullable|date',
+            'invoice_no' => 'nullable|string|max:100',
             'sale_items.*.product_id' => 'required',
         ], [
             'customer_id.required' => 'Customer name is required.',
@@ -149,7 +164,32 @@ class SaleController extends Controller
             })->where('invoice_no', "{$nextSeq}/{$fy}")->exists()) {
                 $nextSeq++;
             }
-            $invoiceNo = "{$nextSeq}/{$fy}";
+            $autoInvoiceNo = "{$nextSeq}/{$fy}";
+
+            // Check if user provided a custom invoice_no
+            $customInvoiceNo = trim($request->input('invoice_no', ''));
+            if (!empty($customInvoiceNo)) {
+                $duplicateExists = Sale::where(function ($q) use ($userId) {
+                    $q->where('sales.user_id', $userId)
+                      ->orWhereHas('customer', fn($cq) => $cq->where('user_id', $userId));
+                })->where('invoice_no', $customInvoiceNo)->exists();
+
+                if ($duplicateExists) {
+                    return response()->json([
+                        'message' => "Invoice number '{$customInvoiceNo}' is already used. Please use a unique invoice number."
+                    ], 422);
+                }
+
+                $invoiceNo = $customInvoiceNo;
+                if (preg_match('/^(\d+)/', $customInvoiceNo, $matches)) {
+                    $seqVal = (int)$matches[1];
+                    if ($seqVal >= $nextSeq) {
+                        $nextSeq = $seqVal;
+                    }
+                }
+            } else {
+                $invoiceNo = $autoInvoiceNo;
+            }
 
             $storeUser = Auth::user();
             $allowGstInvoice = $storeUser ? (bool)$storeUser->allow_gst_invoice : false;
@@ -169,7 +209,7 @@ class SaleController extends Controller
                 'gst_amount' => $accepted ? ($request->input('GstAmount') ?? 0.00) : 0.00,
                 'accepted' => $accepted,
                 'paid'  => $request->input('paid') ?? 0.00,
-                'payment_method' => $request->input('payment_method') ?? "",
+                'payment_method' => ((float)($request->input('paid') ?? 0) > 0) ? ($request->input('payment_method') ?? "") : null,
                 'payment_status' => $request->input('payment_status') ?? "Unpaid",
                 'discount'  => $request->input('discount') ?? 0,
                 'currency' => $request->input('currency') ?: 'INR',
@@ -271,6 +311,7 @@ class SaleController extends Controller
                     'amount' => $sale->paid,
                     'payment_date' => $sale->created_at ? $sale->created_at->toDateString() : now()->toDateString(),
                     'payment_method' => $sale->payment_method ?: 'Cash',
+                    'source' => 'Sale',
                     'note' => "Payment for Sale Invoice #{$sale->id}",
                     'accepted' => $sale->accepted,
                 ]);
@@ -553,7 +594,7 @@ class SaleController extends Controller
                     'grand_total' => $request->input('grand_total'),
                     'total_amount' => $request->input('total_amount'),
                     'paid'  => $request->input('paid') ?? 0.00,
-                    'payment_method' => $request->input('payment_method') ?? "",
+                    'payment_method' => ((float)($request->input('paid') ?? 0) > 0) ? ($request->input('payment_method') ?? "") : null,
                     'payment_status' => $request->input('payment_status') ?? "Unpaid",
                     'discount'  => $request->input('discount') ?? 0,
                     'currency' => $request->input('currency') ?: 'INR',
@@ -654,14 +695,15 @@ class SaleController extends Controller
                     ReferralSale::where('sale_id', $sale->id)->delete();
                 }
 
-                // Update or create/delete associated SalePayment
-                $payment = SalePayment::where('sale_id', $sale->id)->orderBy('id', 'asc')->first();
+                // Update or create/delete associated SalePayment with source 'Sale'
+                $payment = SalePayment::where('sale_id', $sale->id)->where('source', 'Sale')->first();
                 if ($sale->paid > 0) {
                     if ($payment) {
                         $payment->update([
                             'customer_id' => $sale->customer_id,
                             'amount' => $sale->paid,
                             'payment_method' => $sale->payment_method ?: 'Cash',
+                            'source' => 'Sale',
                             'accepted' => $sale->accepted,
                         ]);
                     } else {
@@ -671,6 +713,7 @@ class SaleController extends Controller
                             'amount' => $sale->paid,
                             'payment_date' => $sale->created_at ? $sale->created_at->toDateString() : now()->toDateString(),
                             'payment_method' => $sale->payment_method ?: 'Cash',
+                            'source' => 'Sale',
                             'note' => "Payment for Sale Invoice #" . ($sale->invoice_no ?: $sale->id),
                             'accepted' => $sale->accepted,
                         ]);
@@ -776,11 +819,13 @@ class SaleController extends Controller
             $paperOrientation = $isA5 ? 'landscape' : 'portrait';
         }
 
-        $balances = $this->calculateCustomerBalances($sale);
-        $previousBalance = $balances['previousBalance'];
-        $currentBalance = $balances['currentBalance'];
+        $salePayments = (float)\App\Models\SalePayment::where('sale_id', $sale->id)->sum('amount');
+        $paidAmount = max((float)$sale->paid, $salePayments);
+        $netPayable = max(0, (float)$sale->grand_total - (float)$returnDueDeduction);
+        $dueAmount = max(0, round($netPayable - $paidAmount, 2));
+        $extraAmount = max(0, round($paidAmount - $netPayable, 2));
 
-        $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction', 'previousBalance', 'currentBalance'))
+        $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction', 'paidAmount', 'dueAmount', 'extraAmount'))
             ->setPaper($paperSize, $paperOrientation);
 
         $safeInvoiceNo = $sale->invoice_no ? str_replace(['/', '\\'], '-', $sale->invoice_no) : $sale->id;
@@ -836,11 +881,11 @@ class SaleController extends Controller
 
             SaleItem::where('sale_id', $id)->delete();
 
-            // Find and delete associated SalePayment
-            $payment = SalePayment::where('sale_id', $id)->first();
-            if ($payment) {
-                $accountingService->clearEntries('SalePayment', $payment->id);
-                $payment->delete();
+            // Find and delete all associated SalePayments
+            $payments = SalePayment::where('sale_id', $id)->get();
+            foreach ($payments as $p) {
+                $accountingService->clearEntries('SalePayment', $p->id);
+                $p->delete();
             }
 
             $sale->delete();
@@ -875,15 +920,20 @@ class SaleController extends Controller
         $returnDueDeduction = \App\Models\SaleReturnItem::where('sale_id', $sale->id)->sum('due_deduction');
         $payments = \App\Models\SalePayment::where('sale_id', $sale->id)->whereNotIn('payment_method', ['Wallet', 'Advance Deduction'])->orderBy('payment_date', 'asc')->get();
 
-        $balances = $this->calculateCustomerBalances($sale);
+        $salePayments = (float)\App\Models\SalePayment::where('sale_id', $sale->id)->sum('amount');
+        $paidAmount = max((float)$sale->paid, $salePayments);
+        $netPayable = max(0, (float)$sale->grand_total - (float)$returnDueDeduction);
+        $dueAmount = max(0, round($netPayable - $paidAmount, 2));
+        $extraAmount = max(0, round($paidAmount - $netPayable, 2));
 
         return Inertia::render('Sale/Show', [
             'sale' => $sale,
             'allocatedPayment' => $allocatedPayment,
             'returnDueDeduction' => $returnDueDeduction,
             'payments' => $payments,
-            'previousBalance' => $balances['previousBalance'],
-            'currentBalance' => $balances['currentBalance'],
+            'paidAmount' => $paidAmount,
+            'dueAmount' => $dueAmount,
+            'extraAmount' => $extraAmount,
         ]);
     }
 
@@ -963,6 +1013,30 @@ class SaleController extends Controller
         return response()->json([
             'available' => !$exists,
             'message' => $exists ? "Invoice number '{$invoiceNo}' is already used in this store." : "",
+        ]);
+    }
+
+    public function getNextInvoiceNo(Request $request)
+    {
+        $userId = Auth::id();
+        $dateStr = $request->input('sale_date') ?: now()->toDateString();
+        $saleDate = \Carbon\Carbon::parse($dateStr);
+        $year = $saleDate->year;
+        $month = $saleDate->month;
+        $fy = ($month >= 4) ? $year . '-' . substr($year + 1, 2) : ($year - 1) . '-' . substr($year, 2);
+
+        $nextSeq = (Sale::where('user_id', $userId)->max('invoice_seq') ?? 0) + 1;
+        while (Sale::where(function ($q) use ($userId) {
+            $q->where('sales.user_id', $userId)
+              ->orWhereHas('customer', fn($cq) => $cq->where('user_id', $userId));
+        })->where('invoice_no', "{$nextSeq}/{$fy}")->exists()) {
+            $nextSeq++;
+        }
+        $nextInvoiceNo = "{$nextSeq}/{$fy}";
+
+        return response()->json([
+            'invoice_no' => $nextInvoiceNo,
+            'invoice_seq' => $nextSeq
         ]);
     }
 }

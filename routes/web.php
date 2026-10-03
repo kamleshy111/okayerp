@@ -40,6 +40,7 @@ use App\Http\Controllers\OfferController;
 use App\Http\Controllers\WhatsAppController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\NotificationSettingsController;
+use App\Http\Controllers\ProductSalesReportController;
 
 
 
@@ -229,6 +230,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::get('/sale/create', [SaleController::class, 'create'])->name('sale.create');
         Route::post('/sale/store', [SaleController::class, 'store'])->name('sale.store');
         Route::get('/sale/check-invoice-no', [SaleController::class, 'checkInvoiceNo'])->name('sale.check-invoice-no');
+        Route::get('/sale/next-invoice-no', [SaleController::class, 'getNextInvoiceNo'])->name('sale.next-invoice-no');
         Route::get('/sale/{id}/edit', [SaleController::class, 'edit'])->name('sale.edit');
         Route::get('/sale/{id}', [SaleController::class, 'show'])->name('sale.show');
         Route::post('/sale/update/{id}', [SaleController::class, 'update'])->name('sale.update');
@@ -288,6 +290,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
         Route::post('/paymentSupplier/store', [SupplierPaymentController::class, 'store'])->name('paymentSupplier.store');
         Route::get('/paymentSupplier/{id}/history', [SupplierPaymentController::class, 'history'])->name('paymentSupplier.history');
         Route::get('/paymentSupplier/{id}/history/download-pdf', [SupplierPaymentController::class, 'downloadHistoryPdf'])->name('paymentSupplier.history.pdf');
+        Route::get('/paymentSupplier/{id}/product-report/download-pdf', [SupplierPaymentController::class, 'downloadProductReportPdf'])->name('paymentSupplier.product-report.pdf');
         Route::delete('/paymentSupplier/destroy/{id}', [SupplierPaymentController::class, 'destroy'])->name('paymentSupplier.destroy');
     });
 
@@ -314,6 +317,10 @@ Route::middleware(['auth', 'role:store'])->group(function () {
     Route::get('/reports/gst', [GstReportController::class, 'index'])->name('reports.gst');
     Route::post('/purchases/{id}/toggle-refundable', [GstReportController::class, 'toggleRefundable'])->name('purchases.toggle-refundable');
     Route::post('/reports/ledger/close-year', [LedgerController::class, 'closeYear'])->name('reports.ledger.close-year');
+    Route::get('/reports/product-sales', [ProductSalesReportController::class, 'index'])->name('reports.product-sales');
+    Route::get('/reports/product-sales/details/{productId}', [ProductSalesReportController::class, 'details'])->name('reports.product-sales.details');
+    Route::get('/reports/product-sales/pdf', [ProductSalesReportController::class, 'downloadPdf'])->name('reports.product-sales.pdf');
+    Route::get('/reports/product-sales/csv', [ProductSalesReportController::class, 'exportCsv'])->name('reports.product-sales.csv');
 
 
     Route::post('/bulk-delete', [BulkDeleteController::class, 'destroy'])->name('bulk-delete');
@@ -355,5 +362,7 @@ Route::middleware(['auth', 'role:store'])->group(function () {
 // Publicly accessible Invoice PDF & Payment History PDF downloads for customers
 Route::get('/sale/{id}/download-pdf', [SaleController::class, 'downloadInvoice'])->name('sale.invoice.download');
 Route::get('/paymentsCustomer/{id}/history/download-pdf', [CustomerPaymentsController::class, 'downloadHistoryPdf'])->name('paymentsCustomer.history.pdf');
+Route::get('/paymentsCustomer/{id}/product-report/download-pdf', [CustomerPaymentsController::class, 'downloadProductReportPdf'])->name('paymentsCustomer.product-report.pdf');
+Route::get('/paymentSupplier/{id}/product-report/download-pdf', [SupplierPaymentController::class, 'downloadProductReportPdf'])->name('paymentSupplier.product-report.pdf');
 
 require __DIR__.'/auth.php';

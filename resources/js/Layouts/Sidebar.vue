@@ -318,6 +318,12 @@ onUnmounted(() => {
           </a>
         </li>
 
+        <li v-if="role === 'store'" :class="{ 'active': route().current('reports.product-sales*') }">
+          <a :href="route('reports.product-sales')" class="flex items-center gap-3 px-4 py-2 rounded-l-full">
+            <i class="bi bi-box2-heart text-xl"></i> <span>Product Sales Report</span>
+          </a>
+        </li>
+
 
         <li v-if="role === 'store'" :class="{ 'active': route().current('audit-logs*') }">
           <a :href="route('audit-logs.index')" class="flex items-center gap-3 px-4 py-2 rounded-l-full">

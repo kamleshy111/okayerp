@@ -11,7 +11,7 @@ class SalePayment extends Model
     use Auditable;
 
     protected $fillable = [
-        'customer_id', 'sale_id', 'amount', 'payment_date', 'payment_method', 'note', 'accepted'
+        'customer_id', 'sale_id', 'amount', 'payment_date', 'payment_method', 'source', 'note', 'accepted'
     ];
 
     public function customer()

@@ -138,10 +138,10 @@ const columns = [
       className: 'whitespace-nowrap',
       render: (data, type, row, meta) => meta.row + 1,
     },
-    { 
-      data: 'invoice_no', 
-      title: 'Invoice No', 
-      className: 'whitespace-nowrap font-semibold text-slate-800',
+    {
+      data: 'invoice_no',
+      title: 'Invoice No',
+      className: 'whitespace-nowrap',
       render: function (data, type, row) {
         return `<a href="/sale/${row.id}" class="text-indigo-600 hover:text-indigo-900 font-bold">${data || '#' + row.id}</a>`;
       }
