@@ -281,6 +281,14 @@ onUnmounted(() => {
                 <span class="text-gray-900">Extra Amount</span>
                 <span class="text-emerald-600 font-bold">₹{{ parseFloat(extraAmount || 0).toFixed(2) }}</span>
               </div>
+              <div v-if="parseFloat(previousBalance || 0) !== 0" class="flex justify-between py-3 border-t border-gray-100">
+                <span class="text-gray-500 font-medium">Previous Balance</span>
+                <span class="text-gray-900 font-semibold">₹{{ parseFloat(previousBalance || 0).toFixed(2) }}</span>
+              </div>
+              <div v-if="parseFloat(previousBalance || 0) !== 0" class="flex justify-between py-3 text-base font-bold border-t border-gray-200 bg-gray-50 px-3 py-2.5 rounded-lg mt-1">
+                <span class="text-gray-900">Current Balance</span>
+                <span class="text-indigo-600 font-bold">₹{{ parseFloat(currentBalance || 0).toFixed(2) }}</span>
+              </div>
             </div>
           </div>
         </div>

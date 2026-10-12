@@ -275,6 +275,20 @@
     </td>
   </tr>
   @endif
+  @if(isset($previousBalance) && (float)$previousBalance != 0.0)
+  <tr>
+    <td>Previous Balance:</td>
+    <td class="text-right">
+      {{ $currencySymbol }}@if($isExport){{ number_format($previousBalance / $exchangeRate, 2) }}@else{{ number_format($previousBalance, 2) }}@endif
+    </td>
+  </tr>
+  <tr class="bold">
+    <td>Current Balance:</td>
+    <td class="text-right">
+      {{ $currencySymbol }}@if($isExport){{ number_format($currentBalance / $exchangeRate, 2) }}@else{{ number_format($currentBalance, 2) }}@endif
+    </td>
+  </tr>
+  @endif
 </table>
 
 <div class="divider"></div>

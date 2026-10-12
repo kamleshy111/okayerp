@@ -793,12 +793,17 @@ class SaleController extends Controller
         $store = $customer && $customer->user ? $customer->user : null;
         $printPreference = $store ? $store->invoice_print_size : 'a4';
 
+        $balances = $this->calculateCustomerBalances($sale);
+        $previousBalance = $balances['previousBalance'];
+        $currentBalance = $balances['currentBalance'];
+
         if ($printPreference === 'thermal') {
             $viewName = 'thermal_invoice';
             // Calculate dynamic height based on the number of items and store bank details to prevent truncation on receipt rolls.
             $itemCount = count($sale->saleItems);
             $bankDetailsHeight = ($store && $store->bank_name && !($store->hide_bank_details ?? false)) ? 60 : 0;
-            $calculatedHeight = 280 + ($itemCount * 40) + $bankDetailsHeight;
+            $balanceRowsHeight = ((float)$previousBalance != 0.0) ? 35 : 0;
+            $calculatedHeight = 280 + ($itemCount * 40) + $bankDetailsHeight + $balanceRowsHeight;
             $paperSize = [0, 0, 200, max(350, $calculatedHeight)]; // 200pt width matches printable area for 72mm/80mm printers
             $paperOrientation = 'portrait';
         } elseif ($printPreference === 'a5') {
@@ -825,7 +830,7 @@ class SaleController extends Controller
         $dueAmount = max(0, round($netPayable - $paidAmount, 2));
         $extraAmount = max(0, round($paidAmount - $netPayable, 2));
 
-        $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction', 'paidAmount', 'dueAmount', 'extraAmount'))
+        $pdf = Pdf::loadView($viewName, compact('sale', 'allocatedPayment', 'returnDueDeduction', 'paidAmount', 'dueAmount', 'extraAmount', 'previousBalance', 'currentBalance'))
             ->setPaper($paperSize, $paperOrientation);
 
         $safeInvoiceNo = $sale->invoice_no ? str_replace(['/', '\\'], '-', $sale->invoice_no) : $sale->id;
@@ -926,6 +931,8 @@ class SaleController extends Controller
         $dueAmount = max(0, round($netPayable - $paidAmount, 2));
         $extraAmount = max(0, round($paidAmount - $netPayable, 2));
 
+        $balances = $this->calculateCustomerBalances($sale);
+
         return Inertia::render('Sale/Show', [
             'sale' => $sale,
             'allocatedPayment' => $allocatedPayment,
@@ -934,6 +941,8 @@ class SaleController extends Controller
             'paidAmount' => $paidAmount,
             'dueAmount' => $dueAmount,
             'extraAmount' => $extraAmount,
+            'previousBalance' => $balances['previousBalance'],
+            'currentBalance' => $balances['currentBalance'],
         ]);
     }
 

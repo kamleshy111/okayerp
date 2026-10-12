@@ -403,6 +403,18 @@
           <td class="text-right bold" style="color: #16a34a;">{{ $currencySymbol }}&nbsp;{{ number_format($calcExtra, 2) }}</td>
         </tr>
         @endif
+        @if(isset($previousBalance) && (float)$previousBalance != 0.0)
+        <tr class="total-row">
+          <td class="border-right">&nbsp;</td>
+          <td class="bold border-right text-right" colspan="3">Previous Balance</td>
+          <td class="text-right bold">{{ $currencySymbol }}&nbsp;{{ number_format($previousBalance, 2) }}</td>
+        </tr>
+        <tr class="total-row" style="background-color: #e5e7eb;">
+          <td class="border-right">&nbsp;</td>
+          <td class="bold border-right text-right" colspan="3">Current Balance</td>
+          <td class="text-right bold">{{ $currencySymbol }}&nbsp;{{ number_format($currentBalance, 2) }}</td>
+        </tr>
+        @endif
       </tbody>
     </table>
 
